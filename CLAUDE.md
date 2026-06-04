@@ -25,8 +25,9 @@ This is a **TresJS v5 + Vue 3** single-page portfolio that renders a Blender-aut
 
 ### View modes (URL-driven)
 
-- `/` or `/?debug` → **tour mode**: guided camera tour with the `<TourControls>` HUD.
-- `/?debug-fly` → **fly mode**: cientos `<KeyboardControls>` (PointerLock + WASD/ZQSD-equivalent + arrows) for free first-person navigation; no HUD, just a hint overlay.
+- `/` → **default mode** (production): scene only, no HUD, no fly controls. Camera snaps to the Home stop.
+- `/?debug` → **tour mode** (diagnostic): guided camera tour with the `<TourControls>` HUD.
+- `/?debug-fly` → **fly mode** (diagnostic): cientos `<KeyboardControls>` (PointerLock + WASD/ZQSD-equivalent + arrows) for free first-person navigation; no HUD, just a hint overlay.
 
 Mode is resolved once at module load and held as a plain `const` — switching modes is a page reload by design (avoids tearing down/recreating control rigs and pointer-lock state mid-session). To add a new mode: extend the `ViewMode` union and the `resolve()` in `useViewMode.ts`, then branch on it in `PortfolioScene.vue`.
 
