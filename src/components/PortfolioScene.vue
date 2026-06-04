@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { OrbitControls } from '@tresjs/cientos'
+import { KeyboardControls } from '@tresjs/cientos'
 import { TresCanvas, type TresContext } from '@tresjs/core'
 import { NoToneMapping, type PerspectiveCamera } from 'three'
 import { ref, shallowRef } from 'vue'
@@ -7,6 +7,7 @@ import RoomModel from '@/components/RoomModel.vue'
 import PostFx from '@/components/PostFx.vue'
 import TourControls from '@/components/TourControls.vue'
 import { useCameraTour, type StopTransform } from '@/composables/useCameraTour'
+import { useViewMode } from '@/composables/useViewMode'
 import {
   CLEAR_COLOR,
   MODEL_SRC,
@@ -16,9 +17,11 @@ import {
   TONE_MAPPING_EXPOSURE,
 } from '@/config/blenderMatch'
 
-// Flip these to taste.
 const postFx = ref(false) // bloom + AGX tone-mapping pass (see PostFx.vue)
-const freeLook = ref(false) // OrbitControls instead of the guided tour
+
+// View mode is resolved once from the URL at module load — see useViewMode.ts.
+// 'tour' is the default; ?debug-fly opts into first-person nav.
+const mode = useViewMode()
 
 const loading = ref(true)
 const cameraRef = shallowRef<PerspectiveCamera | null>(null)
@@ -34,11 +37,10 @@ function onReady(ctx: TresContext) {
 function onModelReady(payload: { stops: Map<string, StopTransform> }) {
   stops.value = payload.stops
   loading.value = false
-  if (payload.stops.size === 0) freeLook.value = true
 }
 
 function select(index: number) {
-  if (!freeLook.value) tour.goTo(index)
+  if (mode === 'tour') tour.goTo(index)
 }
 </script>
 
@@ -52,9 +54,11 @@ function select(index: number) {
       shadows
       @ready="onReady"
     >
-      <!-- Our render camera. The tour tweens this; the .glb's own cameras are only
-           read for their transforms, never made active. Initial pose is a sensible
-           seed near the Home stop so the first frame isn't at the origin. -->
+      <!-- Our render camera. In 'tour' mode the tour tweens this between stops;
+           in 'fly' mode KeyboardControls drives it from WASD/ZQSD + mouse-look.
+           The .glb's own cameras are only read for their transforms, never made active.
+           Initial pose is a sensible seed near the Home stop so the first frame isn't
+           at the origin. -->
       <TresPerspectiveCamera
         ref="cameraRef"
         :fov="37.85"
@@ -71,7 +75,8 @@ function select(index: number) {
         <RoomModel :src="MODEL_SRC" @ready="onModelReady" />
       </Suspense>
 
-      <OrbitControls v-if="freeLook" make-default />
+      <!-- WASD on QWERTY / ZQSD on AZERTY + mouse-look (PointerLock under the hood). -->
+      <KeyboardControls v-if="mode === 'fly'" :move-speed="0.05" />
 
       <Suspense v-if="postFx">
         <PostFx />
@@ -86,13 +91,18 @@ function select(index: number) {
     </Transition>
 
     <TourControls
-      v-if="!freeLook && !loading"
+      v-if="mode === 'tour' && !loading"
       :current-index="tour.currentIndex.value"
       :disabled="tour.isTweening.value"
       @select="select"
       @prev="tour.prev()"
       @next="tour.next()"
     />
+
+    <div v-if="mode === 'fly' && !loading" class="fly-hint">
+      <p><strong>Click</strong> to capture mouse · <kbd>Esc</kbd> to release</p>
+      <p>Move: <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> (or <kbd>Z</kbd><kbd>Q</kbd><kbd>S</kbd><kbd>D</kbd>) · Arrow keys also work</p>
+    </div>
   </div>
 </template>
 
@@ -133,5 +143,36 @@ function select(index: number) {
 }
 .fade-leave-to {
   opacity: 0;
+}
+.fly-hint {
+  position: absolute;
+  top: clamp(12px, 3vh, 28px);
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 10px 14px;
+  border: 1px solid rgba(120, 200, 255, 0.18);
+  border-radius: 10px;
+  background: rgba(6, 9, 20, 0.55);
+  backdrop-filter: blur(10px);
+  color: rgba(190, 215, 255, 0.75);
+  font-family: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', monospace;
+  font-size: 12px;
+  letter-spacing: 0.03em;
+  line-height: 1.6;
+  text-align: center;
+  pointer-events: none;
+}
+.fly-hint p {
+  margin: 0;
+}
+.fly-hint kbd {
+  display: inline-block;
+  padding: 1px 6px;
+  margin: 0 2px;
+  border: 1px solid rgba(120, 200, 255, 0.35);
+  border-radius: 4px;
+  background: rgba(120, 200, 255, 0.08);
+  color: #eaf4ff;
+  font-size: 11px;
 }
 </style>

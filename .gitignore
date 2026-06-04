@@ -8,4 +8,4 @@ dist-ssr
 node_modules/.tmp
 
 # Large source assets you may not want in git (uncomment if needed)
-# public/models/*.glb
+public/models/*.glb
