@@ -1,4 +1,4 @@
-import { Html, ScrollControls } from '@react-three/drei'
+import { Html } from '@react-three/drei'
 import { useCallback, useState, type RefObject } from 'react'
 import { Vector3 } from 'three'
 import { CAMERA_STOPS } from '@/config/cameraStops'
@@ -8,14 +8,14 @@ import { RoomModel } from '@/scene/RoomModel'
 import { useInteraction } from '@/state/interaction'
 
 /**
- * Scene contents. ScrollControls is the single scroll source of truth; its
- * `enabled` prop is phase-driven (belt) while the HUD overlay sits above the
- * hidden scroller in the stacking order (suspenders) — risk point #2.
+ * Scene contents. Navigation is stop-to-stop (CameraRig owns the wheel and
+ * commands GSAP strokes); panels keep their native wheel because the rig
+ * ignores events targeting them.
  *
  * The demo bubble is a drei <Html> anchored in world space in front of the Cat
- * stop. zIndexRange is capped LOW: drei's default is ~16 million, which would
- * paint bubbles ABOVE the HUD and the panel — risk point #3, discovered by
- * reading drei's defaults, validated in the browser.
+ * stop. It portals to a stable layer outside the canvas container and its
+ * zIndexRange is capped LOW (drei's default is ~16 million, which would paint
+ * bubbles ABOVE the HUD and the panel — validated in the browser).
  */
 interface ExperienceProps {
   /** Stable DOM layer OUTSIDE the ScrollControls scroller — see App.tsx. */
@@ -48,15 +48,9 @@ export function Experience({ bubbleLayer }: ExperienceProps) {
     <>
       <RoomModel onReady={onReady} />
 
-      {stops.length > 0 && (
-        <ScrollControls
-          pages={stops.length - 1}
-          damping={0.2}
-          enabled={phase === 'touring' || phase === 'parked'}
-        >
-          <CameraRig stops={stops} />
-        </ScrollControls>
-      )}
+      {/* Stop-to-stop navigation model (2026-08-05): no ScrollControls — the
+          wheel is owned and gestures command GSAP strokes; see CameraRig. */}
+      {stops.length > 0 && <CameraRig stops={stops} />}
 
       {bubbleVisible && (
         <Html
