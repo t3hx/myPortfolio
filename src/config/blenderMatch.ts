@@ -1,44 +1,49 @@
 import { AgXToneMapping, PCFSoftShadowMap, SRGBColorSpace, type ToneMapping } from 'three'
 
 /**
- * These constants mirror your Blender scene's render/color settings so the
- * WebGL view lands as close as possible to the EEVEE viewport.
+ * These constants mirror the Blender scene's render/color settings so the WebGL
+ * view lands as close as possible to the EEVEE viewport.
  *
- * Read straight from your live scene over MCP:
- *   - Render engine .............. EEVEE
- *   - View Transform ............. AgX   (exposure 0 EV, look None, gamma 1)
- *   - World background ........... ~linear [0.015, 0.028, 0.085] @ strength 0.06  (near-black navy)
- *   - Display device ............. sRGB
+ * ⚠️ Ported from the Vue/TresJS prototype as a STARTING POINT, not a guarantee:
+ * the values were calibrated against the @tresjs/post-processing chain. The R3F
+ * pipeline must re-run the render comparison loop (docs/renders/refs vs actual,
+ * bloom ON and OFF) before these are considered final — see the design doc
+ * (eng-review issue 14).
  */
 
-/** Blender's View Transform is AgX -> use Three.js' AgX tone mapper. This is the
- *  single biggest factor in matching the look. */
 export const TONE_MAPPING: ToneMapping = AgXToneMapping
-
-/** Blender exposure was 0 EV, which maps to an exposure of 1.0. Nudge to taste. */
 export const TONE_MAPPING_EXPOSURE = 1.0
-
 export const OUTPUT_COLOR_SPACE = SRGBColorSpace
 
-/** Background clear colour. Your world is a very dim navy, so it reads as near-black. */
+/** Background clear colour — a very dim navy that reads as near-black. */
 export const CLEAR_COLOR = '#04050c'
 
-/** A faint ambient term approximating the dim world light contribution (strength 0.06).
- *  Keep it low — the room is meant to be dark and moody. */
 export const WORLD_AMBIENT_COLOR = '#0a1430'
 export const WORLD_AMBIENT_INTENSITY = 0.15
 
-/** glTF KHR_lights_punctual intensities are imported in physical units. If your lights
- *  come in too dim/bright vs Blender, scale them all here (1 = as exported). */
-export const LIGHT_INTENSITY_MULTIPLIER = 1.0
+/** glTF KHR_lights_punctual intensities are imported in physical units; scale all. */
+export const LIGHT_INTENSITY_MULTIPLIER = 0.015
 
-/** In Blender only these lights cast shadows (the rest are fill). glTF doesn't store the
- *  per-light shadow flag, so we re-apply it here by matching on name substrings.
- *  Set to [] to let every imported light cast shadows. */
+/** Only these lights cast shadows (the rest are fill) — see the prototype docstring. */
 export const SHADOW_CASTING_LIGHTS: string[] = ['PCBloom', 'ScoreboardAccent', 'PosterCode']
+
+/** Per-light intensity multipliers, applied AFTER LIGHT_INTENSITY_MULTIPLIER,
+ *  matched by name substring. */
+export const LIGHT_OVERRIDES: Record<string, number> = {
+  WindowFill: 0,
+  PosterAlbum: 0.3,
+  MoonKey: 0.5,
+}
 
 export const SHADOW_MAP_TYPE = PCFSoftShadowMap
 export const SHADOW_MAP_SIZE = 1024
 
-/** Path (relative to /public) of the .glb you export from Blender. */
+/** Path (relative to /public) of the .glb exported from Blender. */
 export const MODEL_SRC = '/models/scene.glb'
+
+// Bloom / saturation constants kept for the future PostFx port (not used by the
+// spike — the perf ladder requires the look to hold with bloom OFF anyway).
+export const BLOOM_INTENSITY = 0.25
+export const BLOOM_LUMINANCE_THRESHOLD = 1.3
+export const BLOOM_LUMINANCE_SMOOTHING = 0.05
+export const SATURATION = 0.3

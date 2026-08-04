@@ -4,14 +4,12 @@
  * rotation / focal length) is read from the .glb at runtime — you only define the
  * order and the UI text here.
  *
- * Your scene exposed 10 `CameraStop_*` cameras; they're ordered below into a loop
- * around the room that ends on the dramatic telescope -> moon zoom (270 mm lens).
- * Reorder / re-label freely, and drop the `caption` in as your portfolio copy.
+ * Ported unchanged from the Vue prototype: order = tour order = scroll order.
  */
 export interface CameraStop {
   /** Must match the camera object name in Blender / the .glb node name. */
   camera: string
-  /** Short label for the navigation UI. */
+  /** Short label for the navigation UI (also the `?stop=` deep-link key). */
   label: string
   /** Optional caption shown while parked at this stop. */
   caption?: string
@@ -23,7 +21,7 @@ export const CAMERA_STOPS: CameraStop[] = [
   { camera: 'CameraStop_Scoreboard', label: 'Scoreboard' },
   { camera: 'CameraStop_BookshelfPlant', label: 'Bookshelf' },
   { camera: 'CameraStop_Cabinet', label: 'Cabinet' },
-  { camera: 'CameraStop_Cat', label: 'Cat' },
+  { camera: 'CameraStop_Cat', label: 'Cat', caption: 'Chief nap officer. Do not disturb during business hours (all hours).' },
   { camera: 'CameraStop_GuitarPoster', label: 'Guitar' },
   { camera: 'CameraStop_PosterTelescope', label: 'Posters' },
   { camera: 'CameraStop_Telescope', label: 'Telescope' },
