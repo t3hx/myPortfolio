@@ -27,7 +27,12 @@ import { useInteraction } from '@/state/interaction'
  */
 
 const SNAP_IDLE_MS = 220
-const SNAP_EPSILON = 0.006
+// Segment-space distance under which we consider the camera parked. Loose on
+// purpose: drei's damping is asymptotic and rests at its own epsilon.
+const SNAP_EPSILON = 0.02
+// If momentum ends within this fraction past a stop, settle back to it;
+// otherwise keep going in the gesture's direction (never a visible reversal).
+const DIRECTIONAL_TOLERANCE = 0.12
 
 interface CameraRigProps {
   stops: StopTransform[]
@@ -53,6 +58,9 @@ export function CameraRig({ stops }: CameraRigProps) {
   const segments = Math.max(stops.length - 1, 1)
   const snapTween = useRef<gsap.core.Tween | null>(null)
   const idleTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const lastInputAt = useRef(0)
+  // The one true rail position (we own the wheel — see input wiring below).
+  const railTarget = useRef(0)
 
   // ?stop= deep link: force the target progress until the damped offset has
   // caught up, so the first frames render the target stop deterministically
@@ -63,20 +71,23 @@ export function CameraRig({ stops }: CameraRigProps) {
   const override = useRef<number | null>(null)
   const overrideFrames = useRef(0)
 
-  /** Tween the hidden scroller's scrollTop toward a stop index. */
+  /** Deliberate navigation (keyboard, rail clicks): tween the scrollTop.
+   *  No easing fight here — there is no user momentum to compete with. */
   function snapToIndex(index: number, duration = 0.9) {
     const el = scroll.el
     const clamped = Math.min(Math.max(index, 0), segments)
     const max = el.scrollHeight - el.clientHeight
     if (max <= 0) return
     snapTween.current?.kill()
-    const state = { v: el.scrollTop }
+    const state = { v: railTarget.current }
     snapTween.current = gsap.to(state, {
       v: (clamped / segments) * max,
       duration,
       ease: 'power2.out',
       onUpdate: () => {
+        railTarget.current = state.v
         el.scrollTop = state.v
+        el.dispatchEvent(new Event('scroll'))
       },
       onComplete: () => {
         snapTween.current = null
@@ -84,26 +95,91 @@ export function CameraRig({ stops }: CameraRigProps) {
     })
   }
 
+  /** Inertia settle after free scrolling: ONE smoothing only. Write the target
+   *  scrollTop instantly and let drei's damping glide the offset there —
+   *  exponential, monotonic arrival by construction. A gsap tween here would
+   *  compose two decelerations with drei's damping (and get killed/restarted
+   *  by trackpad momentum events): that was the "saccadé" arrival bounce. */
+  function settleToIndex(index: number) {
+    const el = scroll.el
+    const clamped = Math.min(Math.max(index, 0), segments)
+    const max = el.scrollHeight - el.clientHeight
+    if (max <= 0) return
+    snapTween.current?.kill()
+    snapTween.current = null
+    railTarget.current = (clamped / segments) * max
+    el.scrollTop = railTarget.current
+    // Dispatch explicitly so drei retargets THIS frame (native scroll events
+    // from programmatic writes arrive late) — same finding as the deep link.
+    el.dispatchEvent(new Event('scroll'))
+  }
+
   function nearestIndex(): number {
     return Math.round(scroll.offset * segments)
   }
 
-  // --- Input wiring: user scroll intent + keyboard ------------------------------------
+  /** Where the user's RAW scroll actually is (offset lags behind damping). */
+  function rawPos(): number {
+    const el = scroll.el
+    const max = el.scrollHeight - el.clientHeight
+    return max > 0 ? (el.scrollTop / max) * segments : 0
+  }
+
+  /** Snap target honouring the gesture's direction: keep moving forward on a
+   *  forward gesture (and vice versa); only settle back when momentum died a
+   *  hair past a stop. Kills the "camera reverses on arrival" effect. */
+  function directionalTarget(dir: number): number {
+    const pos = rawPos()
+    if (dir > 0) {
+      const past = pos - Math.floor(pos)
+      return past < DIRECTIONAL_TOLERANCE ? Math.floor(pos) : Math.ceil(pos)
+    }
+    if (dir < 0) {
+      const short = Math.ceil(pos) - pos
+      return short < DIRECTIONAL_TOLERANCE ? Math.ceil(pos) : Math.floor(pos)
+    }
+    return Math.round(pos)
+  }
+
+  // --- Input wiring: OWNED wheel (Lenis-style) + keyboard -----------------------------
+  // Spike finding: letting the browser scroll natively adds a THIRD easing
+  // layer — Chromium's smooth-scroll animation keeps writing scrollTop long
+  // after the wheel events (late deliveries, clobbered programmatic writes,
+  // post-settle drift). So the wheel is preventDefault'ed and we own the rail:
+  // wheel deltas accumulate into a virtual target that WE write to scrollTop.
+  // One owner, deterministic; drei's damping stays the single visual easing.
   useEffect(() => {
     const el = scroll.el
     const store = useInteraction.getState
 
-    const onUserScrollIntent = () => {
+    let gestureDir = 0
+
+    const writeRail = (top: number) => {
+      const max = el.scrollHeight - el.clientHeight
+      railTarget.current = Math.min(Math.max(top, 0), max)
+      el.scrollTop = railTarget.current
+      el.dispatchEvent(new Event('scroll'))
+    }
+
+    const onWheel = (e: WheelEvent) => {
       const { phase } = store()
       if (phase !== 'touring' && phase !== 'parked') return
+      e.preventDefault()
+      const delta = e.deltaMode === 1 ? e.deltaY * 16 : e.deltaY
+      if (delta !== 0) gestureDir = Math.sign(delta)
+      lastInputAt.current = performance.now()
       // New user input cancels any in-flight snap and re-enters TOURING.
       override.current = null
       snapTween.current?.kill()
       snapTween.current = null
       if (phase === 'parked') store().setPhase('touring')
+      writeRail(railTarget.current + delta)
       if (idleTimer.current) clearTimeout(idleTimer.current)
       idleTimer.current = setTimeout(() => {
-        if (store().phase === 'touring') snapToIndex(nearestIndex(), 0.7)
+        if (store().phase === 'touring') {
+          settleToIndex(directionalTarget(gestureDir))
+          gestureDir = 0
+        }
       }, SNAP_IDLE_MS)
     }
 
@@ -122,12 +198,15 @@ export function CameraRig({ stops }: CameraRigProps) {
       snapToIndex(nearestIndex() + (forward ? 1 : -1), 1.1)
     }
 
-    el.addEventListener('wheel', onUserScrollIntent, { passive: true })
-    el.addEventListener('touchmove', onUserScrollIntent, { passive: true })
+    // Non-passive: preventDefault is the whole point. Attached to the stage so
+    // it catches wheel over the canvas AND the pass-through HUD zones; the
+    // panel sits above in its own element, so its wheel never reaches us.
+    const stage = el.parentElement ?? el
+    stage.addEventListener('wheel', onWheel, { passive: false })
     window.addEventListener('keydown', onKeyDown)
+    railTarget.current = el.scrollTop
     return () => {
-      el.removeEventListener('wheel', onUserScrollIntent)
-      el.removeEventListener('touchmove', onUserScrollIntent)
+      stage.removeEventListener('wheel', onWheel)
       window.removeEventListener('keydown', onKeyDown)
       if (idleTimer.current) clearTimeout(idleTimer.current)
     }
@@ -156,7 +235,8 @@ export function CameraRig({ stops }: CameraRigProps) {
     const trySet = () => {
       const max = el.scrollHeight - el.clientHeight
       if (max > 0) {
-        el.scrollTop = (target / segments) * max
+        railTarget.current = (target / segments) * max
+        el.scrollTop = railTarget.current
         el.dispatchEvent(new Event('scroll'))
         settledFrames += 1
         if (settledFrames >= 20) return
@@ -270,9 +350,34 @@ export function CameraRig({ stops }: CameraRigProps) {
     const nearest = nearestIndex()
     setStopIndex(nearest)
 
-    // Park when settled exactly on a stop with no snap in flight.
-    const dist = Math.abs(scroll.offset * segments - nearest)
-    if (phase === 'touring' && dist < SNAP_EPSILON && !snapTween.current) {
+    if (import.meta.env.DEV) {
+      ;(window as unknown as Record<string, unknown>).__rigDebug = {
+        offset: scroll.offset,
+        raw: rawPos(),
+        p: proxy.p,
+        phase,
+        nearest,
+        snapTween: !!snapTween.current,
+        override: override.current,
+      }
+    }
+
+    // Park when the RAW rail rests on a stop and input has been quiet for a
+    // beat. Never gate on tight damped-offset convergence: drei's damping is
+    // asymptotic and its scroll-event delivery can lag, so an epsilon gate
+    // either parks in transit or never parks. The visual glide finishes on its
+    // own; PARKED only arms raycast/bubbles. The loose damped bound just keeps
+    // bubbles from popping while the camera is still visibly travelling.
+    const distRaw = Math.abs(rawPos() - nearest)
+    const distDamped = Math.abs(scroll.offset * segments - nearest)
+    const inputQuietMs = performance.now() - lastInputAt.current
+    if (
+      phase === 'touring' &&
+      !snapTween.current &&
+      distRaw < SNAP_EPSILON &&
+      distDamped < 0.25 &&
+      inputQuietMs > 400
+    ) {
       setPhase('parked')
     }
   })
