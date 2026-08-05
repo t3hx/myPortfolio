@@ -4,6 +4,7 @@ import { Vector3 } from 'three'
 import { CAMERA_STOPS } from '@/config/cameraStops'
 import type { StopTransform } from '@/lib/stops'
 import { CameraRig } from '@/scene/CameraRig'
+import { Outlines } from '@/scene/Outlines'
 import { RoomModel } from '@/scene/RoomModel'
 import { useInteraction } from '@/state/interaction'
 
@@ -51,6 +52,9 @@ export function Experience({ bubbleLayer }: ExperienceProps) {
       {/* Stop-to-stop navigation model (2026-08-05): no ScrollControls — the
           wheel is owned and gestures command GSAP strokes; see CameraRig. */}
       {stops.length > 0 && <CameraRig stops={stops} />}
+
+      {/* Contours spike: ?outline=off|hull|edges|both — see Outlines.tsx. */}
+      {stops.length > 0 && <Outlines />}
 
       {bubbleVisible && (
         <Html
