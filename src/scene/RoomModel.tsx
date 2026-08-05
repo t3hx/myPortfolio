@@ -1,14 +1,23 @@
 import { useGLTF } from '@react-three/drei'
-import { useFrame, type ThreeEvent } from '@react-three/fiber'
-import { useEffect, useMemo, useRef } from 'react'
-import { AnimationMixer, type Light, type LightShadow, type Object3D } from 'three'
+import { type ThreeEvent } from '@react-three/fiber'
+import { useEffect, useRef } from 'react'
 import {
-  LIGHT_INTENSITY_MULTIPLIER,
-  LIGHT_OVERRIDES,
+  Color,
+  DoubleSide,
+  Mesh,
+  MeshBasicMaterial,
+  type Material,
+  type MeshStandardMaterial,
+  type Object3D,
+  type Texture,
+} from 'three'
+import {
+  DECAL_ALPHA_TEST,
+  GLASS_OPACITY,
   MODEL_SRC,
-  SHADOW_CASTING_LIGHTS,
-  SHADOW_MAP_SIZE,
-} from '@/config/blenderMatch'
+  MOON_DETAILED_NAMES,
+  MOON_LOWDEF_NAME,
+} from '@/config/renderPipeline'
 import { extractStops, orderedStops, type StopTransform } from '@/lib/stops'
 import { useInteraction } from '@/state/interaction'
 
@@ -17,66 +26,123 @@ interface RoomModelProps {
 }
 
 /**
- * Loads the Blender-authored room and re-applies everything glTF cannot carry:
- * shadow flags, the light intensity multiplier, per-light overrides (see
- * blenderMatch.ts). Then extracts the CameraStop_* transforms and hands them up.
- * Any baked animation clips (curtains, drawer) are auto-played.
+ * Loads the pre-baked unlit scene and rebuilds every material from its
+ * `runtime` tag (glTF extras, on the node OR a parent — the exporter places
+ * them on either level). The baked lighting lives in the EMISSIVE texture
+ * slot of the exported materials — MeshBasicMaterial({ map: emissiveMap })
+ * IS the whole render pipeline. No lights, no shadows, no tone mapping.
+ * See docs/PORTFOLIO_3D_INTERACTIONS.md §0.
+ *
+ * Also owns the moon low-def ↔ high-def visibility toggle (§2.3), driven by
+ * the TELESCOPE interaction phase.
  */
-export function RoomModel({ onReady }: RoomModelProps) {
-  const { scene, animations } = useGLTF(MODEL_SRC)
-  const applied = useRef(false)
 
-  const mixer = useMemo(() => {
-    if (animations.length === 0) return null
-    const m = new AnimationMixer(scene)
-    for (const clip of animations) m.clipAction(clip).reset().play()
-    return m
-  }, [scene, animations])
+type RuntimeTag = 'unlit' | 'emissive' | 'decal' | 'glass'
+
+function runtimeTag(obj: Object3D): RuntimeTag {
+  let node: Object3D | null = obj
+  while (node) {
+    const tag = node.userData?.runtime as RuntimeTag | undefined
+    if (tag) return tag
+    node = node.parent
+  }
+  return 'unlit'
+}
+
+/** The baked texture: the exporter routes it to the emissive slot. */
+function bakedMap(src: MeshStandardMaterial): Texture | null {
+  return src.emissiveMap ?? src.map ?? null
+}
+
+function rebuildMaterial(src: MeshStandardMaterial, tag: RuntimeTag): MeshBasicMaterial {
+  const map = bakedMap(src)
+  switch (tag) {
+    case 'glass':
+      return new MeshBasicMaterial({
+        color: src.color?.clone() ?? new Color('#ffffff'),
+        transparent: true,
+        opacity: GLASS_OPACITY,
+        depthWrite: false,
+        side: DoubleSide,
+      })
+    case 'decal':
+      return new MeshBasicMaterial({
+        map,
+        transparent: true,
+        alphaTest: DECAL_ALPHA_TEST,
+        depthWrite: false,
+        side: DoubleSide,
+      })
+    case 'emissive':
+    case 'unlit':
+    default:
+      return new MeshBasicMaterial({
+        map,
+        color: map ? new Color('#ffffff') : (src.emissive?.clone() ?? src.color?.clone()),
+        side: DoubleSide,
+      })
+  }
+}
+
+export function RoomModel({ onReady }: RoomModelProps) {
+  const { scene } = useGLTF(MODEL_SRC)
+  const applied = useRef(false)
 
   useEffect(() => {
     if (applied.current) return
     applied.current = true
 
-    scene.traverse((obj: Object3D) => {
-      const mesh = obj as Object3D & { isMesh?: boolean; castShadow: boolean; receiveShadow: boolean }
-      if (mesh.isMesh) {
-        mesh.castShadow = true
-        mesh.receiveShadow = true
-      }
+    const cache = new Map<string, MeshBasicMaterial>()
+    const disposed: Material[] = []
 
-      const light = obj as Light & { isLight?: boolean; shadow?: LightShadow }
-      if (light.isLight) {
-        light.intensity *= LIGHT_INTENSITY_MULTIPLIER
-        for (const [match, factor] of Object.entries(LIGHT_OVERRIDES)) {
-          if (light.name.includes(match)) {
-            light.intensity *= factor
-            break
-          }
+    scene.traverse((obj: Object3D) => {
+      const mesh = obj as Mesh
+      if (!mesh.isMesh) return
+      const tag = runtimeTag(mesh)
+      const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material]
+      const rebuilt = mats.map((m) => {
+        const src = m as MeshStandardMaterial
+        const key = `${src.uuid}:${tag}`
+        let out = cache.get(key)
+        if (!out) {
+          out = rebuildMaterial(src, tag)
+          out.name = src.name
+          cache.set(key, out)
+          disposed.push(src)
         }
-        const cast =
-          SHADOW_CASTING_LIGHTS.length === 0 ||
-          SHADOW_CASTING_LIGHTS.some((name) => light.name.includes(name))
-        light.castShadow = cast
-        if (cast && light.shadow) {
-          light.shadow.mapSize.set(SHADOW_MAP_SIZE, SHADOW_MAP_SIZE)
-          light.shadow.bias = -0.0005
-          const shadowCam = light.shadow.camera as { near?: number; far?: number } | undefined
-          if (shadowCam) {
-            shadowCam.near = 0.05
-            shadowCam.far = 30
-          }
-        }
-      }
+        return out
+      })
+      mesh.material = Array.isArray(mesh.material) ? rebuilt : rebuilt[0]
     })
+    for (const m of disposed) m.dispose()
+
+    // Moon default state: low-def visible, detailed hidden (§2.3).
+    for (const name of MOON_DETAILED_NAMES) {
+      const detailed = scene.getObjectByName(name)
+      if (detailed) detailed.visible = false
+    }
 
     onReady(orderedStops(extractStops(scene)))
   }, [scene, onReady])
 
-  useFrame((_, delta) => mixer?.update(delta))
+  // TELESCOPE phase drives the low-def ↔ high-def moon swap.
+  useEffect(() => {
+    const unsub = useInteraction.subscribe((state, prev) => {
+      if (state.phase === prev.phase) return
+      const inTelescope = state.phase === 'telescope'
+      const low = scene.getObjectByName(MOON_LOWDEF_NAME)
+      if (low) low.visible = !inTelescope
+      for (const name of MOON_DETAILED_NAMES) {
+        const detailed = scene.getObjectByName(name)
+        if (detailed) detailed.visible = inTelescope
+      }
+    })
+    return unsub
+  }, [scene])
 
-  // Raycast entry into the TELESCOPE phase: clicking any telescope part while
-  // parked flies the camera to the ocular. Everything else just logs its name —
-  // spike-grade discovery of which meshes are clickable interaction anchors.
+  // Raycast entry into the TELESCOPE phase (Telescope_Merged per the
+  // interactions doc §2.1); other clicks just log their mesh name —
+  // spike-grade discovery of the clickable anchors.
   function onClick(e: ThreeEvent<MouseEvent>) {
     e.stopPropagation()
     const name = e.object.name

@@ -1,6 +1,6 @@
 /**
  * Runtime ink configuration — the 2D-stroke half of the Blender Line Art
- * match (the twin of LIGHT_OVERRIDES in blenderMatch.ts).
+ * match (per-object overrides pattern, like the legacy light overrides).
  *
  * Blender's Grease Pencil strokes are SCREEN-SPACE constant width and
  * artistically selective (edge marks, not every crease). These knobs bring

@@ -8,50 +8,78 @@ Package manager is **pnpm** (see `pnpm-lock.yaml`).
 
 - `pnpm dev` — Vite dev server with HMR.
 - `pnpm build` — production build to `dist/` (does **not** type-check; run `type-check` separately).
-- `pnpm type-check` — `vue-tsc --build` over the project references in `tsconfig.json`.
+- `pnpm type-check` — `tsc --noEmit`.
 - `pnpm preview` — serve the production build locally.
 
-There are no tests, no linter, and no formatter configured.
+There are no tests, no linter, and no formatter configured yet (Vitest + Playwright are planned — see the design doc's eng review).
 
 ## Architecture
 
-This is a **TresJS v5 + Vue 3** single-page portfolio that renders a Blender-authored room (`/public/models/scene.glb`) and runs a guided camera tour between named "stop" cameras baked into the `.glb`.
+This is a **React 19 + react-three-fiber v9** single-page portfolio that renders a Blender-authored room and runs a stop-to-stop camera tour. It began as the "scroll spike" of the rebuild (branch `feat/spike-scroll-r3f`) and is the skeleton the full product grows from. The previous Vue 3 + TresJS prototype lives in git history only (`git show 8a9e9a2` and earlier).
 
-### Render pipeline (top-down)
+The reference design doc (product decisions, review reports, spike verdicts) lives at `~/.gstack/projects/t3hx-myPortfolio/tehx-fix-rendering-design-20260804-174239.md`. The interaction spec for the scene is `docs/PORTFOLIO_3D_INTERACTIONS.md` — **read it before touching scene behavior**; it lists every animation/interaction with exact object names.
 
-1. `src/main.ts` → `App.vue` → `components/PortfolioScene.vue` is the only top-level scene.
-2. `PortfolioScene.vue` owns the `<TresCanvas>`, the **single render `<TresPerspectiveCamera>`**, and the lifecycle: it `Suspense`-loads `RoomModel`, waits for the `ready` event (which carries the extracted stop transforms), then mounts `TourControls`.
-3. `PortfolioScene.vue` resolves a **view mode** from the URL at module load (see `composables/useViewMode.ts`) and chooses control rig + HUD from there. The other top-level flag is `postFx` — enables the optional `<PostFx>` bloom + AgX tone-mapping pass. When on, canvas `tone-mapping` is forced to `NoToneMapping` because the pass does it last instead.
+### The asset (IMPORTANT — changed 2026-07-20)
 
-### View modes (URL-driven)
+`public/models/scene.glb` is a copy of `portfolio_final.glb` (~90 MB, 145 meshes, ~192 MB texture VRAM, main atlas 4096²). It is **entirely pre-baked unlit**:
 
-- `/` → **default mode** (production): scene only, no HUD, no fly controls. Camera snaps to the Home stop.
-- `/?debug` → **tour mode** (diagnostic): guided camera tour with the `<TourControls>` HUD.
-- `/?debug-fly` → **fly mode** (diagnostic): cientos `<KeyboardControls>` (PointerLock + WASD/ZQSD-equivalent + arrows) for free first-person navigation; no HUD, just a hint overlay.
+- **No lights, no cameras, no animations in the file.** All lighting + AgX tone mapping is cooked into the textures.
+- The baked image of each material lives in its **emissive texture slot**.
+- Every mesh carries a **`runtime` tag** in glTF extras (`userData.runtime`, on the node OR a parent): `unlit` (93) / `emissive` (27) / `glass` (1, the PC case pane) / `decal` (1, the amp's Sharmall logo).
+- The `.glb` is gitignored — Blender is the source of truth. Copy it into any fresh worktree.
 
-Mode is resolved once at module load and held as a plain `const` — switching modes is a page reload by design (avoids tearing down/recreating control rigs and pointer-lock state mid-session). To add a new mode: extend the `ViewMode` union and the `resolve()` in `useViewMode.ts`, then branch on it in `PortfolioScene.vue`.
+### Render pipeline (`src/config/renderPipeline.ts` + `src/scene/RoomModel.tsx`)
 
-### The camera-tour trick (most important concept)
+WYSIWYG rule: what Blender shows is what WebGL must show. `RoomModel` traverses the scene and rebuilds every material as `MeshBasicMaterial` from its `runtime` tag (map = the emissive slot, DoubleSide; glass → transparent 0.28 no-depth-write; decal → alphaTest 0.5). The renderer runs `NoToneMapping` + sRGB, zero lights, zero shadows. **Never add lights or runtime tone mapping** — if colors look wrong, the bake is wrong, fix it in Blender. This replaced the legacy `blenderMatch.ts` calibration system (git history) which belonged to the old lit export.
 
-The `.glb`'s own cameras are **never made active**. Instead:
+### Camera stops (`src/config/stopPoses.ts` + `src/lib/stops.ts`)
 
-- `components/RoomModel.vue` traverses the loaded scene, finds each node named in `config/cameraStops.ts` (`CameraStop_Home`, `CameraStop_Desk`, …), and extracts its world position / quaternion / fov into a `Map<string, StopTransform>`. This map is emitted to `PortfolioScene` via the `ready` event.
-- `composables/useCameraTour.ts` then **tweens the single render camera** to those transforms via GSAP: `lerpVectors` for position, `slerp` for orientation, linear interp for fov. Because fov is animated too, focal-length changes (e.g. the 20 mm wide shot → 270 mm telescope zoom on `CameraStop_TelescopeMoon`) come for free.
-- Adding/removing a stop is a two-place change: name the camera correctly in Blender so it survives export, then add an entry to `CAMERA_STOPS` in `src/config/cameraStops.ts`. Order in that array = order in the HUD.
+The current export has **no cameras**, so the 10 stop poses (position / quaternion / **per-stop fov** — 32.3° standard, 4.3° telescope-moon zoom, 53.7° guitar wide) are hardcoded in `STOP_POSES`, sampled from the legacy export which still had real Blender cameras. `orderedStops()` prefers glb-extracted cameras when present, falls back to the table — so re-adding `CameraStop_*` cameras to a future export just works. Stop order + labels: `src/config/cameraStops.ts` (order = tour order = `?stop=` keys).
 
-### Blender match (color / lighting fidelity)
+### Navigation model (user-validated — do not regress to scrubbing)
 
-`src/config/blenderMatch.ts` is the **single source of truth** for matching the EEVEE viewport in WebGL. It exports the tone mapping (`AgXToneMapping`), exposure, output color space, clear color, ambient fill, light intensity multiplier, and the list of light-name substrings that should cast shadows. glTF doesn't store per-light shadow flags or Three's tone-mapping choice, so `RoomModel.vue` re-applies these on load by traversing the scene graph. If colors or shadows drift after a re-export, this file is where to tune.
+One scroll gesture = ONE fluid stroke to the next/previous stop (fullpage model), driven by a single GSAP tween (`power3.inOut`, 1.2 s). See `src/scene/CameraRig.tsx`:
 
-`MODEL_SRC` lives here too (`/models/scene.glb`). The model is expected at `public/models/scene.glb`; there's a checklist for the Blender export at `public/models/README.txt`.
+- The wheel is **owned** (`preventDefault`, Lenis-style): deltas feed a clock-free gesture detector — momentum decays and never reverses, so fresh intent = direction change or a delta exceeding the gesture's peak; gestures re-arm on stroke completion (held scroll chains stop by stop, a flick moves exactly one).
+- Any post-gesture "settle" movement was explicitly rejected by the user — never reintroduce scrub+snap.
+- Feel knobs at the top of CameraRig: `STEP_DURATION`, `STEP_EASE`, `GESTURE_THRESHOLD_PX`, `MIN_COUNTED_DELTA`, `TAIL_GUARD_RATIO`. Dev probes: `window.__rigDebug`, `window.__wheelLog`.
 
-### Animations
+### Interaction state machine (`src/state/interaction.ts`, zustand)
 
-Any clips in the `.glb` (e.g. the curtain) are auto-played: `RoomModel.vue` creates an `AnimationMixer`, plays every `gltf.animations` clip, and steps it inside `useLoop()`'s `onBeforeRender`.
+`TOURING ⇄ PARKED → PANEL_OPEN | TELESCOPE`. Each phase owns one input routing: panels capture their own wheel (the rig ignores events targeting `.panel`), TELESCOPE runs an imperative camera excursion to the moon and swaps `Outside_Moon` ↔ `Outside_Moon_Detailed` visibility (RoomModel subscription). Escape exits panel/telescope. The full interaction backlog (fans, smoke, NanoLeaf shader, cat pupils, curtains, drawers) is specced in `docs/PORTFOLIO_3D_INTERACTIONS.md`.
+
+### Outlines (`src/scene/Outlines.tsx` + `src/config/lineArt.ts`)
+
+Runtime 2.5D ink, URL-toggled: `?outline=off|hull|edges|both` (+ `?lw=<px>` live width). `hull` = three OutlineEffect (batched inverted hull, view-dependent silhouettes — takes over rendering via a priority useFrame). `edges` = per-mesh `EdgesGeometry` rendered as screen-space fat lines (`LineSegments2`), with `LINE_OVERRIDES` per-object exclusions. Known drei/browser gotchas are commented in the code — read them before refactoring (Html portals, z-index ranges).
+
+### URL parameters (dev tooling — keep working)
+
+- `?stop=<label>` — deterministic camera snap (render-comparison loop + shareable links)
+- `?outline=`, `?lw=` — ink A/B and width
+- `?debug`, `?debug-fly` — view modes (fly mode not yet ported to R3F)
 
 ## Conventions
 
-- Path alias `@/` → `src/` (configured in both `vite.config.ts` and `tsconfig.app.json`). Use `@/components/...`, not relative paths.
-- `vite.config.ts` spreads `templateCompilerOptions` from `@tresjs/core` so `<TresXxx>` tags are recognized by the Vue compiler — don't remove it.
-- `useGLTF` from `@tresjs/cientos` is **reactive, not awaitable**; the loaded scene appears on `state.value`. The existing `watch(state, …, { immediate: true })` pattern in `RoomModel.vue` is the correct way to react to it — do not try to `await` it.
-- The render camera's initial position in `PortfolioScene.vue` is a deliberate seed near the Home stop so frame 0 isn't at the origin; `useCameraTour` then `snapTo`s the real first stop the moment the model's stop map is populated.
+- Path alias `@/` → `src/` (in `vite.config.ts` and `tsconfig.json`).
+- The render camera's initial pose in `App.tsx` seeds the Home stop from `STOP_POSES` so frame 0 isn't at the origin.
+- All positions in `docs/PORTFOLIO_3D_INTERACTIONS.md` are **Blender Z-up** coordinates: convert with `(x, z, -y)` before runtime use.
+- Loading budget (measured 2026-08-05): the 90 MB export compresses to **6.8 MB with webp alone, 2.0 MB with draco+webp** (`pnpm dlx @gltf-transform/cli webp` then `draco`) — verify webp banding on the baked lightmaps before shipping. Texture VRAM stays ~192 MB regardless: KTX2 (CI-side, needs KTX-Software) is mandatory for mobile.
+
+## Skill routing
+
+When the user's request matches an available skill, invoke it via the Skill tool. When in doubt, invoke the skill.
+
+Key routing rules:
+- Product ideas/brainstorming → invoke /office-hours
+- Strategy/scope → invoke /plan-ceo-review
+- Architecture → invoke /plan-eng-review
+- Design system/plan review → invoke /design-consultation or /plan-design-review
+- Full review pipeline → invoke /autoplan
+- Bugs/errors → invoke /investigate
+- QA/testing site behavior → invoke /qa or /qa-only
+- Code review/diff check → invoke /review
+- Visual polish → invoke /design-review
+- Ship/deploy/PR → invoke /ship or /land-and-deploy
+- Save progress → invoke /context-save
+- Resume context → invoke /context-restore
+- Author a backlog-ready spec/issue → invoke /spec

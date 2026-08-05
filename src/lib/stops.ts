@@ -1,5 +1,6 @@
 import { PerspectiveCamera, Quaternion, Vector3, type Object3D } from 'three'
 import { CAMERA_STOPS } from '@/config/cameraStops'
+import { STOP_POSES } from '@/config/stopPoses'
 
 /** A camera stop's world transform, extracted from the loaded .glb. */
 export interface StopTransform {
@@ -52,11 +53,22 @@ export function extractStops(scene: Object3D): Map<string, StopTransform> {
   return stops
 }
 
-/** CAMERA_STOPS order, holes removed — the array the tour timeline runs over. */
+/** CAMERA_STOPS order — glb-extracted transforms first, STOP_POSES fallback.
+ *  The current export (portfolio_final.glb) ships no cameras at all, so in
+ *  practice every stop resolves from the sampled pose table; if cameras come
+ *  back in a future export they take precedence automatically. */
 export function orderedStops(map: Map<string, StopTransform>): StopTransform[] {
-  return CAMERA_STOPS.map((s) => map.get(s.camera)).filter(
-    (t): t is StopTransform => t !== undefined,
-  )
+  return CAMERA_STOPS.map((s) => {
+    const extracted = map.get(s.camera)
+    if (extracted) return extracted
+    const pose = STOP_POSES[s.camera]
+    if (!pose) return undefined
+    return {
+      position: new Vector3(...pose.position),
+      quaternion: new Quaternion(...pose.quaternion),
+      fov: pose.fov,
+    }
+  }).filter((t): t is StopTransform => t !== undefined)
 }
 
 // Scratch objects — avoid per-frame allocation.
