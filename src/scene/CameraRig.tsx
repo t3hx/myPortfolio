@@ -27,11 +27,18 @@ import { useInteraction } from '@/state/interaction'
  */
 
 // --- Feel tuning ----------------------------------------------------------------------
-const STEP_DURATION = 1.15 // seconds per stop-to-stop stroke
-const STEP_EASE = 'power2.inOut'
-const GESTURE_THRESHOLD_PX = 110 // accumulated wheel delta that fires a step
+const STEP_DURATION = 1.2 // seconds per stop-to-stop stroke
+// Marked acceleration/deceleration: long slow ends, franc through the middle.
+// Try 'power2.inOut' (softer) or 'expo.inOut' (most dramatic) to taste.
+const STEP_EASE = 'power3.inOut'
+const GESTURE_THRESHOLD_PX = 65 // accumulated wheel delta that fires a step
 const GESTURE_RESET_MS = 250 // silence that closes a gesture
-const MIN_COUNTED_DELTA = 28 // momentum-tail events below this never count
+const MIN_COUNTED_DELTA = 6 // ignore sub-pixel jitter only — gentle trackpad
+// swipes emit 5-20px deltas and MUST count (28 used to eat whole gestures)
+// After a stroke completes, the SAME gesture's dying momentum tail keeps
+// emitting: only events above this fraction of the gesture's peak count
+// again. Peak-proportional, so gentle held scrolls (low peak) still chain.
+const TAIL_GUARD_RATIO = 0.35
 
 interface CameraRigProps {
   stops: StopTransform[]
@@ -51,6 +58,7 @@ export function CameraRig({ stops }: CameraRigProps) {
   const armed = useRef(true)
   const prevAbs = useRef(0)
   const prevSign = useRef(0)
+  const tailMode = useRef(false) // re-armed by stroke completion, same gesture
 
   /** One fluid stroke to a stop. The only mover of `pos` during the tour. */
   function goToIndex(index: number, duration = STEP_DURATION) {
@@ -69,9 +77,11 @@ export function CameraRig({ stops }: CameraRigProps) {
         stroke.current = null
         useInteraction.getState().setPhase('parked')
         // Re-arm the gesture detector: a HELD deliberate scroll chains the
-        // next stop from here; a flick's tail is dead or under MIN by now.
+        // next stop from here. tailMode guards against the same gesture's
+        // dying momentum tail counting as new input.
         armed.current = true
         acc.current = 0
+        tailMode.current = true
       },
     })
   }
@@ -101,17 +111,28 @@ export function CameraRig({ stops }: CameraRigProps) {
         armed.current = true
         prevAbs.current = 0 // gesture peak
         prevSign.current = 0
+        tailMode.current = false
       }
       lastEventAt = now
 
       const delta = e.deltaMode === 1 ? e.deltaY * 16 : e.deltaY
       const abs = Math.abs(delta)
+      if (import.meta.env.DEV) {
+        const w = window as unknown as { __wheelLog?: unknown[] }
+        w.__wheelLog ??= []
+        w.__wheelLog.push({ delta, acc: acc.current, armed: armed.current, peak: prevAbs.current, tail: tailMode.current })
+        if (w.__wheelLog.length > 50) w.__wheelLog.shift()
+      }
       if (abs < MIN_COUNTED_DELTA) return
 
       // Fresh human intent = direction change, or a delta EXCEEDING the
       // gesture's peak so far (momentum can only decay below it).
       const reversed = prevSign.current !== 0 && Math.sign(delta) !== prevSign.current
       const spiking = abs > prevAbs.current * 1.1
+      if (reversed || spiking) tailMode.current = false
+      // Same gesture continuing after its stroke completed: a dying tail sits
+      // far below the gesture peak — a deliberate held scroll stays near it.
+      if (tailMode.current && abs < prevAbs.current * TAIL_GUARD_RATIO) return
       prevSign.current = Math.sign(delta)
       prevAbs.current = reversed ? abs : Math.max(prevAbs.current, abs)
       if (reversed) {
