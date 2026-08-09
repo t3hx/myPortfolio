@@ -1,16 +1,24 @@
 # CI — sur chaque PR, et sur chaque poussée du tronc `dev`.
 #
-# Ce dépôt est un paquet unique (application web) : pas de monorepo, pas d'API,
-# pas de base de données. La vérification se réduit donc à ce qui existe
-# réellement aujourd'hui : installation gelée, typage, build de production.
+# CE FICHIER EST PRÉVU POUR ÊTRE COPIÉ TEL QUEL d'un projet à l'autre
+# (myPortfolio, owlog-app, odysong-app). Il tient grâce à un contrat simple :
 #
-# `main` est délibérément absent des déclencheurs `push` : le futur workflow de
-# déploiement appellera cette CI via `workflow_call`, et l'ajouter ici la ferait
+#   le workflow dit CE QUI tourne, le package.json dit COMMENT.
+#
+# Chaque étape passe par `pnpm run --if-present <script>` : un script absent
+# n'est pas une erreur, l'étape réussit en silence. Un projet sans linter ni
+# tests (myPortfolio aujourd'hui) et un monorepo qui fait `pnpm -r lint` et des
+# tests d'intégration Postgres (owlog-app) partagent donc le même fichier, sans
+# la moindre condition ici.
+#
+# Corollaire à respecter : toute particularité d'un projet vit dans SES
+# scripts, jamais dans ce fichier. Un garde-fou sur des tests sautés, une base
+# jetable à démarrer, un ordre de build : tout cela se met dans le script
+# `test` ou `build` du dépôt concerné.
+#
+# `main` est délibérément absent des déclencheurs `push` : le workflow de
+# déploiement appelle cette CI via `workflow_call`, et l'ajouter ici la ferait
 # tourner deux fois à chaque fusion.
-#
-# Ce qui manque encore, et qui viendra s'ajouter ici quand ce sera écrit :
-#   - `pnpm lint` (aucun linter configuré à ce jour)
-#   - `pnpm test` (Vitest + Playwright sont planifiés, voir la revue eng)
 name: ci
 
 on:
@@ -27,7 +35,7 @@ concurrency:
 jobs:
   verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
 
@@ -42,10 +50,17 @@ jobs:
       - name: Installer (lockfile gelé)
         run: pnpm install --frozen-lockfile
 
-      # `build` ne fait PAS le typage (Vite se contente de transpiler) : les
-      # deux étapes sont donc bien distinctes, et il en faut deux.
+      - name: Lint
+        run: pnpm run --if-present lint
+
+      # Étape distincte du build : `vite build` ne fait que transpiler, il ne
+      # vérifie pas les types. Les projets dont le `build` typa déjà (owlog)
+      # n'ont simplement pas de script `type-check`, et l'étape se saute.
       - name: Typage
-        run: pnpm type-check
+        run: pnpm run --if-present type-check
 
       - name: Build de production
-        run: pnpm build
+        run: pnpm run --if-present build
+
+      - name: Tests
+        run: pnpm run --if-present test
