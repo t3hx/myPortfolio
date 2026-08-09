@@ -7,8 +7,16 @@ dist-ssr
 !.vscode/extensions.json
 node_modules/.tmp
 
+# Secrets — never commit these (Doppler is the source of truth)
+.env
+.env.*
+!.env.example
+
 # Large source assets you may not want in git (uncomment if needed)
 public/models/*.glb
 
 # Throwaway WebGL captures from the render-comparison loop
 docs/renders/actual/
+
+# Playwright MCP session artifacts (snapshots, console logs)
+.playwright-mcp/
