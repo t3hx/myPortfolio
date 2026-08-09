@@ -10,8 +10,11 @@ Package manager is **pnpm** (see `pnpm-lock.yaml`).
 - `pnpm build` — production build to `dist/` (does **not** type-check; run `type-check` separately).
 - `pnpm type-check` — `tsc --noEmit`.
 - `pnpm preview` — serve the production build locally.
+- `pnpm test` — Vitest, single run. `pnpm test:watch` for the loop.
 
-There are no tests, no linter, and no formatter configured yet (Vitest + Playwright are planned — see the design doc's eng review).
+`tsconfig.json` includes `tests` and both config files, so `type-check` covers them too — it did not before, and a green type-check said nothing about the tests.
+
+No linter and no formatter yet (issue #21). Playwright and the render-comparison loop are issue #22.
 
 ## Architecture
 
@@ -59,7 +62,7 @@ There is deliberately **no hardcoded pose table** any more: it existed only whil
 
 **All 11 stops come from the glb — verified 2026-08-09.** Every `CameraStop_*` node carries a real camera with its own authored focal length (Bookshelf 73.74° hfov ≈ 24 mm, MonitorVertical 38.19° ≈ 52 mm, TelescopeMoon 7.63° ≈ 270 mm). An earlier note here claimed the export lacked the bookshelf and second-monitor framings and told you to add them to a `STOP_POSES` table — both were wrong: v12 provides them, and that table was deliberately deleted. Design-doc tasks T6 and T7 predate the v12 export and are obsolete.
 
-Beware when checking this: `extractStops()` falls back to `fov = 45` when a node carries **no** camera, without warning — an Empty named `CameraStop_X` parks correctly and looks fine in the HUD. To tell the two apart, read the glb's JSON chunk and confirm the node resolves to a `camera` index.
+A node named `CameraStop_X` that carries **no** camera (an Empty) is now skipped with an explicit warning. It used to fall through to `fov = 45`: the stop parked at the right spot, said nothing, and showed a framing nobody authored — plausible enough to read as a Blender decision. `tests/stops.test.ts` locks both this and the horizontal-fov derivation; the two are the only regressions this file has ever shipped, and neither was visible to the eye.
 
 ### Navigation model (user-validated — do not regress to scrubbing)
 
