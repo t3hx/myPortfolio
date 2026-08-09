@@ -96,6 +96,8 @@ The build plan lives in **GitHub issues #10+ and Project 4**, not in the design 
 
 Creating an issue has four mandatory steps — numbered title, labels **and** Project fields, native sub-issues, populated body. They are spelled out in **`docs/CONVENTION_GITHUB.md`**; read that section before opening issues, and note that a `size:L` label and the Project's `Size` field are two different things that must both be set.
 
+**Every PR carries `Closes #N` in its body** (footer, never the title — the title is a conventional commit). Merging then closes the issue, the Project's "Item closed" automation moves it to `✅ done`, and a parent EPIC's sub-issue counter advances on its own. A PR that cannot honestly claim `Closes` is a PR whose issue needed splitting.
+
 ## Skill routing
 
 When the user's request matches an available skill, invoke it via the Skill tool. When in doubt, invoke the skill.

@@ -123,6 +123,44 @@ déjà connus vont dans l'issue**, pas seulement dans un document. Une issue qui
 répète le piège que l'on vient de découvrir évite de le redécouvrir dans six
 mois.
 
+## Toute PR ferme son issue
+
+Une PR sans `Closes #N` laisse son issue ouverte dans le tableau, et oblige à
+faire à la main ce que GitHub sait faire seul.
+
+**La ligne va dans le corps de la PR, en pied**, jamais dans le titre — le titre
+est un commit conventionnel, contraint par le lint :
+
+```
+Closes #20
+```
+
+Plusieurs issues : une ligne par issue (`Closes #20`, `Closes #21`), la forme
+`Closes #20, #21` ne référence que la première.
+
+Ce que ça déclenche, dans l'ordre :
+
+1. la fusion **ferme** l'issue ;
+2. l'automatisme **« Item closed »** du Project la bascule en `✅ done` ;
+3. si l'issue est une **sous-issue**, le compteur `Sub-issues progress` de son
+   parent avance tout seul — c'est la raison pratique de préférer les
+   sous-issues natives aux cases à cocher.
+
+Ces automatismes se règlent dans le tableau (⚙️ → *Workflows*). Deux valent le
+détour :
+
+| Workflow | État au 2026-08-09 | Effet |
+|---|---|---|
+| **Item closed** | ✅ activé | l'issue fermée passe en `done` |
+| **Pull request linked to issue** | ❌ désactivé | ferait passer l'issue en `in-review` dès l'ouverture de la PR |
+
+Les activer ou non se fait **dans l'interface** : il n'existe pas de mutation
+publique pour piloter les workflows d'un Project.
+
+Corollaire sur le découpage : une issue trop grosse pour tenir dans une PR est
+une issue à découper. Si `Closes #N` semble mensonger parce que la PR ne fait
+qu'une partie du travail, c'est le signe qu'il manque des sous-issues.
+
 ## Portées de jeton nécessaires
 
 `gh` demande des portées différentes selon l'objet touché. Les trois utiles ici,
