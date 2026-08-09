@@ -47,7 +47,9 @@ This replaced the legacy `blenderMatch.ts` calibration system (git history), whi
 
 The current export has **no cameras**, so the 10 stop poses (position / quaternion / **per-stop fov** — 32.3° standard, 4.3° telescope-moon zoom, 53.7° guitar wide) are hardcoded in `STOP_POSES`, sampled from the legacy export which still had real Blender cameras. `orderedStops()` prefers glb-extracted cameras when present, falls back to the table — so re-adding `CameraStop_*` cameras to a future export just works. Stop order + labels: `src/config/cameraStops.ts` (order = tour order = `?stop=` keys).
 
-**Known scene issue:** the `Home` stop frames a bare wall (a chair if flipped 180°). The pose matches both the legacy camera and the interaction spec's table, so the stop is mis-authored in Blender and needs a new framing — everything else lands correctly.
+**The `Home` framing is deliberate** (product decision): it fills the frame with a monitor so the first screen reads as a flat 2D image; the first scroll pulls back and reveals the room in 3D. That reveal is the opening beat of the experience — never "fix" Home into a room overview.
+
+**Stops can be authored in code.** The tour needs two framings the export doesn't provide — the bookshelf and the second monitor (the CV beat). Add them to `CAMERA_STOPS` (order/label) and `STOP_POSES` (pose), same as any glb-provided stop; see the backlog in the design doc.
 
 ### Navigation model (user-validated — do not regress to scrubbing)
 
