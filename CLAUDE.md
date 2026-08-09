@@ -57,7 +57,9 @@ There is deliberately **no hardcoded pose table** any more: it existed only whil
 
 **The `Home` framing is deliberate** (product decision): it fills the frame with a monitor so the first screen reads as a flat 2D image; the first scroll pulls back and reveals the room in 3D. That reveal is the opening beat of the experience — never "fix" Home into a room overview.
 
-**Stops can be authored in code.** The tour needs two framings the export doesn't provide — the bookshelf and the second monitor (the CV beat). Add them to `CAMERA_STOPS` (order/label) and `STOP_POSES` (pose), same as any glb-provided stop; see the backlog in the design doc.
+**All 11 stops come from the glb — verified 2026-08-09.** Every `CameraStop_*` node carries a real camera with its own authored focal length (Bookshelf 73.74° hfov ≈ 24 mm, MonitorVertical 38.19° ≈ 52 mm, TelescopeMoon 7.63° ≈ 270 mm). An earlier note here claimed the export lacked the bookshelf and second-monitor framings and told you to add them to a `STOP_POSES` table — both were wrong: v12 provides them, and that table was deliberately deleted. Design-doc tasks T6 and T7 predate the v12 export and are obsolete.
+
+Beware when checking this: `extractStops()` falls back to `fov = 45` when a node carries **no** camera, without warning — an Empty named `CameraStop_X` parks correctly and looks fine in the HUD. To tell the two apart, read the glb's JSON chunk and confirm the node resolves to a `camera` index.
 
 ### Navigation model (user-validated — do not regress to scrubbing)
 
@@ -84,7 +86,7 @@ Runtime 2.5D ink, URL-toggled: `?outline=off|hull|edges|both` (+ `?lw=<px>` live
 ## Conventions
 
 - Path alias `@/` → `src/` (in `vite.config.ts` and `tsconfig.json`).
-- The render camera's initial pose in `App.tsx` seeds the Home stop from `STOP_POSES` so frame 0 isn't at the origin.
+- No initial camera pose is seeded in `App.tsx`: `<Suspense>` holds the first frame until the .glb is parsed, and `CameraRig` places the camera from the glb's own cameras on the frame after. Nothing ever renders at the origin, so there is no pose to hardcode.
 - All positions in `docs/PORTFOLIO_3D_INTERACTIONS.md` are **Blender Z-up** coordinates: convert with `(x, z, -y)` before runtime use.
 - Loading budget (measured 2026-08-05): the 90 MB export compresses to **6.8 MB with webp alone, 2.0 MB with draco+webp** (`pnpm dlx @gltf-transform/cli webp` then `draco`) — verify webp banding on the baked lightmaps before shipping. Texture VRAM stays ~192 MB regardless: KTX2 (CI-side, needs KTX-Software) is mandatory for mobile.
 
