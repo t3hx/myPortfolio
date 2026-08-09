@@ -1,0 +1,51 @@
+# CI — sur chaque PR, et sur chaque poussée du tronc `dev`.
+#
+# Ce dépôt est un paquet unique (application web) : pas de monorepo, pas d'API,
+# pas de base de données. La vérification se réduit donc à ce qui existe
+# réellement aujourd'hui : installation gelée, typage, build de production.
+#
+# `main` est délibérément absent des déclencheurs `push` : le futur workflow de
+# déploiement appellera cette CI via `workflow_call`, et l'ajouter ici la ferait
+# tourner deux fois à chaque fusion.
+#
+# Ce qui manque encore, et qui viendra s'ajouter ici quand ce sera écrit :
+#   - `pnpm lint` (aucun linter configuré à ce jour)
+#   - `pnpm test` (Vitest + Playwright sont planifiés, voir la revue eng)
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [dev]
+  workflow_call:
+
+# Une nouvelle poussée sur la même référence annule le run précédent encore en vol.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+
+      # pnpm d'abord : setup-node lit le champ `packageManager` du package.json,
+      # mais son cache a besoin du binaire déjà présent.
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Installer (lockfile gelé)
+        run: pnpm install --frozen-lockfile
+
+      # `build` ne fait PAS le typage (Vite se contente de transpiler) : les
+      # deux étapes sont donc bien distinctes, et il en faut deux.
+      - name: Typage
+        run: pnpm type-check
+
+      - name: Build de production
+        run: pnpm build
