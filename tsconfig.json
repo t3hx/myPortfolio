@@ -13,7 +13,10 @@
     "isolatedModules": true,
     "noEmit": true,
     "allowImportingTsExtensions": true,
-    "types": ["vite/client"],
+    // `node` est requis depuis que les fichiers de configuration sont typés :
+    // ils importent `node:url`. Le poste de dev le résolvait par remontée de
+    // dépendance ; l'installation stricte de pnpm en CI, non.
+    "types": ["vite/client", "node"],
     "paths": {
       "@/*": ["./src/*"]
     }
