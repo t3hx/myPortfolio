@@ -55,6 +55,89 @@ les gabarits « community health » ne s'héritent que d'un dépôt `.github`
 Chaque gabarit pose son label automatiquement (`labels: ["type:bug"]`), pour que
 le classement se fasse au moment où l'on a le contexte en tête.
 
+## Créer une issue — les 4 gestes obligatoires
+
+Ces quatre points sont **systématiques**, pas optionnels. Une issue à laquelle
+il en manque un est incomplète.
+
+### 1. Le `#` du titre porte le numéro de l'issue
+
+Le préfixe des gabarits s'écrit `myPortfolio-TK#/ `. Ce `#` **n'est pas
+décoratif : il attend le numéro que GitHub vient d'attribuer.**
+
+```
+myPortfolio-EPIC#10/ Chaîne de mise en production
+myPortfolio-TK#16/   Dockerfile multi-étages
+myPortfolio-FEAT#24/ Écran de pré-sélection 3D ou classique
+```
+
+Le numéro n'existant qu'après création, la manœuvre est en deux temps :
+
+```sh
+n=$(gh issue create --title "myPortfolio-TK#/ Titre" --label "type:chore" --body "…" | grep -o '[0-9]*$')
+gh issue edit "$n" --title "myPortfolio-TK#$n/ Titre"
+```
+
+Trois préfixes : `EPIC` (conteneur), `FEAT` (capacité visible), `TK` (tâche).
+
+### 2. Les labels ET les champs du Project
+
+Ce sont **deux mécanismes distincts, à remplir tous les deux** :
+
+- **Labels** sur l'issue — `type:*`, `size:*`, `priority:*`. Visibles dans le
+  dépôt, filtrables dans les listes d'issues.
+- **Champs du Project** — `Status`, `Priority`, `Size`. Ce sont les colonnes du
+  tableau ; **poser le label ne les remplit pas.** Une issue synchronisée sans
+  champs arrive dans le tableau sans priorité ni taille, donc invisible au tri.
+
+Les champs sont des *single-select* : l'API attend l'**identifiant de
+l'option**, pas son libellé. Les relever une fois par projet :
+
+```sh
+gh project field-list 4 --owner t3hx --format json
+gh project item-edit --id <item> --project-id <project> \
+  --field-id <field> --single-select-option-id <option>
+```
+
+Statut par défaut à la création d'un backlog trié : `🎯 todo`.
+
+### 3. La hiérarchie passe par les sous-issues natives
+
+GitHub a un vrai lien parent-enfant. **Ne pas le simuler avec une liste à
+cocher** : les cases ne remontent pas dans le champ `Sub-issues progress` du
+Project et ne se cochent pas toutes seules à la fermeture.
+
+```sh
+cid=$(gh api repos/<owner>/<repo>/issues/<enfant> --jq .id)   # l'ID, pas le numéro
+gh api -X POST repos/<owner>/<repo>/issues/<parent>/sub_issues -F "sub_issue_id=$cid"
+```
+
+Un EPIC porte toujours ses filles ainsi. Une issue de taille **L ou XL** se
+découpe à son tour ; les S et M restent atomiques — les découper produit du
+bruit.
+
+### 4. Le corps suit la forme du gabarit
+
+Intention, *definition of done* cochable, notes. Et surtout : **les pièges
+déjà connus vont dans l'issue**, pas seulement dans un document. Une issue qui
+répète le piège que l'on vient de découvrir évite de le redécouvrir dans six
+mois.
+
+## Portées de jeton nécessaires
+
+`gh` demande des portées différentes selon l'objet touché. Les trois utiles ici,
+à demander avant de se retrouver bloqué en plein script :
+
+| Action | Portée | Symptôme si absente |
+|---|---|---|
+| Écrire dans `.github/workflows/` | `workflow` | 403 « refusing to allow… without `workflow` scope » |
+| Lire un Project | `read:project` | 404 sur le projet |
+| **Écrire les champs d'un Project** | `project` | « your authentication token is missing required scopes [project] » |
+
+```sh
+gh auth refresh -h github.com -s workflow -s project
+```
+
 ## Labels
 
 14 labels : `type:bug|feat|chore|idea`, `blocked`, `needs-decision`,

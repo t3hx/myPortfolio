@@ -90,6 +90,12 @@ Runtime 2.5D ink, URL-toggled: `?outline=off|hull|edges|both` (+ `?lw=<px>` live
 - All positions in `docs/PORTFOLIO_3D_INTERACTIONS.md` are **Blender Z-up** coordinates: convert with `(x, z, -y)` before runtime use.
 - Loading budget (measured 2026-08-05): the 90 MB export compresses to **6.8 MB with webp alone, 2.0 MB with draco+webp** (`pnpm dlx @gltf-transform/cli webp` then `draco`) — verify webp banding on the baked lightmaps before shipping. Texture VRAM stays ~192 MB regardless: KTX2 (CI-side, needs KTX-Software) is mandatory for mobile.
 
+## The backlog is the plan (not the design doc)
+
+The build plan lives in **GitHub issues #10+ and Project 4**, not in the design doc — whose Implementation Tasks predate the v12 export and are partly stale (T3–T7: some already shipped, some obsolete). **Verify against the code before starting anything sourced from that doc.**
+
+Creating an issue has four mandatory steps — numbered title, labels **and** Project fields, native sub-issues, populated body. They are spelled out in **`docs/CONVENTION_GITHUB.md`**; read that section before opening issues, and note that a `size:L` label and the Project's `Size` field are two different things that must both be set.
+
 ## Skill routing
 
 When the user's request matches an available skill, invoke it via the Skill tool. When in doubt, invoke the skill.
