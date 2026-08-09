@@ -232,9 +232,17 @@ d'arrêts, badge de phase, boutons de test. Le rail d'arrêts en particulier est
 
 ## 5. Questions ouvertes — à trancher avec l'auteur, pas dans la maquette
 
-### 5.1 L'écran de pré-sélection passe devant le plus beau moment du site
+### 5.1 L'écran de pré-sélection passe devant Home — TRANCHÉ (2026-08-09)
 
-Les deux sources se contredisent sur le rôle de `Home` :
+**Décision de l'auteur : c'est validé, l'écran de pré-sélection reste devant.**
+La révélation Home devient la récompense du clic « expérience 3D » — elle n'est
+pas supprimée, elle est déplacée après le choix. `Home` garde donc son cadrage
+délibéré (moniteur plein cadre, révélation au premier scroll) et n'a toujours ni
+bulle ni maquette dédiée.
+
+Le reste de cette section est conservé comme trace de l'arbitrage.
+
+Les deux sources se contredisaient sur le rôle de `Home` :
 
 - Le brief de 2026-08-04 : *« Home devient le plan d'attente derrière l'écran de
   pré-sélection / la position initiale de la caméra — pas de bulle, pas de
@@ -245,11 +253,11 @@ Les deux sources se contredisent sur le rôle de `Home` :
   le premier temps fort de l'expérience — ne jamais "corriger" Home en vue
   d'ensemble. »*
 
-Les deux s'accordent sur le fait que Home est la pose initiale. Le conflit est de
-scope : **placer un écran de pré-sélection devant la révélation, c'est la
-désamorcer.** Trois pistes possibles (à arbitrer) : la pré-sélection *est* le plan
-Home habillé ; la révélation devient la récompense du clic « expérience 3D » ; ou
-la pré-sélection est déplacée ailleurs dans le parcours.
+Les deux s'accordaient sur le fait que Home est la pose initiale ; le conflit
+portait sur le risque de désamorcer la révélation en plaçant un écran devant.
+**Arbitré ci-dessus : le risque est assumé, la révélation devient la récompense
+du clic.** Conséquence pour les maquettes : l'écran de pré-sélection doit *donner
+envie d'entrer* — c'est lui qui porte la promesse que Home tiendra ensuite.
 
 ### 5.2 « CV » désigne un arrêt et un item de navigation (§ 1.2)
 
