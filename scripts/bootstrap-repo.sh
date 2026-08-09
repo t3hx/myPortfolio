@@ -98,31 +98,39 @@ echo
 # --------------------------------------------------------------------------
 echo "== Labels =="
 existing="$(gh label list --repo "$target" --limit 100 --json name --jq '.[].name')"
+reference="$(gh label list --repo "$SOURCE_REPO" --limit 100 --json name --jq '.[].name')"
 
-for old in bug enhancement; do
-  new="$(rename_target "$old")"
-  grep -qxF "$old" <<<"$existing" || continue
-  if grep -qxF "$new" <<<"$existing"; then
-    # Les deux coexistent : renommer échouerait sur un conflit de nom.
-    echo "  $old et $new coexistent — vérifier à la main lequel garder."
-  else
-    echo "  renommage $old -> $new (préserve les associations)"
-    run gh label edit "$old" --repo "$target" --name "$new"
-  fi
-done
+# Comparer d'abord les deux jeux : sans ça, `gh label clone` serait annoncé à
+# chaque passage alors qu'il n'a rien à faire, et la sortie ne dirait plus
+# franchement « ce dépôt est déjà conforme ».
+if [ "$(sort <<<"$existing")" = "$(sort <<<"$reference")" ]; then
+  echo "  déjà conformes ($(grep -c . <<<"$reference") labels identiques à $SOURCE_REPO)"
+else
+  for old in bug enhancement; do
+    new="$(rename_target "$old")"
+    grep -qxF "$old" <<<"$existing" || continue
+    if grep -qxF "$new" <<<"$existing"; then
+      # Les deux coexistent : renommer échouerait sur un conflit de nom.
+      echo "  $old et $new coexistent — vérifier à la main lequel garder."
+    else
+      echo "  renommage $old -> $new (préserve les associations)"
+      run gh label edit "$old" --repo "$target" --name "$new"
+    fi
+  done
 
-echo "  copie de la convention depuis $SOURCE_REPO"
-run gh label clone "$SOURCE_REPO" --repo "$target"
+  echo "  copie de la convention depuis $SOURCE_REPO"
+  run gh label clone "$SOURCE_REPO" --repo "$target"
 
-for label in "${DEFAULT_LABELS[@]}"; do
-  grep -qxF "$label" <<<"$existing" || continue
-  # `bug` et `enhancement` viennent d'être renommés : ne pas les supprimer.
-  if [ -n "$(rename_target "$label")" ]; then
-    continue
-  fi
-  echo "  suppression du label par défaut : $label"
-  run gh label delete "$label" --repo "$target" --yes
-done
+  for label in "${DEFAULT_LABELS[@]}"; do
+    grep -qxF "$label" <<<"$existing" || continue
+    # `bug` et `enhancement` viennent d'être renommés : ne pas les supprimer.
+    if [ -n "$(rename_target "$label")" ]; then
+      continue
+    fi
+    echo "  suppression du label par défaut : $label"
+    run gh label delete "$label" --repo "$target" --yes
+  done
+fi
 echo
 
 # --------------------------------------------------------------------------
@@ -181,12 +189,14 @@ echo
 # question sur le navigateur). D'où la copie avec substitution, pas l'identité.
 # --------------------------------------------------------------------------
 echo "== Gabarits d'issue =="
+templates_touched=false
 for tpl in bug.yml feature.yml chore.yml idea.yml config.yml; do
   if gh api "repos/$target/contents/.github/ISSUE_TEMPLATE/$tpl?ref=dev" >/dev/null 2>&1; then
     echo "  $tpl existe déjà — laissé tel quel"
     continue
   fi
 
+  templates_touched=true
   gh api "repos/$SOURCE_REPO/contents/.github/ISSUE_TEMPLATE/$tpl?ref=$SOURCE_REF" \
     --jq .content | base64 -d | sed "s/myPortfolio-/${prefix}-/g" > "$workdir/$tpl"
   echo "  $tpl à créer (préfixe ${prefix}-)"
@@ -217,8 +227,11 @@ else
   echo "    écrit dans l'historique du shell) :"
   echo "      gh secret set ADD_TO_PROJECT_PAT --repo $target"
 fi
-echo "  • Relire les champs de contexte des gabarits : ils décrivent encore le"
-echo "    portfolio (navigateur, paramètres d'URL) et méritent d'être adaptés."
+if [ "$templates_touched" = true ]; then
+  echo "  • Relire les champs de contexte des gabarits : copiés du portfolio, ils"
+  echo "    parlent encore de navigateur et de paramètres d'URL. Seul le préfixe"
+  echo "    de titre a été substitué."
+fi
 echo "  • Vérifier que les scripts du package.json existent : la CI appelle"
 echo "    lint / type-check / build / test via --if-present, donc un script"
 echo "    absent est sauté SANS erreur — une couverture nulle passe au vert."
