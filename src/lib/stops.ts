@@ -64,16 +64,33 @@ export function extractStops(scene: Object3D): Map<string, StopTransform> {
     })
     const cam = cams[0] ?? null
 
+    // A node with the right name but NO camera used to fall through to a
+    // 45° default. That is the worst kind of failure: the stop parks at the
+    // right spot, warns about nothing, and shows a framing nobody authored —
+    // so it looks plausible and reads as a Blender decision. Skip it loudly
+    // instead, exactly like a stop missing from the graph.
+    // A node with the right name but NO camera used to fall through to a
+    // 45° default. That is the worst kind of failure: the stop parks at the
+    // right spot, warns about nothing, and shows a framing nobody authored —
+    // so it looks plausible and reads as a Blender decision. Skip it loudly
+    // instead, exactly like a stop missing from the graph.
+    if (!cam) {
+      console.warn(
+        `[stops] "${stop.camera}" exists in the .glb but carries no camera ` +
+          '(an Empty with the right name?) — skipping. Its focal length cannot ' +
+          'be derived, and a default one would be silently wrong.',
+      )
+      continue
+    }
+
     const position = new Vector3()
     const quaternion = new Quaternion()
-    const source = cam ?? node
-    source.getWorldPosition(position)
-    source.getWorldQuaternion(quaternion)
+    cam.getWorldPosition(position)
+    cam.getWorldQuaternion(quaternion)
     // glTF `yfov` + `aspectRatio`, as loaded into three's camera.fov/.aspect.
     // Convert to the horizontal field, which is what the framing really is.
-    const yfov = cam?.fov ?? 45
-    const aspect = cam?.aspect && cam.aspect > 0 ? cam.aspect : 1
-    const hfov = 2 * Math.atan(Math.tan((yfov * RAD) / 2) * aspect) * DEG
+    const aspect = cam.aspect > 0 ? cam.aspect : 1
+    const hfov = 2 * Math.atan(Math.tan((cam.fov * RAD) / 2) * aspect) * DEG
     stops.set(stop.camera, { position, quaternion, hfov })
   }
 
