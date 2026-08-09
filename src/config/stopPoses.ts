@@ -20,6 +20,11 @@ export interface StopPose {
 }
 
 export const STOP_POSES: Record<string, StopPose> = {
+  // ⚠️ Home frames a bare wall (and a chair when flipped 180°) — verified in
+  // the browser against the v10 export. The pose is faithful to both the legacy
+  // export's camera and the interaction spec's table, so the stop itself is
+  // mis-authored: it needs a new framing in Blender (re-adding a
+  // `CameraStop_Home` camera makes the runtime prefer it automatically).
   CameraStop_Home: {
     position: [0, 1.1, -1.718],
     quaternion: [0, 0, 0, 1],

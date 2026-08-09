@@ -39,19 +39,55 @@ interface RoomModelProps {
 
 type RuntimeTag = 'unlit' | 'emissive' | 'decal' | 'glass'
 
-function runtimeTag(obj: Object3D): RuntimeTag {
+/** The baked texture: the exporter routes it to the emissive slot. */
+function bakedMap(src: MeshStandardMaterial): Texture | null {
+  return src.emissiveMap ?? src.map ?? null
+}
+
+function isBlack(c: Color | undefined): boolean {
+  return !c || (c.r === 0 && c.g === 0 && c.b === 0)
+}
+
+/**
+ * How to treat a material.
+ *
+ * The `runtime` extras are read FIRST when present, but the 2026-08-09 export
+ * (portfolio_v10) ships none — so the treatment is derived from the glTF
+ * material itself, which is self-describing and cannot fall out of sync:
+ *
+ *   - alpha blended, no texture      → glass   (the PC case pane)
+ *   - alpha blended/masked + texture → decal   (the amp's Sharmall logo)
+ *   - no texture, emissive non-black → emissive (fans, LEDs, bulbs, cat eyes…)
+ *   - anything else                  → unlit   (the 100 baked materials)
+ *
+ * Deriving beats tagging here: an export that forgets the custom properties
+ * still renders correctly.
+ */
+function treatmentOf(obj: Object3D, src: MeshStandardMaterial): RuntimeTag {
   let node: Object3D | null = obj
   while (node) {
     const tag = node.userData?.runtime as RuntimeTag | undefined
     if (tag) return tag
     node = node.parent
   }
+
+  const map = bakedMap(src)
+  const blended = src.transparent === true && (src.opacity ?? 1) < 1
+  if (blended && !map) return 'glass'
+  if ((src.transparent === true || (src.alphaTest ?? 0) > 0) && map) return 'decal'
+  if (!map && !isBlack(src.emissive)) return 'emissive'
   return 'unlit'
 }
 
-/** The baked texture: the exporter routes it to the emissive slot. */
-function bakedMap(src: MeshStandardMaterial): Texture | null {
-  return src.emissiveMap ?? src.map ?? null
+/**
+ * Emitters carry their brightness in KHR_materials_emissive_strength, which
+ * three loads as `emissiveIntensity` (bulbs ×5, cat eyes ×2.37, stars ×2…).
+ * An unlit MeshBasicMaterial has no emissive channel, so the intensity has to
+ * be folded into the colour or the emitters render far too dim.
+ */
+function emissiveColor(src: MeshStandardMaterial): Color {
+  const c = src.emissive?.clone() ?? new Color('#ffffff')
+  return c.multiplyScalar(src.emissiveIntensity ?? 1)
 }
 
 function rebuildMaterial(src: MeshStandardMaterial, tag: RuntimeTag): MeshBasicMaterial {
@@ -61,7 +97,8 @@ function rebuildMaterial(src: MeshStandardMaterial, tag: RuntimeTag): MeshBasicM
       return new MeshBasicMaterial({
         color: src.color?.clone() ?? new Color('#ffffff'),
         transparent: true,
-        opacity: GLASS_OPACITY,
+        // Prefer the alpha authored in Blender; fall back to the spec value.
+        opacity: (src.opacity ?? 1) < 1 ? src.opacity : GLASS_OPACITY,
         depthWrite: false,
         side: DoubleSide,
       })
@@ -74,11 +111,20 @@ function rebuildMaterial(src: MeshStandardMaterial, tag: RuntimeTag): MeshBasicM
         side: DoubleSide,
       })
     case 'emissive':
+      return new MeshBasicMaterial({
+        map,
+        color: map ? new Color('#ffffff') : emissiveColor(src),
+        side: DoubleSide,
+      })
     case 'unlit':
     default:
       return new MeshBasicMaterial({
         map,
-        color: map ? new Color('#ffffff') : (src.emissive?.clone() ?? src.color?.clone()),
+        color: map
+          ? new Color('#ffffff')
+          : !isBlack(src.emissive)
+            ? emissiveColor(src)
+            : (src.color?.clone() ?? new Color('#ffffff')),
         side: DoubleSide,
       })
   }
@@ -98,10 +144,12 @@ export function RoomModel({ onReady }: RoomModelProps) {
     scene.traverse((obj: Object3D) => {
       const mesh = obj as Mesh
       if (!mesh.isMesh) return
-      const tag = runtimeTag(mesh)
       const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material]
       const rebuilt = mats.map((m) => {
         const src = m as MeshStandardMaterial
+        // Per material, not per mesh: a merged mesh mixes baked surfaces with
+        // emitters (e.g. Monitors_Merged, Headset_Merged).
+        const tag = treatmentOf(mesh, src)
         const key = `${src.uuid}:${tag}`
         let out = cache.get(key)
         if (!out) {

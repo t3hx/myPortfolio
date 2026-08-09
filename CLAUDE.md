@@ -19,22 +19,35 @@ This is a **React 19 + react-three-fiber v9** single-page portfolio that renders
 
 The reference design doc (product decisions, review reports, spike verdicts) lives at `~/.gstack/projects/t3hx-myPortfolio/tehx-fix-rendering-design-20260804-174239.md`. The interaction spec for the scene is `docs/PORTFOLIO_3D_INTERACTIONS.md` — **read it before touching scene behavior**; it lists every animation/interaction with exact object names.
 
-### The asset (IMPORTANT — changed 2026-07-20)
+### The asset (IMPORTANT — currently `docs/portfolio_v10.glb`, 2026-08-09)
 
-`public/models/scene.glb` is a copy of `portfolio_final.glb` (~90 MB, 145 meshes, ~192 MB texture VRAM, main atlas 4096²). It is **entirely pre-baked unlit**:
+`public/models/scene.glb` is a copy of the latest export. Blender is the source of truth and the `.glb` is gitignored — copy it into any fresh worktree. Current export: **7.6 MB, 146 meshes, 124 materials, 15 textures, ~173 MB texture VRAM**. It is **entirely pre-baked unlit**:
 
 - **No lights, no cameras, no animations in the file.** All lighting + AgX tone mapping is cooked into the textures.
-- The baked image of each material lives in its **emissive texture slot**.
-- Every mesh carries a **`runtime` tag** in glTF extras (`userData.runtime`, on the node OR a parent): `unlit` (93) / `emissive` (27) / `glass` (1, the PC case pane) / `decal` (1, the amp's Sharmall logo).
-- The `.glb` is gitignored — Blender is the source of truth. Copy it into any fresh worktree.
+- The baked image of each material lives in its **emissive texture slot** (100 of the 124 materials have one).
+- Textures ship as **webp** (`EXT_texture_webp`, supported natively by three's GLTFLoader) — hence 7.6 MB where the previous PNG export weighed 90 MB. Main atlas `bake_atlas_2048_agx` is 2048² (was 4096²).
+- **No `runtime` tags any more** (v10 dropped the custom properties). `RoomModel` therefore *derives* each material's treatment from the glTF itself — see below. Tags are still read first if a future export restores them.
 
 ### Render pipeline (`src/config/renderPipeline.ts` + `src/scene/RoomModel.tsx`)
 
-WYSIWYG rule: what Blender shows is what WebGL must show. `RoomModel` traverses the scene and rebuilds every material as `MeshBasicMaterial` from its `runtime` tag (map = the emissive slot, DoubleSide; glass → transparent 0.28 no-depth-write; decal → alphaTest 0.5). The renderer runs `NoToneMapping` + sRGB, zero lights, zero shadows. **Never add lights or runtime tone mapping** — if colors look wrong, the bake is wrong, fix it in Blender. This replaced the legacy `blenderMatch.ts` calibration system (git history) which belonged to the old lit export.
+WYSIWYG rule: what Blender shows is what WebGL must show. `RoomModel` traverses the scene and rebuilds every material as `MeshBasicMaterial`, choosing the treatment per material (not per mesh — merged meshes mix baked surfaces with emitters):
+
+| Condition | Treatment |
+|---|---|
+| alpha-blended, no texture | **glass** — transparent at the authored alpha, no depth write (PC case pane) |
+| alpha-blended/masked + texture | **decal** — alphaTest 0.5, no depth write (amp's Sharmall logo) |
+| no texture, emissive non-black | **emissive** — colour = `emissive × emissiveIntensity` (fans, LEDs, bulbs, cat eyes, keyboard backlight…) |
+| anything else | **unlit** — the baked emissive texture as `map` |
+
+Folding `emissiveIntensity` into the colour is load-bearing: `KHR_materials_emissive_strength` reaches ×5 on the bulbs, and an unlit material has no emissive channel to carry it. The renderer runs `NoToneMapping` + sRGB, zero lights, zero shadows. **Never add lights, a runtime tone mapping, or an `<Environment>`** — `MeshBasicMaterial` is unlit by definition and ignores environment lighting; if something renders black, it is a *material treatment* bug in the table above, not a missing light.
+
+This replaced the legacy `blenderMatch.ts` calibration system (git history), which belonged to the old lit export. If colors look wrong, the bake is wrong — fix it in Blender.
 
 ### Camera stops (`src/config/stopPoses.ts` + `src/lib/stops.ts`)
 
 The current export has **no cameras**, so the 10 stop poses (position / quaternion / **per-stop fov** — 32.3° standard, 4.3° telescope-moon zoom, 53.7° guitar wide) are hardcoded in `STOP_POSES`, sampled from the legacy export which still had real Blender cameras. `orderedStops()` prefers glb-extracted cameras when present, falls back to the table — so re-adding `CameraStop_*` cameras to a future export just works. Stop order + labels: `src/config/cameraStops.ts` (order = tour order = `?stop=` keys).
+
+**Known scene issue:** the `Home` stop frames a bare wall (a chair if flipped 180°). The pose matches both the legacy camera and the interaction spec's table, so the stop is mis-authored in Blender and needs a new framing — everything else lands correctly.
 
 ### Navigation model (user-validated — do not regress to scrubbing)
 
