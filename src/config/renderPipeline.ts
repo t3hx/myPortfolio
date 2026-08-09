@@ -26,6 +26,17 @@ export const CLEAR_COLOR = '#04050c'
 /** Path (relative to /public) of the .glb exported from Blender. */
 export const MODEL_SRC = '/models/scene.glb'
 
+/**
+ * Draco decoder location. The export is Draco-compressed (3.0 MB instead of
+ * 7.6 MB — geometry was ~5.4 MB of it), so the decoder is required to read it.
+ *
+ * Self-hosted on purpose: drei's default points at a Google CDN, which adds a
+ * third-party runtime dependency, breaks offline/CSP-restricted use, and can
+ * version-drift from the three build we ship. The files are copied from
+ * `three/examples/jsm/libs/draco/` — refresh them when three is upgraded.
+ */
+export const DRACO_DECODER_PATH = '/draco/'
+
 /** Material rebuild parameters per `runtime` tag (glTF extras). */
 export const GLASS_OPACITY = 0.28
 export const DECAL_ALPHA_TEST = 0.5

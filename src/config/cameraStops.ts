@@ -17,6 +17,10 @@ export interface CameraStop {
 
 export const CAMERA_STOPS: CameraStop[] = [
   { camera: 'CameraStop_Home', label: 'Home', caption: 'Welcome.' },
+  // The CV beat: the vertical second monitor. Placed right after Home so the
+  // flat-screen reveal flows straight into "who I am" before the camera pulls
+  // back to the desk — reorder this line freely, the array IS the tour order.
+  { camera: 'CameraStop_MonitorVertical', label: 'CV', caption: 'The résumé, on the second screen.' },
   { camera: 'CameraStop_Desk', label: 'Desk', caption: 'Where the work happens.' },
   { camera: 'CameraStop_Scoreboard', label: 'Scoreboard' },
   { camera: 'CameraStop_BookshelfPlant', label: 'Bookshelf' },
