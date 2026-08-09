@@ -1,0 +1,23 @@
+name: Feature
+description: Une capacité nouvelle, visible par le visiteur
+title: "myPortfolio-FEAT#/ "
+labels: ["type:feat"]
+body:
+  - type: textarea
+    id: intent
+    attributes:
+      label: Intention
+      description: Le problème à résoudre ou l'effet recherché, pas la solution technique.
+    validations: { required: true }
+  - type: textarea
+    id: done
+    attributes:
+      label: Definition of done
+      description: Ce qui doit être vrai pour clore l'issue.
+      placeholder: "- [ ] ..."
+    validations: { required: true }
+  - type: textarea
+    id: notes
+    attributes:
+      label: Notes / décisions
+      description: Contexte, contraintes, pistes écartées, liens vers le design doc.

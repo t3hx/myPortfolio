@@ -1,11 +1,13 @@
-name: Task
-description: Unité de travail standard
+name: Chore
+description: Entretien, outillage, dette technique, documentation
+title: "myPortfolio-TK#/ "
+labels: ["type:chore"]
 body:
   - type: textarea
     id: intent
     attributes:
       label: Intention
-      description: Le problème à résoudre, pas la solution.
+      description: Ce que ça débloque ou ce que ça arrête de coûter.
     validations: { required: true }
   - type: textarea
     id: done
@@ -15,5 +17,4 @@ body:
   - type: textarea
     id: notes
     attributes:
-      label: Notes / décisions
-      description: Contexte, contraintes, pistes écartées.
+      label: Notes
