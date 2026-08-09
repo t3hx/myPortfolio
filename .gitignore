@@ -9,3 +9,6 @@ node_modules/.tmp
 
 # Large source assets you may not want in git (uncomment if needed)
 public/models/*.glb
+
+# Throwaway WebGL captures from the render-comparison loop
+docs/renders/actual/
