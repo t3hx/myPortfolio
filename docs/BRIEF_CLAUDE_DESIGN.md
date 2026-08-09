@@ -99,7 +99,7 @@ Il ne l'est plus sur trois points — **ce document fait foi** :
 
 | `projet.md` dit | Réalité vérifiée (2026-08-09) |
 |---|---|
-| « **Tailwind 4** pour l'UI » | Aucun Tailwind installé. L'UI est en **CSS écrit à la main** (`src/styles.css`, 270 lignes). Le design system doit sortir en CSS/variables CSS, pas en classes utilitaires. |
+| « **Tailwind 4** pour l'UI » | Annoncé comme cible du rebuild, **pas encore installé** — rien n'en avait eu besoin. L'UI actuelle est du **CSS écrit à la main** (`src/styles.css`, 270 lignes). Le choix reste ouvert (§ 5.4) : livrer des **tokens agnostiques** (valeurs + échelles) qui survivent aux deux options. |
 | « calibrage `blenderMatch` déjà calibré » | `src/config/blenderMatch.ts` **a été supprimé**. Le pipeline est `src/config/renderPipeline.ts` : bake unlit intégral, `NoToneMapping`, zéro lumière. |
 | « Authentification : lien magique + Google + GitHub » | **Différée**, aucune issue ouverte. **Hors périmètre** de cette session. |
 
@@ -157,12 +157,20 @@ abstrait.** Chaque arrêt a sa composition et son espace négatif propres.
 `guitar`, `moon`, `posters`, `scoreboard`, `telescope`.
 
 **Manquant — 2 renders, et ce sont les deux plus critiques** : `home` (le plan
-d'ouverture) et `cv` / `MonitorVertical` (le nouvel arrêt du § 1.2). Ils
-dépendent de l'issue **#45** (« Capturer les 11 stops »), encore ouverte.
+d'ouverture) et `cv` / `MonitorVertical` (le nouvel arrêt du § 1.2).
 
-> **Décision à prendre avant de lancer la session** : soit on livre #45 d'abord et
-> la session traite les 11 arrêts, soit on démarre sur les 9 disponibles en
-> traitant Home et CV dans un second temps. Voir § 8.
+**Qui les produit** : ces images sont la vérité-terrain **Blender**, pas des
+captures runtime — c'est justement contre elles que la boucle de comparaison
+(#40 / #46) mesure le rendu WebGL. L'issue #40 le dit explicitement : *« les deux
+manquants sont à produire depuis Blender, donc côté utilisateur »*. Ce n'est donc
+**pas** une dépendance sur #45 (qui capture le runtime via Playwright), mais un
+rendu à lancer dans Blender.
+
+> **Contournement possible pour ne pas bloquer la session** : une capture runtime
+> à `?stop=Home` et `?stop=CV` est un **fond de maquette parfaitement suffisant**,
+> même si elle ne vaut pas comme référence de comparaison. Décision à prendre :
+> rendre les deux images dans Blender, ou démarrer sur des captures runtime pour
+> ces deux arrêts seulement.
 
 **Règle d'ancrage responsive** : les refs 16:9 sont des références de
 **composition**, pas une grille absolue. Le rendu réel s'étire du 16:10 portable
@@ -245,7 +253,22 @@ la pré-sélection est déplacée ailleurs dans le parcours.
 
 ### 5.2 « CV » désigne un arrêt et un item de navigation (§ 1.2)
 
-### 5.3 Faut-il attendre les renders de Home et CV ? (§ 3 et § 8)
+### 5.3 Rendre Home et CV dans Blender, ou démarrer sur des captures runtime ? (§ 3)
+
+### 5.4 Tokens en variables CSS, ou passage à Tailwind ?
+
+`projet.md` annonçait Tailwind 4 comme cible ; rien n'est installé et l'UI
+actuelle est du CSS écrit à la main. Le choix n'a jamais été tranché. **Par
+défaut, le design system se livre en tokens agnostiques** (valeurs + échelles
+nommées) : ils s'exposent en variables CSS aujourd'hui et se transposent en thème
+Tailwind sans réécriture si la décision bascule.
+
+### 5.5 Deux écrans de lune — un ou deux traitements d'overlay ?
+
+`Moon` est un arrêt atteignable au scroll (11ᵉ, 7,63° de champ — la vue lointaine
+au téléobjectif) **et** `TELESCOPE` est une excursion déclenchée au clic, avec sa
+vignette et sa lune haute définition. Deux surfaces différentes pour le même sujet :
+faut-il une bulle sur chacune, une seule, ou un traitement spécifique à l'excursion ?
 
 ---
 
@@ -339,8 +362,9 @@ demandait `DESIGN.md` à la racine ; c'est corrigé ici.)
 
 Il contient :
 
-- les **tokens** : typographie, palette, échelle d'espacement — exprimés en
-  **variables CSS**, pas en classes utilitaires (§ 1.4) ;
+- les **tokens** : typographie, palette, échelle d'espacement — exprimés de façon
+  **agnostique** (valeurs + échelles nommées), exposés en variables CSS
+  aujourd'hui, transposables en thème Tailwind si le choix bascule (§ 5.4) ;
 - l'**anatomie des composants BD** : bulle (trait, épaisseur, queue, padding),
   panneau, boutons ;
 - les **budgets de motion**, cohérents avec le tween de visite existant
@@ -353,15 +377,24 @@ implémentation ré-improvise.**
 
 ## 10. Ce que ce brief débloque
 
-| Issue | Titre | Bloquée par cette session |
-|---|---|---|
-| #30 | Bulles narratives ancrées par projection écran (P0, L) | oui — parent |
-| #47 | Composant bulle ancré par projection écran (P0) | oui |
-| #48 | Contenu et ancrage des bulles par stop (P0) | oui |
-| #49 | Accessibilité des bulles (P0) | partiellement (§ 7) |
-| #26 | Navigation persistante : projet ou contact en 2 clics (P0) | oui |
-| #31 | Contenu projets type et repli liste vide (P0) | modèle de contenu § 6 |
-| #33 | Bilingue FR/EN (P1) | contraintes de gabarit § 4 |
+Deux epics sont concernées : **#12** (coquille produit et accessibilité) et
+**#13** (narration et contenu).
 
-**Dépendance en amont : #45** (capturer les 11 stops) pour les renders `home` et
-`cv` manquants.
+| Issue | Titre | Ce que la session lui apporte |
+|---|---|---|
+| #24 | Écran de pré-sélection 3D ou classique (P0) | la maquette entière — § 2, item 1 |
+| #25 | Preloader (P0) | la maquette + l'état terminal indéterminé — § 2, item 2 |
+| #26 | Navigation persistante : projet ou contact en 2 clics (P0) | la maquette entière — § 2, item 3 |
+| #30 | Bulles narratives ancrées par projection écran (P0, L) | anatomie de la bulle — parent de #47/#48/#49 |
+| #47 | Composant bulle ancré par projection écran (P0) | trait, queue, padding, gabarits |
+| #48 | Contenu et ancrage des bulles par stop (P0) | une composition par arrêt (§ 3) |
+| #49 | Accessibilité des bulles (P0) | contraste, tailles, focus (§ 7) |
+| #31 | Contenu projets type et repli liste vide (P0) | modèle de contenu § 6 + états vides |
+| #33 | Bilingue FR/EN (P1) | contraintes de gabarit bilingue § 4 |
+| #28 | Contrastes 4.5:1 et cibles tactiles 44 px (P1) | les seuils sont déjà posés § 7 |
+
+**Dépendance en amont** : les deux renders `home` et `cv` (§ 3) — rendu Blender,
+côté utilisateur.
+
+**Aucune issue « design system » n'existe encore** : le `docs/DESIGN.md` du § 9
+n'a pas de ticket. À créer sous l'epic #12 si la session est lancée.

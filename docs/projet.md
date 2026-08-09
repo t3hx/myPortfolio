@@ -59,7 +59,7 @@ Inspiration principale : <https://guillaumegouessan.com/>
 
 - **react-three-fiber** (+ drei, postprocessing, ou toute techno 3D pertinente à conseiller)
 - **GSAP** pour le tweening avancé — incontournable
-- **Tailwind 4** pour l'UI — ⚠️ **non retenu (2026-08-09)** : rien n'est installé, l'UI est en CSS écrit à la main (`src/styles.css`). Le design system sortira en variables CSS.
+- **Tailwind 4** pour l'UI — ℹ️ **état au 2026-08-09** : pas encore installé (rien n'en avait besoin). L'UI actuelle est du CSS écrit à la main (`src/styles.css`). Le choix reste ouvert.
 - **pnpm** comme package manager
 
 Les acquis du prototype à transposer : extraction des transforms des caméras `CameraStop_*` du `.glb`, tweening position/quaternion/fov, ~~calibrage `blenderMatch`~~ (supprimé, voir Direction artistique), modes de vue pilotés par URL, renders de référence.
