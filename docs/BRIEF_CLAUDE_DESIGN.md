@@ -236,41 +236,22 @@ d'arrêts, badge de phase, boutons de test. Le rail d'arrêts en particulier est
 
 ## 5. Questions ouvertes — à trancher avec l'auteur, pas dans la maquette
 
-### 5.1 L'écran de pré-sélection passe devant Home — TRANCHÉ (2026-08-09)
+### 5.1 Rôle de `Home` — TRANCHÉ (2026-08-10)
 
-**Décision de l'auteur : c'est validé, l'écran de pré-sélection reste devant.**
-La révélation Home devient la récompense du clic « expérience 3D » — elle n'est
-pas supprimée, elle est déplacée après le choix. `Home` garde donc son cadrage
-délibéré (moniteur plein cadre, révélation au premier scroll) et n'a toujours ni
-bulle ni maquette dédiée.
+**L'écran de pré-sélection arrive AVANT le chargement de `scene.glb`.** Ce n'est
+pas un overlay posé sur la scène : c'est un écran 2D autonome, rendu sans WebGL,
+qui précède tout téléchargement. Il se maquette donc **sur fond libre**, sans
+render de référence — c'est la seule surface du § 2 dans ce cas.
 
-Le reste de cette section est conservé comme trace de l'arbitrage.
+**`Home` est une étape à part entière de la visite**, pas un simple plan
+d'attente. Elle portera **une animation** (à spécifier ultérieurement). Le brief
+de 2026-08-04 la décrivait comme « le plan d'attente derrière l'écran de
+pré-sélection, pas de bulle, pas de maquette dédiée » : c'est faux. Elle a
+désormais son render (`refs/home.png`) et doit être traitée comme les dix autres.
 
-Les deux sources se contredisaient sur le rôle de `Home` :
-
-- Le brief de 2026-08-04 : *« Home devient le plan d'attente derrière l'écran de
-  pré-sélection / la position initiale de la caméra — pas de bulle, pas de
-  maquette dédiée. »*
-- `CLAUDE.md` : *« Le cadrage `Home` est délibéré (décision produit) : il remplit
-  le cadre avec un moniteur pour que le premier écran se lise comme une image 2D
-  plate ; le premier scroll recule et révèle la pièce en 3D. Cette révélation est
-  le premier temps fort de l'expérience — ne jamais "corriger" Home en vue
-  d'ensemble. »*
-
-Les deux s'accordaient sur le fait que Home est la pose initiale ; le conflit
-portait sur le risque de désamorcer la révélation en plaçant un écran devant.
-**Arbitré ci-dessus : le risque est assumé, la révélation devient la récompense
-du clic.** Conséquence pour les maquettes : l'écran de pré-sélection doit *donner
-envie d'entrer* — c'est lui qui porte la promesse que Home tiendra ensuite.
-
-**Piste offerte par le render `home.png`** : à ce cadrage, l'écran du moniteur
-remplit tout le champ et **le bake le laisse volontairement vide** — un aplat uni
-(≈ `#363c4a`), sans un pixel de décor. Autrement dit, le plan d'ouverture est déjà
-un rectangle plein cadre prêt à recevoir du contenu 2D. **L'écran de pré-sélection
-peut littéralement être « ce qui s'affiche sur le moniteur »** : le visiteur
-choisit sur l'écran allumé, puis la caméra recule et révèle la pièce autour. La
-pré-sélection cesse alors d'être un obstacle devant la révélation — elle en devient
-le premier plan. Idem pour l'arrêt `CV` (`cv.png`), écran vertical vide.
+Son cadrage reste délibéré (`CLAUDE.md`) : le moniteur remplit le cadre pour que
+le premier plan se lise comme une image 2D plate, et le premier scroll recule et
+révèle la pièce en 3D. **Ne jamais « corriger » Home en vue d'ensemble.**
 
 ### 5.2 « CV » désigne un arrêt et un item de navigation (§ 1.2)
 
