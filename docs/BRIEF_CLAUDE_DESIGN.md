@@ -23,8 +23,15 @@ quasi-noir (voir les rendus).
 
 ### 2. Un système de bulles
 
-Une bulle par arrêt, ancrée à l'objet qu'elle commente et le suivant à l'écran.
-Le texte y vit dans le DOM (sélectionnable, lisible par un lecteur d'écran, net à
+Une par arrêt : un emplacement de texte ancré à l'objet commenté, qui le suit à
+l'écran quand la caméra bouge.
+
+**« Bulle » désigne ici un emplacement, pas une forme.** Le mot vient du code ;
+il ne préjuge en rien de l'apparence — ce n'est pas une bulle de bande dessinée,
+et rien n'impose une queue, un contour ou un fond. C'est précisément ce qu'il
+faut concevoir.
+
+Le texte vit dans le DOM (sélectionnable, lisible par un lecteur d'écran, net à
 toute densité), pas peint dans le canvas.
 
 ## Les 11 cadrages
@@ -60,14 +67,15 @@ pixel absolues.
 
 ## Direction artistique
 
-**« Carnet de BD »**, dérivée du rendu 2,5D de la scène : trait dessiné, aplats,
-bulles de bande dessinée avec une queue qui pointe l'objet commenté. L'UI et la
-scène partagent le même langage graphique.
+**Elle est à proposer — aucune direction n'est arrêtée.** Une seule contrainte :
+que l'UI tienne avec la scène. Celle-ci emprunte **légèrement** au cartoon —
+aplats de couleur simples, formes lisibles — sans aller jusqu'au style dessiné ou
+illustré. Les rendus disent tout ; ils sont la référence, pas une description.
 
-L'exigence typographique est le point de risque : le trait dessiné doit rester
-**crédible pour un profil technique**, jamais enfantin. Accents français
-obligatoires (les textes seront bilingues FR/EN, ce qui joue sur les gabarits —
-le français est 15 à 20 % plus long).
+Le ton juste est celui d'un portfolio de développeur : chaleureux mais **crédible
+pour un profil technique**, jamais enfantin. C'est surtout un enjeu
+typographique. Accents français obligatoires (les textes seront bilingues FR/EN,
+ce qui joue sur les gabarits — le français est 15 à 20 % plus long).
 
 **Palette : à extraire des rendus à la pipette**, pas à inventer. Les rendus sont
 calibrés exactement comme le rendu WebGL, donc la cohérence scène/UI est garantie
@@ -100,9 +108,10 @@ implémentable.
 
 ## Livrable
 
-**`docs/DESIGN.md`** : tokens (typographie, palette, échelle d'espacement),
-anatomie des deux composants (bulle : trait, épaisseur, queue, padding ; barre de
-menu : largeur, états, comportement au survol), budgets de motion.
+**`docs/DESIGN.md`** : la direction retenue et ce qui la justifie, les tokens
+(typographie, palette, échelle d'espacement), l'anatomie des deux composants
+(bulle : forme, fond, padding, rapport à l'objet ancré ; barre de menu : largeur,
+états, comportement au survol) et les budgets de motion.
 
 C'est la source de vérité des reviews design suivantes.
 
