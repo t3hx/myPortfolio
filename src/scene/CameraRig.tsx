@@ -2,7 +2,7 @@ import { useFrame, useThree } from '@react-three/fiber'
 import gsap from 'gsap'
 import { useEffect, useRef } from 'react'
 import { PerspectiveCamera, Quaternion, Vector3 } from 'three'
-import { applyProgress, type StopTransform } from '@/lib/stops'
+import { applyProgress, verticalFov, type StopTransform } from '@/lib/stops'
 import { stopParamIndex } from '@/lib/viewMode'
 import { useInteraction } from '@/state/interaction'
 
@@ -215,7 +215,7 @@ export function CameraRig({ stops }: CameraRigProps) {
           onUpdate: () => {
             camera.position.lerpVectors(fromPos.current, moon.position, t.v)
             camera.quaternion.copy(fromQuat.current).slerp(moon.quaternion, t.v)
-            camera.fov = fromFov + (moon.fov - fromFov) * t.v
+            camera.fov = fromFov + (verticalFov(moon.hfov, camera.aspect) - fromFov) * t.v
             camera.updateProjectionMatrix()
           },
         })
@@ -227,7 +227,11 @@ export function CameraRig({ stops }: CameraRigProps) {
         const backPos = camera.position.clone()
         const backQuat = camera.quaternion.clone()
         const backFov = camera.fov
+        // Sample where the tour currently points. The scratch camera must
+        // carry the REAL viewport aspect, or applyProgress would compute its
+        // vertical fov for a square frame and the return would land zoomed.
         const railCam = new PerspectiveCamera()
+        railCam.aspect = camera.aspect
         applyProgress(railCam, stops, pos.p)
         const t = { v: 0 }
         excursion.current = gsap.to(t, {

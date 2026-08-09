@@ -47,7 +47,9 @@ This replaced the legacy `blenderMatch.ts` calibration system (git history), whi
 
 ### Camera stops (`src/config/cameraStops.ts` + `src/lib/stops.ts`)
 
-**Blender is the single source of truth for poses AND focal lengths.** `extractStops()` samples each `CameraStop_*` node's world transform and its camera's fov straight from the loaded graph (no Z-up→Y-up conversion to get wrong); the glb's cameras are never made active, we tween *our* render camera to match. Per-stop fov is what gives the telescope-moon zoom (7.6°) and the guitar wide shot (84°) for free.
+**Blender is the single source of truth for poses AND focal lengths.** `extractStops()` samples each `CameraStop_*` node's world transform straight from the loaded graph (no Z-up→Y-up conversion to get wrong); the glb's cameras are never made active, we tween *our* render camera to match.
+
+**Field of view is stored HORIZONTALLY — do not "simplify" this.** A glTF camera describes its framing as `yfov` **+ `aspectRatio`**, and Blender derives that pair from the scene's render resolution: the v12 export declares `aspectRatio: 1`, so its `yfov` is the field of a *square* frame (Home: 54.43°), not the vertical field of a widescreen one. Feeding it straight into three's `camera.fov` (vertical, against the canvas aspect) frames everything far too wide — it visibly broke the Home reveal. The horizontal field is the invariant: 54.43° horizontal = 32.27° vertical at 16:9, exactly what the previous export declared for the same camera. `applyProgress()` interpolates the horizontal field and converts it per viewport via `verticalFov()` — a **horizontal fit**, so Blender's framing survives every screen ratio and a shorter viewport crops top/bottom instead of pulling back and losing the shot.
 
 Adding a stop = name a camera `CameraStop_<X>` in Blender **+** add one line to `CAMERA_STOPS` (the array *is* the tour order, and its `label` is the `?stop=` key). A stop listed in code but missing from the glb is skipped with a console warning.
 

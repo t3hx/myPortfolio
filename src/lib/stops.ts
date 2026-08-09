@@ -1,11 +1,40 @@
 import { PerspectiveCamera, Quaternion, Vector3, type Object3D } from 'three'
 import { CAMERA_STOPS } from '@/config/cameraStops'
 
-/** A camera stop's world transform, extracted from the loaded .glb. */
+/** A camera stop's world transform, extracted from the loaded .glb.
+ *
+ *  The field of view is stored HORIZONTALLY, on purpose. A glTF camera
+ *  describes its framing as `yfov` + `aspectRatio`, and Blender picks that
+ *  pair from the scene's render resolution: the v12 export declares
+ *  `aspectRatio: 1`, so its `yfov` (Home: 54.43°) is the field of a SQUARE
+ *  frame — not the vertical field of a widescreen one. Feeding it straight
+ *  into three's `camera.fov` (which is vertical, against the CANVAS aspect)
+ *  framed everything far too wide.
+ *
+ *  The horizontal field is the invariant across both: 54.43° horizontal is
+ *  32.27° vertical at 16:9, which is exactly what the previous export
+ *  declared for the same camera. Store it once, derive the vertical field per
+ *  viewport (see `verticalFov`).
+ */
 export interface StopTransform {
   position: Vector3
   quaternion: Quaternion
-  fov: number
+  /** Horizontal field of view, in degrees. */
+  hfov: number
+}
+
+const DEG = 180 / Math.PI
+const RAD = Math.PI / 180
+
+/**
+ * Vertical fov (degrees) that renders `hfov` horizontally on a viewport of
+ * `aspect` — the "horizontal fit" policy: Blender's horizontal framing is
+ * preserved on every screen, and a viewport shorter than the authored frame
+ * simply crops top and bottom rather than pulling back and losing the shot.
+ */
+export function verticalFov(hfov: number, aspect: number): number {
+  const a = aspect > 0 ? aspect : 1
+  return 2 * Math.atan(Math.tan((hfov * RAD) / 2) / a) * DEG
 }
 
 /**
@@ -40,7 +69,12 @@ export function extractStops(scene: Object3D): Map<string, StopTransform> {
     const source = cam ?? node
     source.getWorldPosition(position)
     source.getWorldQuaternion(quaternion)
-    stops.set(stop.camera, { position, quaternion, fov: cam?.fov ?? 45 })
+    // glTF `yfov` + `aspectRatio`, as loaded into three's camera.fov/.aspect.
+    // Convert to the horizontal field, which is what the framing really is.
+    const yfov = cam?.fov ?? 45
+    const aspect = cam?.aspect && cam.aspect > 0 ? cam.aspect : 1
+    const hfov = 2 * Math.atan(Math.tan((yfov * RAD) / 2) * aspect) * DEG
+    stops.set(stop.camera, { position, quaternion, hfov })
   }
 
   if (stops.size === 0) {
@@ -68,8 +102,9 @@ const tmpQuat = new Quaternion()
 
 /**
  * Applies a continuous tour progress p ∈ [0, N-1] to the render camera:
- * position lerped, orientation slerped, fov interpolated (so focal-length
- * changes — 20 mm wide shot → 270 mm telescope zoom — come for free).
+ * position lerped, orientation slerped, horizontal fov interpolated (so
+ * focal-length changes — the wide guitar shot → the telescope-moon zoom —
+ * come for free), then converted to the vertical fov this viewport needs.
  */
 export function applyProgress(cam: PerspectiveCamera, stops: StopTransform[], p: number): void {
   if (stops.length === 0) return
@@ -83,6 +118,6 @@ export function applyProgress(cam: PerspectiveCamera, stops: StopTransform[], p:
   tmpQuat.copy(a.quaternion).slerp(b.quaternion, t)
   cam.position.copy(tmpPos)
   cam.quaternion.copy(tmpQuat)
-  cam.fov = a.fov + (b.fov - a.fov) * t
+  cam.fov = verticalFov(a.hfov + (b.hfov - a.hfov) * t, cam.aspect)
   cam.updateProjectionMatrix()
 }
