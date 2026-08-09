@@ -19,14 +19,16 @@ This is a **React 19 + react-three-fiber v9** single-page portfolio that renders
 
 The reference design doc (product decisions, review reports, spike verdicts) lives at `~/.gstack/projects/t3hx-myPortfolio/tehx-fix-rendering-design-20260804-174239.md`. The interaction spec for the scene is `docs/PORTFOLIO_3D_INTERACTIONS.md` — **read it before touching scene behavior**; it lists every animation/interaction with exact object names.
 
-### The asset (IMPORTANT — currently `docs/portfolio_v10.glb`, 2026-08-09)
+### The asset (IMPORTANT — currently `docs/portfolio_v12.glb`, 2026-08-09)
 
-`public/models/scene.glb` is a copy of the latest export. Blender is the source of truth and the `.glb` is gitignored — copy it into any fresh worktree. Current export: **7.6 MB, 146 meshes, 124 materials, 15 textures, ~173 MB texture VRAM**. It is **entirely pre-baked unlit**:
+`public/models/scene.glb` is a copy of the latest export. Blender is the source of truth and the `.glb` is gitignored — copy it into any fresh worktree. Current export: **3.0 MB, 146 meshes, 124 materials, 14 textures, ~162 MB texture VRAM**. It is **entirely pre-baked unlit**:
 
-- **No lights, no cameras, no animations in the file.** All lighting + AgX tone mapping is cooked into the textures.
-- The baked image of each material lives in its **emissive texture slot** (100 of the 124 materials have one).
-- Textures ship as **webp** (`EXT_texture_webp`, supported natively by three's GLTFLoader) — hence 7.6 MB where the previous PNG export weighed 90 MB. Main atlas `bake_atlas_2048_agx` is 2048² (was 4096²).
-- **No `runtime` tags any more** (v10 dropped the custom properties). `RoomModel` therefore *derives* each material's treatment from the glTF itself — see below. Tags are still read first if a future export restores them.
+- **No lights and no animations in the file.** All lighting + AgX tone mapping is cooked into the textures.
+- The baked image of each material lives in its **emissive texture slot** (100 of the 124 materials have one). Any other slot is dead weight: an unlit pipeline ignores normal/AO/roughness maps.
+- **11 `CameraStop_*` cameras**, each carrying its own focal length — the tour's single source of truth (see below).
+- Compression: **Draco geometry + webp textures** (`KHR_draco_mesh_compression`, `EXT_texture_webp`). 90 MB of PNG/raw → 7.6 MB webp → 3.0 MB with Draco; geometry was ~5.4 MB of that. Draco needs the decoder in `public/draco/` (see `DRACO_DECODER_PATH`).
+- **No `runtime` tags** (dropped in v10). `RoomModel` therefore *derives* each material's treatment from the glTF itself — see below. Tags are still read first if a future export restores them.
+- Texture VRAM is the real mobile risk and compression does **not** reduce it: KTX2 in CI is still required.
 
 ### Render pipeline (`src/config/renderPipeline.ts` + `src/scene/RoomModel.tsx`)
 
@@ -43,9 +45,15 @@ Folding `emissiveIntensity` into the colour is load-bearing: `KHR_materials_emis
 
 This replaced the legacy `blenderMatch.ts` calibration system (git history), which belonged to the old lit export. If colors look wrong, the bake is wrong — fix it in Blender.
 
-### Camera stops (`src/config/stopPoses.ts` + `src/lib/stops.ts`)
+### Camera stops (`src/config/cameraStops.ts` + `src/lib/stops.ts`)
 
-The current export has **no cameras**, so the 10 stop poses (position / quaternion / **per-stop fov** — 32.3° standard, 4.3° telescope-moon zoom, 53.7° guitar wide) are hardcoded in `STOP_POSES`, sampled from the legacy export which still had real Blender cameras. `orderedStops()` prefers glb-extracted cameras when present, falls back to the table — so re-adding `CameraStop_*` cameras to a future export just works. Stop order + labels: `src/config/cameraStops.ts` (order = tour order = `?stop=` keys).
+**Blender is the single source of truth for poses AND focal lengths.** `extractStops()` samples each `CameraStop_*` node's world transform straight from the loaded graph (no Z-up→Y-up conversion to get wrong); the glb's cameras are never made active, we tween *our* render camera to match.
+
+**Field of view is stored HORIZONTALLY — do not "simplify" this.** A glTF camera describes its framing as `yfov` **+ `aspectRatio`**, and Blender derives that pair from the scene's render resolution: the v12 export declares `aspectRatio: 1`, so its `yfov` is the field of a *square* frame (Home: 54.43°), not the vertical field of a widescreen one. Feeding it straight into three's `camera.fov` (vertical, against the canvas aspect) frames everything far too wide — it visibly broke the Home reveal. The horizontal field is the invariant: 54.43° horizontal = 32.27° vertical at 16:9, exactly what the previous export declared for the same camera. `applyProgress()` interpolates the horizontal field and converts it per viewport via `verticalFov()` — a **horizontal fit**, so Blender's framing survives every screen ratio and a shorter viewport crops top/bottom instead of pulling back and losing the shot.
+
+Adding a stop = name a camera `CameraStop_<X>` in Blender **+** add one line to `CAMERA_STOPS` (the array *is* the tour order, and its `label` is the `?stop=` key). A stop listed in code but missing from the glb is skipped with a console warning.
+
+There is deliberately **no hardcoded pose table** any more: it existed only while an export shipped without cameras, and two sources of truth for the same thing is a bug waiting to happen.
 
 **The `Home` framing is deliberate** (product decision): it fills the frame with a monitor so the first screen reads as a flat 2D image; the first scroll pulls back and reveals the room in 3D. That reveal is the opening beat of the experience — never "fix" Home into a room overview.
 

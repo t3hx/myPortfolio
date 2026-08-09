@@ -13,6 +13,7 @@ import {
 } from 'three'
 import {
   DECAL_ALPHA_TEST,
+  DRACO_DECODER_PATH,
   GLASS_OPACITY,
   MODEL_SRC,
   MOON_DETAILED_NAMES,
@@ -131,7 +132,7 @@ function rebuildMaterial(src: MeshStandardMaterial, tag: RuntimeTag): MeshBasicM
 }
 
 export function RoomModel({ onReady }: RoomModelProps) {
-  const { scene } = useGLTF(MODEL_SRC)
+  const { scene } = useGLTF(MODEL_SRC, DRACO_DECODER_PATH)
   const applied = useRef(false)
 
   useEffect(() => {
@@ -202,4 +203,4 @@ export function RoomModel({ onReady }: RoomModelProps) {
   return <primitive object={scene} onClick={onClick} />
 }
 
-useGLTF.preload(MODEL_SRC)
+useGLTF.preload(MODEL_SRC, DRACO_DECODER_PATH)
