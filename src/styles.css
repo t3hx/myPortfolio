@@ -1,0 +1,270 @@
+/* Spike-grade styling. The "comic stroke" flavour on bubble/panel is a wink at
+   the locked "Carnet de BD" direction — real tokens come from the design session. */
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: #04050c;
+  font-family: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', monospace;
+}
+
+.stage {
+  position: fixed;
+  inset: 0;
+}
+
+/* --- HUD -------------------------------------------------------------------------- */
+/* Root swallows no events; interactive islands re-enable them. Wheel anywhere else
+   falls through to drei's hidden scroller (risk point #2, "suspenders" half). */
+.hud {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 200;
+  color: rgba(190, 215, 255, 0.85);
+}
+
+.loader {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  font-size: 13px;
+  letter-spacing: 0.08em;
+}
+
+.spinner {
+  width: 26px;
+  height: 26px;
+  border: 2px solid rgba(120, 200, 255, 0.2);
+  border-top-color: #6fd0ff;
+  border-radius: 50%;
+  animation: spin 0.9s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.status {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  letter-spacing: 0.06em;
+}
+
+.phase {
+  padding: 3px 8px;
+  border-radius: 5px;
+  border: 1px solid rgba(120, 200, 255, 0.35);
+  background: rgba(6, 9, 20, 0.6);
+  font-weight: 700;
+}
+
+.phase-touring {
+  color: #8be28b;
+}
+.phase-parked {
+  color: #6fd0ff;
+}
+.phase-panel {
+  color: #ffce6b;
+}
+.phase-telescope {
+  color: #d99bff;
+}
+
+/* --- Stop rail -------------------------------------------------------------------- */
+.rail {
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  pointer-events: auto;
+}
+
+.rail button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-direction: row-reverse;
+  background: none;
+  border: none;
+  padding: 3px;
+  cursor: pointer;
+  color: rgba(190, 215, 255, 0.55);
+  font: inherit;
+  font-size: 11px;
+}
+
+.rail .dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  border: 1px solid rgba(120, 200, 255, 0.5);
+  background: transparent;
+  transition: background 0.2s, transform 0.2s;
+}
+
+.rail button.active .dot {
+  background: #6fd0ff;
+  transform: scale(1.25);
+}
+
+.rail .rail-label {
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.rail button:hover .rail-label,
+.rail button.active .rail-label {
+  opacity: 1;
+}
+
+/* --- Actions & hint --------------------------------------------------------------- */
+.actions {
+  position: absolute;
+  bottom: 46px;
+  left: 16px;
+  display: flex;
+  gap: 8px;
+  pointer-events: auto;
+}
+
+.actions button,
+.panel header button,
+.bubble button {
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(120, 200, 255, 0.35);
+  background: rgba(6, 9, 20, 0.7);
+  color: #eaf4ff;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.actions button:hover {
+  border-color: #6fd0ff;
+}
+
+.hint {
+  position: absolute;
+  bottom: 14px;
+  left: 16px;
+  margin: 0;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: rgba(190, 215, 255, 0.45);
+}
+
+/* --- Panel (risk point #2: wheel belongs to the panel) ----------------------------- */
+.panel {
+  position: absolute;
+  top: 0;
+  right: 0;
+  height: 100%;
+  width: min(420px, 90vw);
+  display: flex;
+  flex-direction: column;
+  pointer-events: auto;
+  z-index: 300;
+  background: rgba(10, 14, 28, 0.92);
+  border-left: 3px solid #eaf4ff;
+  backdrop-filter: blur(8px);
+}
+
+.panel header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border-bottom: 1px solid rgba(120, 200, 255, 0.25);
+}
+
+.panel h2 {
+  margin: 0;
+  font-size: 14px;
+  letter-spacing: 0.05em;
+}
+
+.panel-body {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 14px 16px;
+  font-size: 12.5px;
+  line-height: 1.7;
+  color: rgba(210, 228, 255, 0.8);
+}
+
+.panel-end {
+  text-align: center;
+  color: #6fd0ff;
+}
+
+/* Stable portal layer for world-anchored bubbles — sits between the canvas (0)
+   and the HUD (200) so panels/nav always paint above bubbles. */
+.bubble-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 100;
+  overflow: hidden;
+}
+
+/* --- Bubble (risk point #3: drei <Html> stacking under the HUD) -------------------- */
+.bubble {
+  position: relative;
+  width: max-content;
+  max-width: 240px;
+  padding: 12px 14px;
+  border: 2.5px solid #10131f;
+  border-radius: 14px;
+  background: #f4f6ff;
+  color: #10131f;
+  font-size: 12.5px;
+  line-height: 1.5;
+  box-shadow: 3px 3px 0 rgba(16, 19, 31, 0.55);
+  pointer-events: auto;
+}
+
+.bubble p {
+  margin: 0 0 8px;
+}
+
+.bubble button {
+  background: #10131f;
+  color: #f4f6ff;
+  border-color: #10131f;
+}
+
+.bubble-tail {
+  position: absolute;
+  left: 28px;
+  bottom: -11px;
+  width: 16px;
+  height: 16px;
+  background: #f4f6ff;
+  border-right: 2.5px solid #10131f;
+  border-bottom: 2.5px solid #10131f;
+  transform: rotate(45deg) skew(12deg, 12deg);
+}
