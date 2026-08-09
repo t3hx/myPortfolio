@@ -72,21 +72,13 @@ que l'UI tienne avec la scène. Celle-ci emprunte **légèrement** au cartoon �
 aplats de couleur simples, formes lisibles — sans aller jusqu'au style dessiné ou
 illustré. Les rendus disent tout ; ils sont la référence, pas une description.
 
-Le ton juste est celui d'un portfolio de développeur : chaleureux mais **crédible
-pour un profil technique**, jamais enfantin. C'est surtout un enjeu
-typographique. Accents français obligatoires (les textes seront bilingues FR/EN,
-ce qui joue sur les gabarits — le français est 15 à 20 % plus long).
-
 **Palette : à extraire des rendus à la pipette**, pas à inventer. Les rendus sont
 calibrés exactement comme le rendu WebGL, donc la cohérence scène/UI est garantie
 par construction.
 
-### Interdictions
-
-- Pas de fonte système par défaut (`system-ui`, Inter, Arial) en typo principale.
-- Pas de gradient violet/indigo, pas de blobs ni de vagues SVG décoratives.
-- Pas de grille 3 colonnes « icône dans un cercle + titre + description ».
-- Pas de radius uniforme *bubbly* partout.
+Les textes seront bilingues FR/EN : la typographie doit couvrir les accents
+français, et les gabarits tenir dans les deux langues (le français est 15 à 20 %
+plus long).
 
 ## Contraintes techniques
 
