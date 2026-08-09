@@ -6,6 +6,16 @@ dist-ssr
 .vscode/*
 !.vscode/extensions.json
 node_modules/.tmp
+.env
+/docs
 
 # Large source assets you may not want in git (uncomment if needed)
 public/models/*.glb
+
+# Throwaway Playwright captures used while tuning the renderer.
+# Committed reference renders live in docs/renders/refs/ — those stay tracked.
+docs/renders/actual/
+
+# Playwright MCP session artifacts (snapshots, console logs).
+.playwright-mcp/
+.

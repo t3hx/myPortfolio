@@ -7,7 +7,8 @@ import RoomModel from '@/components/RoomModel.vue'
 import PostFx from '@/components/PostFx.vue'
 import TourControls from '@/components/TourControls.vue'
 import { useCameraTour, type StopTransform } from '@/composables/useCameraTour'
-import { useViewMode } from '@/composables/useViewMode'
+import { useStopParam, useViewMode } from '@/composables/useViewMode'
+import { CAMERA_STOPS } from '@/config/cameraStops'
 import {
   CLEAR_COLOR,
   MODEL_SRC,
@@ -15,9 +16,11 @@ import {
   SHADOW_MAP_TYPE,
   TONE_MAPPING,
   TONE_MAPPING_EXPOSURE,
+  WORLD_AMBIENT_COLOR,
+  WORLD_AMBIENT_INTENSITY,
 } from '@/config/blenderMatch'
 
-const postFx = ref(false) // bloom + AGX tone-mapping pass (see PostFx.vue)
+const postFx = ref(true) // bloom + AGX tone-mapping pass (see PostFx.vue)
 
 // View mode is resolved once from the URL at module load — see useViewMode.ts.
 // 'tour' is the default; ?debug-fly opts into first-person nav.
@@ -37,6 +40,16 @@ function onReady(ctx: TresContext) {
 function onModelReady(payload: { stops: Map<string, StopTransform> }) {
   stops.value = payload.stops
   loading.value = false
+
+  // Optional ?stop=<label> deep-link: snap to that camera stop on first load.
+  // Matches the friendly label from cameraStops.ts (case-insensitive); 'bookshelfplant'
+  // also resolves under the shorter 'bookshelf' alias used in docs/renders/refs/.
+  const target = useStopParam()
+  if (!target) return
+  const index = CAMERA_STOPS.findIndex(
+    (s) => s.label.toLowerCase() === target || s.label.toLowerCase().startsWith(target),
+  )
+  if (index !== -1) tour.snapTo(index)
 }
 
 function select(index: number) {
@@ -68,8 +81,9 @@ function select(index: number) {
         :look-at="[0, 1.1, 0]"
       />
 
-      <!-- Faint ambient approximating the dim Blender world contribution. -->
-      <TresAmbientLight :color="'#0a1430'" :intensity="0.15" />
+      <!-- Ambient defaults to 0 intensity in blenderMatch.ts — kept here as a knob
+           in case a future scene needs world fill. See WORLD_AMBIENT_INTENSITY docs. -->
+      <TresAmbientLight :color="WORLD_AMBIENT_COLOR" :intensity="WORLD_AMBIENT_INTENSITY" />
 
       <Suspense>
         <RoomModel :src="MODEL_SRC" @ready="onModelReady" />

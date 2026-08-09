@@ -30,15 +30,58 @@ export const WORLD_AMBIENT_INTENSITY = 0.15
 
 /** glTF KHR_lights_punctual intensities are imported in physical units. If your lights
  *  come in too dim/bright vs Blender, scale them all here (1 = as exported). */
-export const LIGHT_INTENSITY_MULTIPLIER = 1.0
+export const LIGHT_INTENSITY_MULTIPLIER = 0.015
 
-/** In Blender only these lights cast shadows (the rest are fill). glTF doesn't store the
- *  per-light shadow flag, so we re-apply it here by matching on name substrings.
- *  Set to [] to let every imported light cast shadows. */
+/** Only these lights cast shadows (the rest are fill). Three.js' "fill" lights still
+ *  illuminate uniformly within their cone (no occlusion), which is a deliberate
+ *  trade-off: enabling shadows on EVERY light produces hard contrast that doesn't
+ *  match the Blender refs (the refs benefit from EEVEE indirect light filling the
+ *  shadow areas softly — Three.js has no GI). Per-light intensity dialling via
+ *  LIGHT_OVERRIDES below handles the lights that bleed too much. */
 export const SHADOW_CASTING_LIGHTS: string[] = ['PCBloom', 'ScoreboardAccent', 'PosterCode']
+
+/** Per-light intensity multipliers, applied AFTER LIGHT_INTENSITY_MULTIPLIER. Matched
+ *  by name substring. Use to dial back lights that would otherwise dominate the scene.
+ *
+ *  Identified by reading the .glb light table — `Light_WindowFill` exports at ~1631
+ *  candela (intensity 24 after the global multiplier), with a 60° cone and no falloff
+ *  distance. It floods the room with broad light. Killing it gives the rest of the
+ *  scene room to breathe.
+ *
+ *  Add a name → 0 to disable; 0.3 to weaken; 1 (or omit) for full intensity. */
+export const LIGHT_OVERRIDES: Record<string, number> = {
+  WindowFill: 0,
+  PosterAlbum: 0.3,
+  MoonKey: 0.5,
+}
 
 export const SHADOW_MAP_TYPE = PCFSoftShadowMap
 export const SHADOW_MAP_SIZE = 1024
 
 /** Path (relative to /public) of the .glb you export from Blender. */
 export const MODEL_SRC = '/models/scene.glb'
+
+// --- Bloom (PostFx.vue) --------------------------------------------------------------
+// Recovers EEVEE's bloom on emissive parts (LED tiles, monitors, PC fans, cat eyes,
+// Hellfest poster ink, triangular wall panels). Only takes effect when PostFx is mounted
+// (PortfolioScene.vue's `postFx` flag — on by default).
+//
+// Tuning knobs, in increasing order of "things change":
+//   - LUMINANCE_THRESHOLD: pixels above this brightness bloom. Lower = more things glow.
+//   - INTENSITY:           how strong the bloom add-back is on top of the base image.
+//   - LUMINANCE_SMOOTHING: softens the threshold edge so things ease into bloom.
+export const BLOOM_INTENSITY = 0.25
+export const BLOOM_LUMINANCE_THRESHOLD = 1.3
+export const BLOOM_LUMINANCE_SMOOTHING = 0.05
+
+// --- Color grading (PostFx.vue) ------------------------------------------------------
+// AgX tone mapping is designed for cinematic restraint — it pulls saturation out of
+// highlights to feel filmic. The Blender references are punchier than that. A small
+// HueSaturation post-pass after tone mapping puts the saturation back.
+//
+// IMPORTANT: the @tresjs/post-processing typings claim range [0, 1] with 1 = unchanged,
+// but the underlying postprocessing.HueSaturationEffect uses [-1, +1] with 0 = unchanged
+// (verified by reading node_modules/postprocessing/.../HueSaturationEffect docstring).
+// Values > 1 cause hue wrap-around — use small positive values to boost.
+//   -1.0 → grayscale,  0.0 → unchanged,  +1.0 → maximum saturation.
+export const SATURATION = 0.3

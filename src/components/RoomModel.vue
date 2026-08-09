@@ -11,6 +11,7 @@ import {
 import { watch } from 'vue'
 import {
   LIGHT_INTENSITY_MULTIPLIER,
+  LIGHT_OVERRIDES,
   SHADOW_CASTING_LIGHTS,
   SHADOW_MAP_SIZE,
 } from '@/config/blenderMatch'
@@ -41,7 +42,9 @@ watch(
 
     // --- Match Blender lighting / shadows ---------------------------------------------
     // glTF carries materials + emissive + punctual lights, but NOT shadow flags, so we
-    // re-apply them here.
+    // re-apply them here. Shadows on EVERY light is critical: in Three.js, a light with
+    // castShadow=false illuminates through walls and uniformly lifts every surface in
+    // its cone, which destroys contrast. See SHADOW_CASTING_LIGHTS docstring.
     scene.traverse((obj: Object3D) => {
       const o = obj as any
 
@@ -52,6 +55,15 @@ watch(
 
       if (o.isLight) {
         o.intensity *= LIGHT_INTENSITY_MULTIPLIER
+
+        // Per-light intensity override (e.g. kill WindowFill that floods the room).
+        for (const [match, factor] of Object.entries(LIGHT_OVERRIDES)) {
+          if (o.name.includes(match)) {
+            o.intensity *= factor
+            break
+          }
+        }
+
         const cast =
           SHADOW_CASTING_LIGHTS.length === 0 ||
           SHADOW_CASTING_LIGHTS.some((name) => o.name.includes(name))
