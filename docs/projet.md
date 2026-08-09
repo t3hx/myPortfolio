@@ -38,6 +38,7 @@ Inspiration principale : <https://guillaumegouessan.com/>
 ### Auth
 
 - Authentification requise : lien magique + Google + GitHub.
+- ⚠️ **Différée (2026-08-09)** : aucune issue ouverte, hors périmètre de la v1.
 
 ### Mobile
 
@@ -48,6 +49,7 @@ Inspiration principale : <https://guillaumegouessan.com/>
 - Tendance **2,5D** (2D + 3D) : contours projetés et aplats de couleur simples, proche du cell-shading.
 - Les contours projetés de Blender (Line Art / Freestyle) sont la cible visuelle mais **ne s'exportent pas dans un `.glb`** : gros chantier pour les reproduire fidèlement en post-processing Three.js (outline pass, edge detection, ou autre technique à évaluer).
 - Le matching colorimétrique Blender EEVEE → WebGL est déjà calibré dans le prototype (`src/config/blenderMatch.ts` : AgX tone mapping, exposition, multiplicateur d'intensité lumineuse ×0.01, bloom). Ces valeurs et la boucle de comparaison (`docs/renders/refs/` vs captures) sont à transposer telles quelles.
+- ⚠️ **Périmé (2026-08-09)** : `blenderMatch.ts` a été supprimé avec l'export lit. L'export v12 est **entièrement pré-baké unlit** — l'AgX est cuit dans les textures, le rendu tourne en `NoToneMapping`, zéro lumière. Le pipeline courant est `src/config/renderPipeline.ts`. Seule la boucle de comparaison aux renders reste valable.
 
 ## Architecture
 
@@ -57,10 +59,10 @@ Inspiration principale : <https://guillaumegouessan.com/>
 
 - **react-three-fiber** (+ drei, postprocessing, ou toute techno 3D pertinente à conseiller)
 - **GSAP** pour le tweening avancé — incontournable
-- **Tailwind 4** pour l'UI
+- **Tailwind 4** pour l'UI — ℹ️ **état au 2026-08-09** : pas encore installé (rien n'en avait besoin). L'UI actuelle est du CSS écrit à la main (`src/styles.css`). Le choix reste ouvert.
 - **pnpm** comme package manager
 
-Les acquis du prototype à transposer : extraction des transforms des caméras `CameraStop_*` du `.glb`, tweening position/quaternion/fov, calibrage `blenderMatch`, modes de vue pilotés par URL, renders de référence.
+Les acquis du prototype à transposer : extraction des transforms des caméras `CameraStop_*` du `.glb`, tweening position/quaternion/fov, ~~calibrage `blenderMatch`~~ (supprimé, voir Direction artistique), modes de vue pilotés par URL, renders de référence.
 
 ### Backend & données
 
@@ -76,7 +78,7 @@ Les acquis du prototype à transposer : extraction des transforms des caméras `
 ### Outillage IA
 
 - Framework **Gstack + Gbrain** (garry-tan) : `/office-hours` pour discuter, reviews croisées, sous-agents pour tâches spécifiques. <https://github.com/garrytan/gstack>
-- **Claude Design** interviendra sur la partie visuelle (UI hors 3D) une fois le topo produit ; l'UI est minimale, le clou du spectacle étant la 3D interactive.
+- **Claude Design** interviendra sur la partie visuelle (UI hors 3D) une fois le topo produit ; l'UI est minimale, le clou du spectacle étant la 3D interactive. → **Le topo est produit : `docs/BRIEF_CLAUDE_DESIGN.md`** (paquet d'entrée de la session, réconcilié avec l'export v12).
 
 ## Guidelines de coding
 

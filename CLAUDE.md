@@ -22,13 +22,13 @@ This is a **React 19 + react-three-fiber v9** single-page portfolio that renders
 
 The reference design doc (product decisions, review reports, spike verdicts) lives at `~/.gstack/projects/t3hx-myPortfolio/tehx-fix-rendering-design-20260804-174239.md`. The interaction spec for the scene is `docs/PORTFOLIO_3D_INTERACTIONS.md` — **read it before touching scene behavior**; it lists every animation/interaction with exact object names.
 
-### The asset (IMPORTANT — currently `docs/portfolio_v12.glb`, 2026-08-09)
+### The asset (IMPORTANT — currently `docs/portfolio_v13.glb`, 2026-08-10)
 
 `public/models/scene.glb` is a copy of the latest export. Blender is the source of truth and the `.glb` is gitignored — copy it into any fresh worktree. Current export: **3.0 MB, 146 meshes, 124 materials, 14 textures, ~162 MB texture VRAM**. It is **entirely pre-baked unlit**:
 
 - **No lights and no animations in the file.** All lighting + AgX tone mapping is cooked into the textures.
 - The baked image of each material lives in its **emissive texture slot** (100 of the 124 materials have one). Any other slot is dead weight: an unlit pipeline ignores normal/AO/roughness maps.
-- **11 `CameraStop_*` cameras**, each carrying its own focal length — the tour's single source of truth (see below).
+- **11 `CameraStop_*` cameras**, each carrying its own focal length — the tour's single source of truth (see below). v13 also declares `aspectRatio: 16/9`, which v12 did not.
 - Compression: **Draco geometry + webp textures** (`KHR_draco_mesh_compression`, `EXT_texture_webp`). 90 MB of PNG/raw → 7.6 MB webp → 3.0 MB with Draco; geometry was ~5.4 MB of that. Draco needs the decoder in `public/draco/` (see `DRACO_DECODER_PATH`).
 - **No `runtime` tags** (dropped in v10). `RoomModel` therefore *derives* each material's treatment from the glTF itself — see below. Tags are still read first if a future export restores them.
 - Texture VRAM is the real mobile risk and compression does **not** reduce it: KTX2 in CI is still required.
@@ -52,7 +52,9 @@ This replaced the legacy `blenderMatch.ts` calibration system (git history), whi
 
 **Blender is the single source of truth for poses AND focal lengths.** `extractStops()` samples each `CameraStop_*` node's world transform straight from the loaded graph (no Z-up→Y-up conversion to get wrong); the glb's cameras are never made active, we tween *our* render camera to match.
 
-**Field of view is stored HORIZONTALLY — do not "simplify" this.** A glTF camera describes its framing as `yfov` **+ `aspectRatio`**, and Blender derives that pair from the scene's render resolution: the v12 export declares `aspectRatio: 1`, so its `yfov` is the field of a *square* frame (Home: 54.43°), not the vertical field of a widescreen one. Feeding it straight into three's `camera.fov` (vertical, against the canvas aspect) frames everything far too wide — it visibly broke the Home reveal. The horizontal field is the invariant: 54.43° horizontal = 32.27° vertical at 16:9, exactly what the previous export declared for the same camera. `applyProgress()` interpolates the horizontal field and converts it per viewport via `verticalFov()` — a **horizontal fit**, so Blender's framing survives every screen ratio and a shorter viewport crops top/bottom instead of pulling back and losing the shot.
+**Field of view is stored HORIZONTALLY — do not "simplify" this.** A glTF camera describes its framing as `yfov` **+ `aspectRatio`**, and Blender derives that pair from the scene's render resolution. The horizontal field is the invariant: `extractStops()` computes it from *both* numbers, `applyProgress()` interpolates it, and `verticalFov()` converts it per viewport — a **horizontal fit**, so Blender's framing survives every screen ratio and a shorter viewport crops top/bottom instead of pulling back and losing the shot.
+
+**v13 made this trap harder to catch, not easier.** v12 declared `aspectRatio: 1` — a square frame — so feeding its `yfov` straight into three's `camera.fov` framed everything far too wide and visibly broke the Home reveal. v13 declares 16:9, so the same shortcut now looks *correct on a 16:9 viewport* and only drifts on other ratios: an ultrawide monitor or a laptop at 16:10 would quietly get a framing nobody authored. The derivation is still load-bearing; it just no longer fails loudly. `tests/stops.test.ts` is what keeps it honest.
 
 Adding a stop = name a camera `CameraStop_<X>` in Blender **+** add one line to `CAMERA_STOPS` (the array *is* the tour order, and its `label` is the `?stop=` key). A stop listed in code but missing from the glb is skipped with a console warning.
 
@@ -60,7 +62,7 @@ There is deliberately **no hardcoded pose table** any more: it existed only whil
 
 **The `Home` framing is deliberate** (product decision): it fills the frame with a monitor so the first screen reads as a flat 2D image; the first scroll pulls back and reveals the room in 3D. That reveal is the opening beat of the experience — never "fix" Home into a room overview.
 
-**All 11 stops come from the glb — verified 2026-08-09.** Every `CameraStop_*` node carries a real camera with its own authored focal length (Bookshelf 73.74° hfov ≈ 24 mm, MonitorVertical 38.19° ≈ 52 mm, TelescopeMoon 7.63° ≈ 270 mm). An earlier note here claimed the export lacked the bookshelf and second-monitor framings and told you to add them to a `STOP_POSES` table — both were wrong: v12 provides them, and that table was deliberately deleted. Design-doc tasks T6 and T7 predate the v12 export and are obsolete.
+**All 11 stops come from the glb — re-verified against v13, 2026-08-10.** Every `CameraStop_*` node carries a real camera with its own authored focal length, spanning GuitarPoster 83.97° hfov (≈ 20 mm) to TelescopeMoon 7.63° (≈ 270 mm). **Four framings changed between v12 and v13** — Bookshelf 73.74° → 49.55°, MonitorVertical 38.19° → 26.99°, Scoreboard 61.93° → 55.79°, Home 54.43° → 53.13° — which is why every reference render was re-shot. Nothing in the code changed: deriving the horizontal field from `yfov × aspectRatio` absorbed both the new focals and the new aspect ratio on its own. An earlier note here claimed the export lacked the bookshelf and second-monitor framings and told you to add them to a `STOP_POSES` table — both were wrong, and that table was deliberately deleted. Design-doc tasks T6 and T7 are obsolete.
 
 A node named `CameraStop_X` that carries **no** camera (an Empty) is now skipped with an explicit warning. It used to fall through to `fov = 45`: the stop parked at the right spot, said nothing, and showed a framing nobody authored — plausible enough to read as a Blender decision. `tests/stops.test.ts` locks both this and the horizontal-fov derivation; the two are the only regressions this file has ever shipped, and neither was visible to the eye.
 

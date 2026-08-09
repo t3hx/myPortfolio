@@ -42,10 +42,12 @@ describe('verticalFov', () => {
     expect(verticalFov(54.43, 1)).toBeCloseTo(54.43, 5)
   })
 
-  it("convertit les 54,43° horizontaux de Home en ~32,27° verticaux en 16:9", () => {
-    // L'invariant documenté : c'est exactement ce que l'export précédent
-    // déclarait pour cette même caméra. Si ce chiffre bouge, la révélation
-    // Home a changé de cadrage.
+  it('convertit 54,43° horizontaux en ~32,27° verticaux en 16:9', () => {
+    // Le couple de référence de la conversion. Il vient de deux exports
+    // successifs qui déclaraient la même caméra de deux façons différentes :
+    // 54,43° pour un cadre carré d'un côté, 32,27° de champ vertical 16:9 de
+    // l'autre. Les deux décrivent le même cadrage — c'est ce que cette
+    // fonction doit prouver.
     expect(verticalFov(54.43, 16 / 9)).toBeCloseTo(32.27, 1)
   })
 
