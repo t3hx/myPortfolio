@@ -8,7 +8,7 @@
 > fausses (§ 1). Il est volontairement autonome — le design doc vit hors du dépôt
 > et ne sera donc pas ingéré avec la codebase.
 >
-> Dernière réconciliation avec le code : 2026-08-09.
+> Dernière réconciliation avec le code : **2026-08-10, export v13**.
 
 ---
 
@@ -52,8 +52,9 @@ pourcentage de défilement.
 
 ### 1.2 Il y a 11 arrêts, pas 10 — un arrêt « CV » est apparu
 
-L'export v12 fournit **11 caméras `CameraStop_*`**, chacune portant sa propre
-focale. L'ordre de la visite est celui de `src/config/cameraStops.ts` :
+L'export **v13** fournit **11 caméras `CameraStop_*`**, chacune portant sa propre
+focale, et déclare enfin un `aspectRatio` de **16:9** (v12 déclarait un cadre
+carré). L'ordre de la visite est celui de `src/config/cameraStops.ts` :
 
 | # | Arrêt (label) | Nœud Blender | Facette racontée |
 |---|---|---|---|
@@ -81,14 +82,24 @@ maquette — le brief précédent ne le connaissait pas.
 
 ### 1.3 Les focales sont très hétérogènes — une maquette « générique » ne marchera pas
 
-Chaque caméra porte sa focale authoriale, et l'écart est extrême :
+Chaque caméra porte sa focale authoriale (valeurs v13, champ **horizontal**),
+et l'écart est extrême :
 
-- Bookshelf : 73,74° de champ horizontal (≈ 24 mm) — plan large
-- CV / MonitorVertical : 38,19° (≈ 52 mm)
-- Home : 54,43°
-- Moon : **7,63° (≈ 270 mm)** — téléobjectif serré
+| Arrêt | Champ horizontal | ≈ focale |
+|---|---|---|
+| Guitar | 83,97° | ≈ 20 mm — très large |
+| PosterTelescope | 61,93° | ≈ 29 mm |
+| Scoreboard | 55,79° | ≈ 33 mm |
+| Telescope | 54,43° | ≈ 34 mm |
+| Home | 53,13° | ≈ 35 mm |
+| Bookshelf | 49,55° | ≈ 38 mm |
+| Desk | 46,40° | ≈ 41 mm |
+| Cabinet | 41,91° | ≈ 46 mm |
+| Cat | 39,60° | ≈ 49 mm |
+| CV | 26,99° | ≈ 74 mm |
+| Moon | **7,63°** | **≈ 270 mm — téléobjectif serré** |
 
-Le 270 mm de la lune ne laisse pas la place d'un plan large 24 mm. **Chaque arrêt
+Le 270 mm de la lune ne laisse pas la place d'un plan large 20 mm. **Chaque arrêt
 a sa composition, son espace négatif et sa focale propres**, d'où la contrainte
 d'entrée du § 3.
 
@@ -153,24 +164,17 @@ Scène 3D, shaders, contours 3D (technique encore ouverte), écrans d'auth
 référence `docs/renders/refs/<stop>.png` (1280×720), jamais sur un canvas
 abstrait.** Chaque arrêt a sa composition et son espace négatif propres.
 
-**Disponible aujourd'hui — 9 renders** : `bookshelf`, `cabinet`, `cat`, `desk`,
-`guitar`, `moon`, `posters`, `scoreboard`, `telescope`.
+**Les 11 renders sont disponibles** (re-rendus depuis Blender le 2026-08-10 avec
+les focales et le ratio v13) : `home`, `cv`, `desk`, `scoreboard`, `bookshelf`,
+`cabinet`, `cat`, `guitar`, `posters`, `telescope`, `moon`. **Plus rien ne bloque
+la session.**
 
-**Manquant — 2 renders, et ce sont les deux plus critiques** : `home` (le plan
-d'ouverture) et `cv` / `MonitorVertical` (le nouvel arrêt du § 1.2).
+*Un douzième rendu, `docs/renders/overview.png`, montre la pièce entière. Ce n'est
+pas un arrêt de la visite — utile pour comprendre l'espace, à ne pas maquetter.*
 
-**Qui les produit** : ces images sont la vérité-terrain **Blender**, pas des
-captures runtime — c'est justement contre elles que la boucle de comparaison
-(#40 / #46) mesure le rendu WebGL. L'issue #40 le dit explicitement : *« les deux
-manquants sont à produire depuis Blender, donc côté utilisateur »*. Ce n'est donc
-**pas** une dépendance sur #45 (qui capture le runtime via Playwright), mais un
-rendu à lancer dans Blender.
-
-> **Contournement possible pour ne pas bloquer la session** : une capture runtime
-> à `?stop=Home` et `?stop=CV` est un **fond de maquette parfaitement suffisant**,
-> même si elle ne vaut pas comme référence de comparaison. Décision à prendre :
-> rendre les deux images dans Blender, ou démarrer sur des captures runtime pour
-> ces deux arrêts seulement.
+⚠️ **Les 9 anciennes références étaient périmées** et ont été remplacées : quatre
+cadrages ont changé entre v12 et v13 (Bookshelf 73,74° → 49,55°, CV 38,19° →
+26,99°, Scoreboard 61,93° → 55,79°, Home 54,43° → 53,13°).
 
 **Règle d'ancrage responsive** : les refs 16:9 sont des références de
 **composition**, pas une grille absolue. Le rendu réel s'étire du 16:10 portable
@@ -259,9 +263,20 @@ portait sur le risque de désamorcer la révélation en plaçant un écran devan
 du clic.** Conséquence pour les maquettes : l'écran de pré-sélection doit *donner
 envie d'entrer* — c'est lui qui porte la promesse que Home tiendra ensuite.
 
+**Piste offerte par le render `home.png`** : à ce cadrage, l'écran du moniteur
+remplit tout le champ et **le bake le laisse volontairement vide** — un aplat uni
+(≈ `#363c4a`), sans un pixel de décor. Autrement dit, le plan d'ouverture est déjà
+un rectangle plein cadre prêt à recevoir du contenu 2D. **L'écran de pré-sélection
+peut littéralement être « ce qui s'affiche sur le moniteur »** : le visiteur
+choisit sur l'écran allumé, puis la caméra recule et révèle la pièce autour. La
+pré-sélection cesse alors d'être un obstacle devant la révélation — elle en devient
+le premier plan. Idem pour l'arrêt `CV` (`cv.png`), écran vertical vide.
+
 ### 5.2 « CV » désigne un arrêt et un item de navigation (§ 1.2)
 
-### 5.3 Rendre Home et CV dans Blender, ou démarrer sur des captures runtime ? (§ 3)
+### 5.3 Renders manquants — RÉSOLU (2026-08-10)
+
+Les 11 renders ont été produits depuis Blender avec l'export v13 (§ 3).
 
 ### 5.4 Tokens en variables CSS, ou passage à Tailwind ?
 
@@ -401,8 +416,8 @@ Deux epics sont concernées : **#12** (coquille produit et accessibilité) et
 | #33 | Bilingue FR/EN (P1) | contraintes de gabarit bilingue § 4 |
 | #28 | Contrastes 4.5:1 et cibles tactiles 44 px (P1) | les seuils sont déjà posés § 7 |
 
-**Dépendance en amont** : les deux renders `home` et `cv` (§ 3) — rendu Blender,
-côté utilisateur.
+**Aucune dépendance en amont** : les 11 renders sont livrés, la session peut
+démarrer.
 
 **Aucune issue « design system » n'existe encore** : le `docs/DESIGN.md` du § 9
 n'a pas de ticket. À créer sous l'epic #12 si la session est lancée.
