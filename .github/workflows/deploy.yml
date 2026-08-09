@@ -1,0 +1,147 @@
+# Déploiement — chaque fusion sur `main` met l'app en ligne.
+#
+# `main` est la branche déployée : on n'y arrive que par une PR depuis `dev`,
+# fusionnée en **merge commit** (jamais en squash, qui ferait diverger les
+# deux troncs définitivement). La fusion déclenche, sans autre intervention :
+# CI → build des deux images → poussée sur GHCR → Dokploy tire et redémarre.
+# Le build se fait ici, sur GitHub, jamais sur le VPS.
+#
+# **La CI est un job de ce workflow, pas un voisin.** Elle l'était : `ci.yml`
+# et `deploy.yml` se déclenchaient tous deux sur `push: main` et couraient en
+# parallèle — une image pouvait partir en ligne pendant que les tests
+# tournaient encore, et rien ne l'arrêtait s'ils échouaient. `build-and-push`
+# dépend désormais de `verify` : sur une CI rouge, rien n'est construit et
+# rien n'est déployé.
+#
+# La santé de l'app est vérifiée PAR DOKPLOY (HEALTHCHECK des conteneurs +
+# rollback automatique), pas par ce workflow : une sonde depuis le runner
+# passerait par Cloudflare, qui répond 403 aux IP de datacenter — un faux
+# négatif qui ne dit rien de l'app. Le `--fail-with-body` des appels de
+# déploiement reste le garde-fou : Dokploy qui refuse = workflow rouge.
+name: deploy
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  # Lint, typecheck, build et tests — le workflow `ci`, appelé et non
+  # dupliqué : une seule définition des vérifications, jouée à l'identique
+  # sur les PR, sur `dev` et ici avant la mise en ligne.
+  verify:
+    uses: ./.github/workflows/ci.yml
+
+  build-and-push:
+    needs: verify
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      # Les deux images sont indépendantes : on les construit en parallèle.
+      matrix:
+        include:
+          - { image: owlog-web, dockerfile: apps/web/Dockerfile }
+          - { image: owlog-api, dockerfile: apps/api/Dockerfile }
+    steps:
+      - uses: actions/checkout@v5
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Le jeton partagé est lu DANS Doppler, pas dans un secret GitHub.
+      #
+      # Il vivait ici en double : `secrets.OWLOG_SHARED_TOKEN` côté Actions
+      # pour le bundle, `OWLOG_SHARED_TOKEN` côté Doppler pour le service.
+      # Rien n'imposait leur égalité, et leur divergence ne se manifeste pas
+      # au build : elle donne un bundle qui se charge, s'affiche, navigue —
+      # et répond 401 à la première frappe dans la recherche. Une seule
+      # source supprime le cas.
+      #
+      # Le `doppler.yaml` du dépôt épingle `dev` mais ne s'applique pas ici :
+      # il n'est lu que par `doppler setup`, et le jeton de service porte son
+      # propre couple projet/config. C'est donc bien `prd` qui répond.
+      - uses: dopplerhq/cli-action@v3
+      - name: Lire le jeton partagé dans Doppler
+        env:
+          DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN_PRD }}
+        run: |
+          token="$(doppler secrets get OWLOG_SHARED_TOKEN --plain)"
+          # Sans ce masquage, la valeur n'est pas un secret connu d'Actions :
+          # toute commande qui l'imprimerait plus tard la publierait en clair
+          # dans un journal de build lisible par quiconque a le dépôt.
+          echo "::add-mask::$token"
+          echo "OWLOG_SHARED_TOKEN=$token" >> "$GITHUB_ENV"
+
+      - id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ matrix.image }}
+          # `latest` est le tag que Dokploy tire ; le tag par SHA sert de trace
+          # et permet un rollback ciblé si besoin.
+          tags: |
+            type=raw,value=latest
+            type=sha,format=long
+
+      # Les build-args vivent ICI, pas dans le matrix : le contexte `env` n'y
+      # est pas disponible (il s'évaluerait en chaîne vide, et le Dockerfile
+      # web refuserait de se construire). owlog-web les consomme — adresse
+      # d'API et jeton partagé, PUBLICS par nature ; la clé TMDB ne quitte
+      # jamais l'API. owlog-api ne déclare pas ces ARG : BuildKit les ignore
+      # avec un avertissement inoffensif.
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          push: true
+          build-args: |
+            VITE_API_URL=/api
+            VITE_SHARED_TOKEN=${{ env.OWLOG_SHARED_TOKEN }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=${{ matrix.image }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.image }}
+
+  deploy:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      # Le panneau Dokploy n'est joignable que par le tailnet (aucun port web
+      # ouvert en entrée sur le VPS). Le runner s'y raccorde le temps du job.
+      - name: Connexion au tailnet
+        uses: tailscale/github-action@v4
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          tags: tag:ci
+
+      # L'API d'abord, le web ensuite : le front ne doit jamais tourner contre
+      # une API plus ancienne que lui.
+      - name: Déployer owlog-api
+        run: |
+          curl --fail-with-body -sS -X POST \
+            "${{ secrets.DOKPLOY_URL }}/api/application.deploy" \
+            -H 'accept: application/json' \
+            -H 'Content-Type: application/json' \
+            -H "x-api-key: ${{ secrets.DOKPLOY_TOKEN }}" \
+            -d '{"applicationId": "${{ secrets.DOKPLOY_APP_ID_BACK }}"}'
+
+      - name: Déployer owlog-web
+        run: |
+          curl --fail-with-body -sS -X POST \
+            "${{ secrets.DOKPLOY_URL }}/api/application.deploy" \
+            -H 'accept: application/json' \
+            -H 'Content-Type: application/json' \
+            -H "x-api-key: ${{ secrets.DOKPLOY_TOKEN }}" \
+            -d '{"applicationId": "${{ secrets.DOKPLOY_APP_ID_FRONT }}"}'
