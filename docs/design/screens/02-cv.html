@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Le CV — Portfolio 3D (référence design)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600&family=Newsreader:ital,opsz,wght@0,6..72,400;1,6..72,400;1,6..72,500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../tokens.css">
+<style>
+/* CV « affiché par l'écran » — écran mesuré : x 24,5 % → 75,3 % du cadre */
+.cv { position:absolute; left:27.5%; width:44.8%; top:0; bottom:0; display:flex; flex-direction:column; justify-content:center; gap:11px; pointer-events:auto; }
+.cv__row { display:flex; gap:11px; }
+.cv__photo { flex:none; width:104px; height:126px; border:1px dashed rgba(var(--cream-rgb),.35); border-radius:8px;
+  background:repeating-linear-gradient(45deg, rgba(var(--cream-rgb),.05) 0 8px, transparent 8px 16px);
+  display:flex; align-items:center; justify-content:center; font-family:ui-monospace,monospace; font-size:10px; color:rgba(var(--cream-rgb),.55); }
+.cv__card { flex:1; background:rgba(var(--cream-rgb),.07); border:1px solid rgba(var(--cream-rgb),.12); border-radius:8px; padding:13px 16px; display:flex; flex-direction:column; gap:7px; }
+.cv__card-title { font-size:10px; font-weight:500; letter-spacing:.2em; text-transform:uppercase; color:rgba(var(--cream-rgb),.5); margin:0 0 2px; }
+.cv__fact { display:flex; align-items:baseline; gap:8px; font-size:12.5px; }
+.cv__fact b { font-weight:400; color:var(--cream); }
+.cv__fact span { margin-left:auto; font-size:11.5px; font-family:ui-monospace,monospace; color:rgba(var(--cream-rgb),.55); }
+.job { background:rgba(var(--cream-rgb),.07); border:1px solid rgba(var(--cream-rgb),.12); border-radius:8px; padding:11px 16px; transition:background var(--t-item), border-color var(--t-item); }
+.job:hover { background:rgba(var(--cream-rgb),.1); border-color:rgba(var(--cream-rgb),.2); }
+.job__head { display:flex; align-items:baseline; gap:10px; }
+.job__title { font-size:13px; font-weight:500; color:var(--cream); }
+.job__company { font-size:11px; color:rgba(var(--cream-rgb),.55); }
+.job__period { margin-left:auto; flex:none; font-size:11px; font-family:ui-monospace,monospace; color:rgba(var(--cream-rgb),.5); }
+.job__missions { max-height:0; overflow:hidden; transition:max-height var(--t-accordion) var(--ease-out); }
+.job:hover .job__missions, .job:focus-within .job__missions { max-height:160px; }
+.job__missions ul { margin:9px 0 2px; padding-left:15px; display:flex; flex-direction:column; gap:4px; }
+.job__missions li { font-size:12px; line-height:1.45; color:rgba(var(--cream-rgb),.75); }
+</style>
+</head>
+<body>
+<main class="stage" style="background-image:url(../../renders/refs/cv.png)">
+  <div class="overlay-root">
+    <article class="bubble" style="left:1.6%; top:20%; max-width:260px;">
+      <span class="bubble__tick bubble__tick--right" aria-hidden="true"></span>
+      <header class="bubble__kicker"><span class="bubble__dot"></span><span class="bubble__label">02 — Le CV</span></header>
+      <p class="bubble__text" style="margin:0">Le CV, en pied et à jour — la version papier dort dans la commode.</p>
+    </article>
+    <section class="cv" aria-label="Curriculum vitae">
+      <div class="cv__row">
+        <div class="cv__photo">photo</div>
+        <div class="cv__card">
+          <h2 class="cv__card-title">Langues &amp; permis</h2>
+          <div class="cv__fact"><b>Français</b><span>natif</span></div>
+          <div class="cv__fact"><b>Anglais</b><span>C1</span></div>
+          <div class="cv__fact"><b>Permis</b><span>B</span></div>
+        </div>
+      </div>
+      <div class="job" tabindex="0">
+        <div class="job__head"><span class="job__title">Développeur front-end senior</span><span class="job__company">Studio Nova</span><span class="job__period">2023 — 2026</span></div>
+        <div class="job__missions"><ul><li>Refonte WebGL du site vitrine (three.js, 60 fps)</li><li>Design system interne — tokens, composants, docs</li><li>Mentorat de deux développeurs juniors</li></ul></div>
+      </div>
+      <div class="job" tabindex="0">
+        <div class="job__head"><span class="job__title">Développeur full-stack</span><span class="job__company">Atelier K</span><span class="job__period">2020 — 2023</span></div>
+        <div class="job__missions"><ul><li>Plateforme e-commerce (Node, PostgreSQL)</li><li>Intégration paiement et facturation</li><li>Mise en place CI/CD et revues de code</li></ul></div>
+      </div>
+      <div class="job" tabindex="0">
+        <div class="job__head"><span class="job__title">Intégrateur web</span><span class="job__company">Freelance</span><span class="job__period">2018 — 2020</span></div>
+        <div class="job__missions"><ul><li>Sites vitrines pour artisans et studios</li><li>Audits performance et accessibilité</li></ul></div>
+      </div>
+    </section>
+  </div>
+  <nav class="menu" aria-label="Menu">
+    <div class="menu__logo" aria-hidden="true"></div>
+    <div class="menu__rule" style="margin-bottom:6px"></div>
+    <a class="menu__link" href="#"><span>Accueil</span></a>
+    <a class="menu__link menu__link--active" href="#"><span>Résumé</span></a>
+    <a class="menu__link" href="#"><span>Projets</span></a>
+    <div class="menu__rule" style="margin:6px 0"></div>
+    <a class="menu__social" href="#" title="LinkedIn">in</a>
+    <a class="menu__social" href="#" title="GitHub">gh</a>
+    <div class="menu__lang"><span class="menu__lang-on">FR</span><span class="menu__lang-rule"></span><span class="menu__lang-off" role="button" tabindex="0">EN</span></div>
+  </nav>
+</main>
+</body>
+</html>

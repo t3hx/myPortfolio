@@ -22,6 +22,18 @@ This is a **React 19 + react-three-fiber v9** single-page portfolio that renders
 
 The reference design doc (product decisions, review reports, spike verdicts) lives at `~/.gstack/projects/t3hx-myPortfolio/tehx-fix-rendering-design-20260804-174239.md`. The interaction spec for the scene is `docs/PORTFOLIO_3D_INTERACTIONS.md` — **read it before touching scene behavior**; it lists every animation/interaction with exact object names.
 
+### The 2D UI design system (`docs/design/`)
+
+Output of the Claude Design session (2026-08-10), and the single source of truth for everything the DOM draws on top of the canvas — **read it before building any 2D UI**:
+
+- `docs/design/DESIGN.md` — direction ("Lueur": smoked glass + cold glow), tokens, bubble/menu anatomy, the **per-stop placement table**, motion budgets, and the implementation notes that were verified in a browser.
+- `docs/design/tokens.css` — the custom properties plus working `.bubble` / `.menu` components. Tokens, not utility classes.
+- `docs/design/screens/*.html` — 13 standalone reference screens (11 stops + preselection + preloader), high-fidelity. Open them directly; they are prototypes to **recreate** in R3F, not code to paste.
+
+Their backgrounds are the committed `docs/renders/refs/*.png` — the same renders the comparison loop uses, so re-shooting a stop updates the mockups for free. The design session worked on 1920×1080 exports of those same framings; a second copy was deliberately not committed.
+
+The UI is **two components only** — a vertical menu bar on the right edge and one text bubble per stop, anchored to the framed object. The 3D is the interface; the UI must not compete with it.
+
 ### The asset (IMPORTANT — currently `docs/portfolio_v13.glb`, 2026-08-10)
 
 `public/models/scene.glb` is a copy of the latest export. Blender is the source of truth and the `.glb` is gitignored — copy it into any fresh worktree. Current export: **3.0 MB, 146 meshes, 124 materials, 14 textures, ~162 MB texture VRAM**. It is **entirely pre-baked unlit**:
