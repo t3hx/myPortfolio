@@ -268,3 +268,159 @@ body,
   border-bottom: 2.5px solid #10131f;
   transform: rotate(45deg) skew(12deg, 12deg);
 }
+
+/* Les tokens (importés avant ce fichier) posent Space Grotesk sur .stage ; le
+   HUD diagnostic garde sa mono de spike tant qu'il n'est pas redessiné. */
+.hud {
+  font-family: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', monospace;
+}
+
+/* --- Écran 0a : pré-sélection 3D / classique (issue #24) --------------------------- */
+/* Porté depuis docs/design/screens/0a-preselection.html — la maquette de référence.
+   Tokens et composants .bubble__* : docs/design/tokens.css. */
+.presel {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 40px;
+  padding: 24px;
+  pointer-events: auto;
+  background: radial-gradient(1100px 750px at 50% 115%, #26190F, var(--ink) 70%);
+}
+
+.presel__head {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  text-align: center;
+}
+
+.presel__logo {
+  width: 16px;
+  height: 16px;
+  transform: rotate(45deg);
+  border: 1.5px solid var(--glow);
+  border-radius: 3px;
+  box-shadow: 0 0 14px rgba(var(--glow-rgb), 0.55);
+}
+
+.presel__eyebrow {
+  margin: 0;
+  font-size: 11px;
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+  color: rgba(var(--cream-rgb), 0.5);
+}
+
+.presel__title {
+  margin: 0;
+  font-family: var(--font-voice);
+  font-style: italic;
+  font-size: 30px;
+  font-weight: 400;
+  color: #F2E9DA;
+}
+
+.presel__cards {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 24px;
+}
+
+.presel-card {
+  width: 340px;
+  max-width: 100%;
+  text-align: left;
+  background: linear-gradient(160deg, rgba(var(--ink-glass), 0.66), rgba(var(--ink-glass), 0.54));
+  border: 1px solid rgba(var(--cream-rgb), 0.14);
+  border-radius: var(--r-bubble);
+  padding: 26px 28px 22px;
+  cursor: pointer;
+  box-shadow: 0 14px 44px rgba(0, 0, 0, 0.38);
+  font-family: var(--font-ui);
+  color: var(--cream);
+  transition: border-color 200ms var(--ease-out), box-shadow 200ms var(--ease-out);
+}
+
+/* Le halo EST l'indicateur de focus (même style que le survol) : l'anneau
+   natif du navigateur ferait double emploi par-dessus. */
+.presel-card:focus-visible {
+  outline: none;
+}
+
+.presel-card:hover,
+.presel-card:focus-visible,
+.presel-card--featured {
+  border-color: rgba(var(--glow-deep-rgb), 0.55);
+  box-shadow: 0 0 0 1.5px rgba(var(--glow-deep-rgb), 0.3),
+              0 0 38px 4px rgba(var(--glow-deep-rgb), 0.34),
+              0 14px 44px rgba(0, 0, 0, 0.38);
+}
+
+.presel-card .bubble__kicker {
+  margin-bottom: 10px;
+}
+
+.presel-card .bubble__text {
+  margin: 0 0 16px;
+  font-size: 17px;
+}
+
+.presel-card__label--lit {
+  color: rgba(var(--cream-rgb), 0.8);
+}
+
+.presel-card__dot--muted {
+  background: rgba(var(--cream-rgb), 0.45);
+  box-shadow: none;
+}
+
+.presel-card__meta,
+.presel__note {
+  font-family: ui-monospace, monospace;
+  font-size: 11px;
+  color: rgba(var(--cream-rgb), 0.5);
+}
+
+.presel__note {
+  margin: 0;
+  color: rgba(var(--cream-rgb), 0.4);
+  text-align: center;
+}
+
+/* --- Version classique (échafaudage — la vraie page 2D est une autre issue) -------- */
+.classic .classic__body {
+  max-width: 420px;
+  margin: 0;
+  text-align: center;
+  font-family: var(--font-voice);
+  font-style: italic;
+  font-size: 17px;
+  line-height: 1.6;
+  color: rgba(var(--cream-rgb), 0.75);
+}
+
+.classic__switch {
+  padding: 10px 18px;
+  background: none;
+  border: 1px solid rgba(var(--cream-rgb), 0.25);
+  border-radius: var(--r-item);
+  font-family: var(--font-ui);
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: rgba(var(--cream-rgb), 0.72);
+  cursor: pointer;
+  transition: border-color 200ms var(--ease-out), color 200ms var(--ease-out);
+}
+
+.classic__switch:hover,
+.classic__switch:focus-visible {
+  border-color: rgba(var(--glow-deep-rgb), 0.55);
+  color: var(--cream);
+}
