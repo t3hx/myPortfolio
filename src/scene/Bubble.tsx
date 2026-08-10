@@ -29,8 +29,8 @@ import type { Vector3 } from 'three'
  * --tilted…) relèvent de #48 ; l'accessibilité complète de #49.
  */
 
-/** Doit suivre --t-bubble-out (tokens.css) : durée du fondu de sortie. */
-const BUBBLE_OUT_MS = 200
+/** Doit suivre --t-bubble-out (tokens.css) — synchro verrouillée par tests/bubble.test.ts. */
+export const BUBBLE_OUT_MS = 200
 
 export interface BubbleProps {
   /** Point monde suivi par projection écran (recalculée chaque frame). */
@@ -68,7 +68,11 @@ export function Bubble({
     return () => window.clearTimeout(timer)
   }, [visible])
 
-  if (!mounted) return null
+  // Garde anti-fallback : drei résout sa cible AU RENDER (`portal?.current ||
+  // conteneur du canvas`) et ne se re-parente jamais si le ref se remplit
+  // après. Aujourd'hui le Suspense du glb garantit l'ordre ; ce garde le
+  // garantit par le code (un montage trop tôt attend le re-render suivant).
+  if (!mounted || !portal.current) return null
 
   const cls = ['bubble', !visible && 'bubble--out', className]
     .filter(Boolean)
@@ -80,6 +84,7 @@ export function Bubble({
       center
       portal={portal}
       zIndexRange={[40, 0]}
+      // Hook d'inspection (DevTools / Playwright) — volontairement sans CSS.
       className="bubble-anchor"
     >
       {/* Markup des maquettes : kicker (point + étiquette) puis phrase, ou
