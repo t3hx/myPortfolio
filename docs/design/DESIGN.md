@@ -107,7 +107,7 @@ Quatre points où recréer « au pixel » dérive silencieusement si on ne les c
 - **Les largeurs de la table de placement sont en `content-box`** — le pack ne pose aucun reset. `01-desk` à `max-width: 460` mesure 506 px de bord à bord (padding 22 × 2 + bord 1 × 2). Avec le `box-sizing: border-box` qu'un projet React pose par défaut, retrancher 46 px ou les largeurs rétrécissent d'autant.
 - **Les polices sont chargées depuis le CDN Google dans les maquettes** (commodité de prototype). En production : Newsreader et Space Grotesk auto-hébergées, sous-réglées sur le latin étendu — les deux couvrent les accents FR.
 - **Les fonds sont `docs/renders/refs/*.png`**, partagés avec la boucle de comparaison de rendus. Dans l'app, le canvas WebGL les remplace ; ils ne sont là que pour juger les placements sur les vraies focales.
-- **Le halo de survol est spécifié mais non maquetté** : aucun écran de `screens/` ne porte `.bubble--interactive`, faute d'objet cliquable arrêté au moment de la session. Le CSS existe et vaut spécification — ce n'est pas une maquette qu'on aurait oubliée. Quel arrêt rend sa bulle interactive se décide avec #47.
+- **Le halo de survol est spécifié mais non maquetté** : aucun écran de `screens/` ne porte `.bubble--interactive`, faute d'objet cliquable arrêté au moment de la session. Le CSS existe et vaut spécification — ce n'est pas une maquette qu'on aurait oubliée. **Tranché avec #47 : aucune bulle n'est interactive** — la bulle est purement narrative, n'ouvre rien, et laisse passer molette et clics (`pointer-events: none`). `.bubble--interactive` reste une spécification dormante si un futur arrêt en a besoin.
 
 ## Contraintes respectées (rappel code)
 

@@ -1,5 +1,6 @@
-/* Spike-grade styling. The "comic stroke" flavour on bubble/panel is a wink at
-   the locked "Carnet de BD" direction — real tokens come from the design session. */
+/* Spike-grade styling (HUD, panel). La bulle et la pré-sélection portent le
+   vrai design system — tokens et composants dans docs/design/tokens.css,
+   importé AVANT ce fichier (voir main.tsx). */
 
 * {
   box-sizing: border-box;
@@ -151,8 +152,7 @@ body,
 }
 
 .actions button,
-.panel header button,
-.bubble button {
+.panel header button {
   padding: 6px 12px;
   border-radius: 8px;
   border: 1px solid rgba(120, 200, 255, 0.35);
@@ -231,43 +231,45 @@ body,
   overflow: hidden;
 }
 
-/* --- Bubble (risk point #3: drei <Html> stacking under the HUD) -------------------- */
-.bubble {
+/* --- Bulle (issue #47) — anatomie et tokens : docs/design/tokens.css --------------- */
+/* Dans la couche projetée, l'ancre drei (un div 0×0 dont le translate3d est
+   recalculé chaque frame) fait tout le positionnement : la bulle redevient un
+   bloc en flux pour que `center` la centre réellement sur le point projeté —
+   en `position: absolute` (la règle des maquettes), le conteneur mesurerait
+   0×0 et le translate(-50%,-50%) du centrage serait sans effet. En maquette,
+   .bubble reste absolue dans la page ; la règle ne vit donc qu'ici. */
+.bubble-layer .bubble {
   position: relative;
   width: max-content;
-  max-width: 240px;
-  padding: 12px 14px;
-  border: 2.5px solid #10131f;
-  border-radius: 14px;
-  background: #f4f6ff;
-  color: #10131f;
-  font-size: 12.5px;
-  line-height: 1.5;
-  box-shadow: 3px 3px 0 rgba(16, 19, 31, 0.55);
-  pointer-events: auto;
+  /* Les largeurs du design (max-width 380, table de placement de #48) sont
+     mesurées en content-box — les maquettes ne posent aucun reset. Sous le
+     border-box global de l'app elles rétréciraient de 46 px (padding 22×2 +
+     bord 1×2). Voir DESIGN.md, notes d'implémentation. */
+  box-sizing: content-box;
 }
 
-.bubble p {
-  margin: 0 0 8px;
+/* Les maquettes posent ce reset en style inline sur chaque <p>. */
+.bubble-layer .bubble__text {
+  display: block;
+  margin: 0;
 }
 
-.bubble button {
-  background: #10131f;
-  color: #f4f6ff;
-  border-color: #10131f;
+/* Sortie : fondu simple avant le départ caméra (budget DESIGN.md : 200 ms,
+   la caméra part en 1200 ms). Déclarée après tokens.css : à spécificité
+   égale, elle bat `bubble-in` — y compris la variante mouvement réduit. */
+.bubble--out {
+  animation: bubble-out var(--t-bubble-out) linear both;
 }
 
-.bubble-tail {
-  position: absolute;
-  left: 28px;
-  bottom: -11px;
-  width: 16px;
-  height: 16px;
-  background: #f4f6ff;
-  border-right: 2.5px solid #10131f;
-  border-bottom: 2.5px solid #10131f;
-  transform: rotate(45deg) skew(12deg, 12deg);
+@keyframes bubble-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
 }
+
 
 /* Les tokens (importés avant ce fichier) posent Space Grotesk sur .stage ; le
    HUD diagnostic garde sa mono de spike tant qu'il n'est pas redessiné. */
