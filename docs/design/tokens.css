@@ -1,0 +1,186 @@
+/* ===== Portfolio 3D — Design tokens & composants UI 2D =====
+   Direction « Lueur » — verre fumé & lueur froide.
+   Palette extraite à la pipette des rendus Blender (calibrés = rendu WebGL). */
+
+:root {
+  /* Couleurs */
+  --ink: #0D0A07;               /* fond de secours, jamais visible en scène */
+  --ink-glass: 24, 17, 12;      /* base RGB du verre fumé (utilisée à .5–.74) */
+  --cream: #EFE5D3;             /* texte, icônes */
+  --cream-rgb: 239, 229, 211;
+  --glow: #8FDBE4;              /* accent — cordes, clavier, yeux du chat */
+  --glow-rgb: 143, 219, 228;
+  --glow-deep: #6FD8E6;         /* accent saturé — halo survol */
+  --glow-deep-rgb: 111, 216, 230;
+
+  /* Typo */
+  --font-ui: 'Space Grotesk', sans-serif;      /* menu, micro-étiquettes */
+  --font-voice: 'Newsreader', serif;           /* la voix des bulles, italique */
+  --fs-kicker: 11px;   /* caps, letter-spacing .2em */
+  --fs-meta: 12px;
+  --fs-body: 19px;     /* bulle, line-height 1.5 */
+  --fs-title: 26px;
+
+  /* Espacement : 4 8 12 16 24 32 48 */
+  --s-1: 4px; --s-2: 8px; --s-3: 12px; --s-4: 16px; --s-5: 24px; --s-6: 32px; --s-7: 48px;
+
+  /* Rayons */
+  --r-bubble: 10px;
+  --r-bar: 26px;
+  --r-item: 18px;
+
+  /* Empilement (contrainte code) */
+  --z-canvas: 0; --z-bubble: 100; --z-bar: 200; --z-panel: 300;
+
+  /* Motion — budgets */
+  --t-bubble-in: 480ms;   /* cubic-bezier(.2,.8,.2,1), reveal bas→haut */
+  --t-bubble-out: 200ms;  /* fade simple avant départ caméra (1200 ms) */
+  --t-bar: 180ms;         /* opacité .4 → .75 */
+  --t-item: 140ms;
+  --t-accordion: 260ms;
+  --ease-out: cubic-bezier(.2, .8, .2, 1);
+}
+
+/* ===== Scène / overlay ===== */
+.stage {
+  position: fixed; inset: 0; overflow: hidden;
+  background: #18110C center / cover no-repeat;
+  font-family: var(--font-ui); color: var(--cream);
+}
+/* La racine de l'overlay n'intercepte JAMAIS la molette. */
+.overlay-root { position: absolute; inset: 0; pointer-events: none; z-index: var(--z-bubble); }
+
+/* ===== Bulle ===== */
+.bubble {
+  position: absolute; z-index: var(--z-bubble); pointer-events: none;
+  max-width: 380px;
+  background: linear-gradient(160deg, rgba(var(--ink-glass), .72), rgba(var(--ink-glass), .6));
+  backdrop-filter: blur(22px) saturate(1.25);
+  -webkit-backdrop-filter: blur(22px) saturate(1.25);
+  border: 1px solid rgba(var(--cream-rgb), .14);
+  border-radius: var(--r-bubble);
+  padding: 16px 22px 15px;
+  box-shadow: 0 14px 44px rgba(0, 0, 0, .38);
+  animation: bubble-in var(--t-bubble-in) var(--ease-out) both;
+}
+/* La transition vit sur la règle de base, pas dans :hover — sinon le halo
+   monte en 200 ms et retombe en 0 ; DESIGN.md spécifie 200 ms des deux côtés. */
+.bubble--interactive {
+  pointer-events: auto;
+  transition: box-shadow 200ms var(--ease-out), border-color 200ms var(--ease-out);
+}
+.bubble--interactive:hover, .bubble--interactive:focus-within {
+  border-color: rgba(var(--glow-deep-rgb), .6);
+  box-shadow: 0 0 0 1.5px rgba(var(--glow-deep-rgb), .35),
+              0 0 40px 5px rgba(var(--glow-deep-rgb), .42),
+              inset 0 0 24px rgba(var(--glow-deep-rgb), .14),
+              0 14px 44px rgba(0, 0, 0, .38);
+}
+/* Variantes positionnelles — via `translate` / `rotate`, JAMAIS via `transform`.
+   L'animation `bubble-in` anime `transform` en fill-mode `both` : une animation
+   gagne contre la cascade (styles inline compris), donc un `transform` posé ici
+   serait écrasé par la valeur finale du keyframe et la variante rendrait à plat.
+   Les propriétés individuelles sont composées avec `transform`, pas remplacées. */
+/* Variante centrée (home, desk) */
+.bubble--centered { left: 50%; translate: -50% 0; }
+/* Variante inclinée (guitare) : suit le bord supérieur de l'ampli, ombre courte */
+.bubble--tilted { rotate: var(--bubble-rotate, 0deg); box-shadow: 0 12px 26px rgba(0, 0, 0, .5); }
+
+.bubble__kicker { display: flex; align-items: center; gap: 10px; margin-bottom: 7px; }
+.bubble__dot {
+  width: 7px; height: 7px; border-radius: 50%; flex: none;
+  background: var(--glow); box-shadow: 0 0 10px rgba(var(--glow-rgb), .85);
+}
+.bubble__label {
+  font-size: var(--fs-kicker); font-weight: 500; letter-spacing: .2em;
+  text-transform: uppercase; color: rgba(var(--cream-rgb), .66);
+}
+.bubble__text {
+  font-family: var(--font-voice); font-style: italic;
+  font-size: var(--fs-body); line-height: 1.5; color: #F2E9DA; text-wrap: pretty;
+}
+/* Sans titre (home) : point + phrase sur une ligne */
+.bubble__inline { display: flex; align-items: center; gap: 14px; }
+.bubble__inline .bubble__text { white-space: nowrap; }
+/* Ligne de rappel vers l'objet (optionnelle) */
+.bubble__tick { position: absolute; top: 50%; width: 44px; height: 1px; }
+.bubble__tick--right { left: 100%; background: linear-gradient(270deg, rgba(var(--cream-rgb), .55), rgba(var(--cream-rgb), 0)); }
+.bubble__tick--left  { right: 100%; background: linear-gradient(90deg,  rgba(var(--cream-rgb), .55), rgba(var(--cream-rgb), 0)); }
+
+@keyframes bubble-in {
+  from { opacity: 0; transform: translateY(10px); clip-path: inset(0 0 100% 0); }
+  to   { opacity: 1; transform: translateY(0);    clip-path: inset(-35%); }
+}
+
+/* ===== Barre de menu ===== */
+.menu {
+  position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+  z-index: var(--z-bar); pointer-events: auto;
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  width: 52px; padding: 14px 0 12px;
+  background: linear-gradient(180deg, rgba(var(--ink-glass), .6), rgba(var(--ink-glass), .5));
+  backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(var(--cream-rgb), .12);
+  border-radius: var(--r-bar);
+  opacity: .4; transition: opacity var(--t-bar) var(--ease-out);
+}
+.menu:hover, .menu:focus-within { opacity: .75; }
+.menu__logo {
+  width: 12px; height: 12px; transform: rotate(45deg);
+  border: 1.5px solid var(--glow); border-radius: 2px; margin-bottom: 8px;
+  box-shadow: 0 0 10px rgba(var(--glow-rgb), .5);
+}
+.menu__rule { width: 22px; height: 1px; background: rgba(var(--cream-rgb), .14); }
+.menu__link {
+  display: flex; flex-direction: column; align-items: center; gap: 7px;
+  width: 36px; padding: 10px 0; border-radius: var(--r-item);
+  font-size: var(--fs-kicker); font-weight: 500; letter-spacing: .18em;
+  text-transform: uppercase; color: rgba(var(--cream-rgb), .72);
+  text-decoration: none; cursor: pointer; transition: background var(--t-item), color var(--t-item);
+}
+.menu__link span { writing-mode: vertical-rl; transform: rotate(180deg); } /* tête penchée à gauche */
+.menu__link:hover, .menu__link:focus-visible { background: rgba(var(--cream-rgb), .09); color: var(--cream); }
+.menu__link--active { color: var(--cream); background: rgba(var(--cream-rgb), .09); }
+.menu__link--active::before {
+  content: ''; width: 4.5px; height: 4.5px; border-radius: 50%;
+  background: var(--glow); box-shadow: 0 0 6px rgba(var(--glow-rgb), .8);
+}
+.menu__social {
+  display: flex; align-items: center; justify-content: center;
+  width: 36px; height: 30px; border-radius: 15px;
+  font-size: var(--fs-kicker); font-weight: 600; letter-spacing: .04em;
+  color: rgba(var(--cream-rgb), .72); text-decoration: none;
+}
+.menu__social:hover, .menu__social:focus-visible { background: rgba(var(--cream-rgb), .09); color: var(--cream); }
+.menu__lang { display: flex; flex-direction: column; align-items: center; gap: 3px; margin-top: 10px; font-size: 10px; font-weight: 600; letter-spacing: .08em; }
+.menu__lang-on  { color: var(--glow); }
+.menu__lang-off { color: rgba(var(--cream-rgb), .45); cursor: pointer; }
+.menu__lang-off:hover { color: var(--cream); }
+.menu__lang-rule { width: 14px; height: 1px; background: rgba(var(--cream-rgb), .2); }
+
+/* ===== Mouvement réduit =====
+   Le critère est l'autonomie, pas le déplacement : ce qui part tout seul ou
+   tourne en boucle est neutralisé, ce que l'utilisateur déclenche lui-même est
+   conservé. Un halo qui s'allume au survol répond à un geste et ne surprend
+   personne ; la respiration du logo tourne sans fin sans qu'on l'ait demandée.
+
+   Le déplacement caméra de 1,2 s n'est pas du CSS : sous cette préférence,
+   CameraRig doit couper au stop suivant au lieu de l'interpoler (STEP_DURATION
+   à 0). Sans cela, le seul mouvement qui compte vraiment reste entier. */
+@media (prefers-reduced-motion: reduce) {
+  /* bulle : plus de reveal par clip ni de translation, un simple fondu */
+  .bubble { animation: bubble-in-reduced var(--t-bubble-out) linear both; }
+  /* `!important` assumé sur les neutralisations : une règle d'accessibilité doit
+     gagner contre toute déclaration locale. Sans lui, le `<style>` d'une page
+     chargé après ce fichier l'emporte à spécificité égale — mesuré sur le
+     preloader, dont la respiration continuait de tourner. */
+  /* respiration du logo (boucle infinie) ; la barre continue de progresser,
+     c'est de l'information, pas de la décoration */
+  .preload__logo { animation: none !important; opacity: 1 !important; }
+  /* reveal typo mot à mot — pas encore dans les maquettes, à honorer côté app */
+  .bubble__text > * { animation: none !important; }
+}
+@keyframes bubble-in-reduced {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
