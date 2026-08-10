@@ -10,7 +10,16 @@
 <style>
 .presel { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:40px; pointer-events:auto;
   background:radial-gradient(1100px 750px at 50% 115%, #26190F, var(--ink) 70%); }
-.presel__logo { width:16px; height:16px; transform:rotate(45deg); border:1.5px solid var(--glow); border-radius:3px; box-shadow:0 0 14px rgba(var(--glow-rgb),.55); }
+/* Triangle pointe en bas, trait lumineux (décision 2026-08-10, remplace le
+   losange). Il respire au rythme du preloader, en plus marqué (opacité +
+   portée de la lueur — la pulsation ne se lit pas sur 16 px sinon). */
+.presel__logo { width:16px; height:16px; overflow:visible; animation:logo-breathe 2.6s ease-in-out infinite; }
+.presel__logo path { fill:none; stroke:var(--glow); stroke-width:1.5; stroke-linejoin:round; }
+@keyframes logo-breathe {
+  0%, 100% { opacity:.45; filter:drop-shadow(0 0 3px rgba(var(--glow-rgb),.35)); }
+  50% { opacity:1; filter:drop-shadow(0 0 10px rgba(var(--glow-rgb),.8)); } }
+@media (prefers-reduced-motion: reduce) {
+  .presel__logo { animation:none !important; opacity:1; filter:drop-shadow(0 0 6px rgba(var(--glow-rgb),.55)); } }
 .presel__eyebrow { font-size:11px; letter-spacing:.26em; text-transform:uppercase; color:rgba(var(--cream-rgb),.5); }
 .presel__title { font-family:var(--font-voice); font-style:italic; font-size:30px; font-weight:400; color:#F2E9DA; margin:0; }
 .presel__cards { display:flex; gap:24px; }
@@ -18,9 +27,19 @@
   border:1px solid rgba(var(--cream-rgb),.14); border-radius:var(--r-bubble); padding:26px 28px 22px; cursor:pointer;
   box-shadow:0 14px 44px rgba(0,0,0,.38); font-family:var(--font-ui); color:var(--cream);
   transition:border-color 200ms var(--ease-out), box-shadow 200ms var(--ease-out); }
-.presel-card:hover, .presel-card:focus-visible, .presel-card--featured {
+/* Aucun halo au repos (décision 2026-08-10, remplace le « halo d'office ») :
+   il s'allume sur la carte survolée/focusée et respire comme le logo du
+   preloader (2,6 s ease-in-out). */
+.presel-card:hover, .presel-card:focus-visible {
   border-color:rgba(var(--glow-deep-rgb),.55);
-  box-shadow:0 0 0 1.5px rgba(var(--glow-deep-rgb),.3), 0 0 38px 4px rgba(var(--glow-deep-rgb),.34), 0 14px 44px rgba(0,0,0,.38); }
+  animation:presel-halo 2.6s ease-in-out infinite; }
+@keyframes presel-halo {
+  0%, 100% { box-shadow:0 0 0 1.5px rgba(var(--glow-deep-rgb),.2), 0 0 22px 2px rgba(var(--glow-deep-rgb),.2), 0 14px 44px rgba(0,0,0,.38); }
+  50% { box-shadow:0 0 0 1.5px rgba(var(--glow-deep-rgb),.34), 0 0 38px 4px rgba(var(--glow-deep-rgb),.38), 0 14px 44px rgba(0,0,0,.38); } }
+@media (prefers-reduced-motion: reduce) {
+  .presel-card:hover, .presel-card:focus-visible {
+    animation:none !important;
+    box-shadow:0 0 0 1.5px rgba(var(--glow-deep-rgb),.3), 0 0 38px 4px rgba(var(--glow-deep-rgb),.34), 0 14px 44px rgba(0,0,0,.38); } }
 .presel-card .bubble__text { margin:0 0 16px; font-size:17px; }
 .presel-card__meta { font-family:ui-monospace,monospace; font-size:11px; color:rgba(var(--cream-rgb),.5); }
 .presel__note { font-family:ui-monospace,monospace; font-size:11px; color:rgba(var(--cream-rgb),.4); }
@@ -30,12 +49,12 @@
 <main class="stage">
     <div class="presel">
       <div style="display:flex; flex-direction:column; align-items:center; gap:18px;">
-        <div class="presel__logo" aria-hidden="true"></div>
+        <svg class="presel__logo" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 2.5 H14 L8 13.5 Z"/></svg>
         <div class="presel__eyebrow">Portfolio — la visite d'une pièce</div>
         <h1 class="presel__title">Comment souhaitez-vous visiter ?</h1>
       </div>
       <div class="presel__cards">
-        <button class="presel-card presel-card--featured">
+        <button class="presel-card">
           <span class="bubble__kicker" style="margin-bottom:10px"><span class="bubble__dot"></span><span class="bubble__label" style="color:rgba(var(--cream-rgb),.8)">Expérience 3D</span></span>
           <p class="bubble__text">Entrez dans la pièce — la caméra vous guide d'objet en objet, au fil de la molette.</p>
           <span class="presel-card__meta">WebGL · ~20 Mo · souris, tactile ou clavier</span>

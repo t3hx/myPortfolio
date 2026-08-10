@@ -68,7 +68,7 @@ Un emplacement, pas une forme de BD : panneau de verre, pas de queue.
 
 ## Écrans hors visite
 
-- **0a Pré-sélection** : fond radial braise→encre, logo, question en Newsreader italique 30, deux cartes verre 340 px — « Expérience 3D » portant le halo d'office, l'autre le gagne au survol. Note mono : choix mémorisé.
+- **0a Pré-sélection** : fond radial braise→encre, logo (triangle pointe en bas depuis le 2026-08-10, respirant en 2,6 s — les autres écrans portent encore le losange, à propager une fois validé), question en Newsreader italique 30, deux cartes verre 340 px — aucun halo au repos : la carte survolée ou focusée l'allume et il respire en boucle au rythme du logo du preloader (2,6 s ease-in-out). Note mono : choix mémorisé.
 - **0b Pré-loader** : logo en respiration 2,6 s, barre 340×2 px (piste crème .14, fil dégradé→accent, point de tête lumineux), microcopie Newsreader (« On allume les lampes… ») + pourcentage mono.
 - **02 CV** : contenu « affiché par l'écran » — photo (placeholder hachuré) + carte langues/permis, puis cartouches poste—entreprise—période en **accordéon au survol** (260 ms, max-height) révélant les missions à puces.
 

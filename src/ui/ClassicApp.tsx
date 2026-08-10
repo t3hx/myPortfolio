@@ -1,3 +1,5 @@
+import { Logo } from '@/ui/Logo'
+
 /**
  * Version classique — pour l'instant un échafaudage honnête : la vraie page 2D
  * est une issue à part (voir #24, « la version 2D elle-même est une autre
@@ -17,7 +19,7 @@ export function ClassicApp({
     <main className="stage">
       <div className="presel classic">
         <header className="presel__head">
-          <div className="presel__logo" aria-hidden="true" />
+          <Logo />
           <p className="presel__eyebrow">Portfolio — expérience classique</p>
           <h1 className="presel__title">La version légère arrive.</h1>
         </header>

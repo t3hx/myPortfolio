@@ -1,4 +1,5 @@
 import type { ExperienceChoice } from '@/lib/experienceChoice'
+import { Logo } from '@/ui/Logo'
 
 /**
  * Écran 0a — pré-sélection 3D / classique (issue #24). Recréé depuis la
@@ -14,15 +15,17 @@ export function Preselection({ onChoose }: { onChoose: (choice: ExperienceChoice
     <main className="stage">
       <div className="presel">
         <header className="presel__head">
-          <div className="presel__logo" aria-hidden="true" />
+          <Logo />
           <p className="presel__eyebrow">Portfolio — la visite d'une pièce</p>
           <h1 className="presel__title">Comment souhaitez-vous visiter&nbsp;?</h1>
         </header>
         <div className="presel__cards">
-          {/* autoFocus : Entrée = 3D (la carte vedette), Tab puis Entrée = classique */}
+          {/* autoFocus : Entrée = 3D (la carte vedette), Tab puis Entrée = classique.
+              Le halo n'est plus porté d'office : il s'allume au survol/focus et
+              respire (décision du 2026-08-10, remplace le « halo d'office »). */}
           <button
             type="button"
-            className="presel-card presel-card--featured"
+            className="presel-card"
             autoFocus
             onClick={() => onChoose('3d')}
           >
