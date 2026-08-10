@@ -27,7 +27,7 @@ Anatomie détaillée des deux composants, placements par arrêt, états et varia
 - **Barre** : opacité .4 au repos → .75 au :hover/:focus-within (180 ms). Item actif = cartouche + point accent. Toggle FR/EN en bas. Tab/↑↓ au clavier.
 - **CV** : cartouches accordéon — :hover/:focus-within ouvre les missions (max-height, 260 ms).
 - **Pré-sélection** : la carte 3D porte le halo d'office ; l'autre le gagne au survol. Choix persisté (localStorage) et modifiable depuis le menu.
-- La racine de l'overlay est `pointer-events: none` (la molette pilote la caméra) ; seuls barre, bulles interactives et CV réactivent les événements.
+- La racine de l'overlay est `pointer-events: none` (la molette pilote la caméra) ; seuls barre et CV réactivent les événements — tranché avec #47 : aucune bulle n'est interactive, `.bubble--interactive` reste une spécification dormante (voir DESIGN.md).
 
 ## State Management
 - `lang: 'fr' | 'en'` — bascule tout le texte (bulles, menu, CV).

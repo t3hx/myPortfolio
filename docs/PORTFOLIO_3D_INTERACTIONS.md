@@ -197,7 +197,7 @@ La caméra se déplace entre des **points d'arrêt prédéfinis** (`CameraStop_*
 
 ## 4. Textes / légendes par étape
 
-Chaque stop caméra affiche un texte descriptif (overlay HTML, synchronisé avec la position de scroll / le stop actif).
+Chaque stop caméra affiche un texte descriptif (overlay HTML piloté par le stop actif — composant livré : `src/scene/Bubble.tsx`, issue #47).
 
 > **À rédiger par Thibault** — le contenu narratif est personnel (présentation, projets, compétences). Structure suggérée : un titre court + 1–2 phrases par stop.
 
@@ -214,10 +214,10 @@ Chaque stop caméra affiche un texte descriptif (overlay HTML, synchronisé avec
 | `CameraStop_Telescope` | _(invitation à cliquer sur le télescope)_ |
 | `CameraStop_TelescopeMoon` | _(moment contemplatif / conclusion / contact)_ |
 
-**Implémentation des textes** :
-- Overlay HTML/Vue positionné (pas du texte 3D), avec transitions d'apparition (fade + slide).
-- Synchroniser l'affichage avec le stop actif (via l'état de scroll / la progression GSAP).
-- Un seul bloc de texte visible à la fois, transition douce entre les blocs.
+**Implémentation des textes** (livrée — `src/scene/Bubble.tsx`, issue #47) :
+- Overlay HTML ancré par projection écran (pas du texte 3D) ; anatomie et motion dans `docs/design/tokens.css` (in : reveal 480 ms, out : fondu 200 ms).
+- Affichage piloté par le stop actif en phase `parked` (machine à états `src/state/interaction.ts`) — jamais indexé sur le scroll (décision DESIGN.md).
+- Un seul bloc de texte visible à la fois ; contenus et ancres par stop : issue #48.
 
 ---
 
