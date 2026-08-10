@@ -94,16 +94,21 @@ One scroll gesture = ONE fluid stroke to the next/previous stop (fullpage model)
 
 Runtime 2.5D ink, URL-toggled: `?outline=off|hull|edges|both` (+ `?lw=<px>` live width). `hull` = three OutlineEffect (batched inverted hull, view-dependent silhouettes — takes over rendering via a priority useFrame). `edges` = per-mesh `EdgesGeometry` rendered as screen-space fat lines (`LineSegments2`), with `LINE_OVERRIDES` per-object exclusions. Known drei/browser gotchas are commented in the code — read them before refactoring (Html portals, z-index ranges).
 
+### The preselection gate (`src/App.tsx` + `src/lib/experienceChoice.ts`)
+
+`App.tsx` is a DOM-only router (issue #24): preselection screen → lazy-loaded `App3D` (the Canvas) or the classic placeholder. The lazy import is **load-bearing** — `RoomModel` fires `useGLTF.preload` at module scope, so any static import path from the entry chunk would start the 3 MB download before the visitor chose. A stored `classic` choice (localStorage, `portfolio.experience`) is honoured without ever probing WebGL; a missing WebGL context auto-falls back to classic. Every dev URL param below bypasses the gate straight to 3D so the render-comparison loop stays deterministic. The screen recreates `docs/design/screens/0a-preselection.html`; `docs/design/tokens.css` is imported directly by `main.tsx` (single source of truth, no copy).
+
 ### URL parameters (dev tooling — keep working)
 
 - `?stop=<label>` — deterministic camera snap (render-comparison loop + shareable links)
 - `?outline=`, `?lw=` — ink A/B and width
 - `?debug`, `?debug-fly` — view modes (fly mode not yet ported to R3F)
+- `?choose` — clears the stored 3D/classic choice and reopens the preselection screen
 
 ## Conventions
 
 - Path alias `@/` → `src/` (in `vite.config.ts` and `tsconfig.json`).
-- No initial camera pose is seeded in `App.tsx`: `<Suspense>` holds the first frame until the .glb is parsed, and `CameraRig` places the camera from the glb's own cameras on the frame after. Nothing ever renders at the origin, so there is no pose to hardcode.
+- No initial camera pose is seeded in `App3D.tsx`: `<Suspense>` holds the first frame until the .glb is parsed, and `CameraRig` places the camera from the glb's own cameras on the frame after. Nothing ever renders at the origin, so there is no pose to hardcode.
 - All positions in `docs/PORTFOLIO_3D_INTERACTIONS.md` are **Blender Z-up** coordinates: convert with `(x, z, -y)` before runtime use.
 - Loading budget (measured 2026-08-05): the 90 MB export compresses to **6.8 MB with webp alone, 2.0 MB with draco+webp** (`pnpm dlx @gltf-transform/cli webp` then `draco`) — verify webp banding on the baked lightmaps before shipping. Texture VRAM stays ~192 MB regardless: KTX2 (CI-side, needs KTX-Software) is mandatory for mobile.
 
