@@ -158,6 +158,10 @@ export function CameraRig({ stops }: CameraRigProps) {
         if (phase === 'telescope') exitTelescope()
         return
       }
+      // La barre de menu possède ses flèches (focus glissant d'un item à
+      // l'autre) — pendant clavier de la règle `.panel` de la molette : chaque
+      // surface qui a une navigation interne la garde pour elle.
+      if (e.target instanceof Element && e.target.closest('.menu')) return
       if (phase !== 'touring' && phase !== 'parked') return
       const forward = ['ArrowDown', 'ArrowRight', 'PageDown'].includes(e.key)
       const backward = ['ArrowUp', 'ArrowLeft', 'PageUp'].includes(e.key)
@@ -175,12 +179,19 @@ export function CameraRig({ stops }: CameraRigProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [glDom, stops])
 
-  // --- ?stop= deep link: instant, deterministic (no rail to wait for) -----------------
+  // --- Placement initial (+ deep link ?stop=) : instantané, déterministe ---------------
+  //
+  // La phase compte autant que la pose. Elle démarre à TOURING et ne passait à
+  // PARKED que par l'`onComplete` d'un tween — or le placement initial n'en
+  // lance aucun. Un visiteur arrivait donc sur Accueil en phase TOURING, où
+  // aucune bulle ne s'affiche : la phrase d'ouverture, « faites défiler pour
+  // commencer la visite », restait invisible jusqu'au premier défilement…
+  // qui quitte justement Accueil. Seul `?stop=` passait PARKED, ce qui rendait
+  // le bug invisible à toutes les captures de la boucle de comparaison.
   useEffect(() => {
     if (stops.length === 0) return
     const target = stopParamIndex()
-    if (target === null) return
-    const clamped = Math.min(Math.max(target, 0), stops.length - 1)
+    const clamped = Math.min(Math.max(target ?? 0, 0), stops.length - 1)
     pos.p = clamped
     targetIndex.current = clamped
     applyProgress(camera, stops, clamped)

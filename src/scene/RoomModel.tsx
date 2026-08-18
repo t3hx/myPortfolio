@@ -1,5 +1,4 @@
-import { useGLTF } from '@react-three/drei'
-import { type ThreeEvent } from '@react-three/fiber'
+import { useLoader, type ThreeEvent } from '@react-three/fiber'
 import { useEffect, useRef } from 'react'
 import {
   Color,
@@ -11,6 +10,7 @@ import {
   type Object3D,
   type Texture,
 } from 'three'
+import { DRACOLoader, GLTFLoader } from 'three-stdlib'
 import {
   DECAL_ALPHA_TEST,
   DRACO_DECODER_PATH,
@@ -21,6 +21,7 @@ import {
 } from '@/config/renderPipeline'
 import { extractStops, orderedStops, type StopTransform } from '@/lib/stops'
 import { useInteraction } from '@/state/interaction'
+import { useLoading } from '@/state/loading'
 
 interface RoomModelProps {
   /** Appelé une fois la scène parsée et ses matériaux reconstruits. La scène
@@ -134,8 +135,39 @@ function rebuildMaterial(src: MeshStandardMaterial, tag: RuntimeTag): MeshBasicM
   }
 }
 
+/**
+ * Le chargement passe par `useLoader` de R3F plutôt que par le `useGLTF` de
+ * drei (issue #25) : seul `useLoader` accepte un `onProgress`, et c'est lui qui
+ * porte les OCTETS du `.glb` — le seul signal de progression honnête ici (voir
+ * `src/state/loading.ts` pour la mesure qui disqualifie le compteur d'items).
+ *
+ * Le reste est ce que drei faisait : mêmes classes (celles de `three-stdlib`,
+ * son propre fournisseur) et même mise en place du décodeur draco. Son décodeur
+ * meshopt est le seul abandon, assumé — l'`extensionsUsed` du v13 ne déclare que
+ * draco, webp et emissive_strength.
+ *
+ * `three-stdlib` et non `three/examples/jsm` : le DRACOLoader de three déclare
+ * ses fichiers de décodeur en `new URL(..., import.meta.url)`, que Vite résout
+ * statiquement — 1,3 Mo de décodeur émis dans `dist/` alors qu'on pointe
+ * `decoderPath` sur `public/draco/` et qu'on ne les charge jamais. Mesuré.
+ *
+ * Définis au niveau du module et non dans le composant : R3F ne met PAS ces
+ * fonctions dans sa clé de cache (`[loader, url]`), donc une référence fraîche
+ * à chaque rendu rejouerait la mise en place sans rien changer au résultat.
+ * C'est aussi ce qui garantit que le `preload` du bas de fichier et l'appel de
+ * rendu partagent la MÊME entrée de cache : sinon, deux fois 3 Mo.
+ */
+const dracoLoader = new DRACOLoader().setDecoderPath(DRACO_DECODER_PATH)
+const withDraco = (loader: GLTFLoader) => loader.setDRACOLoader(dracoLoader)
+
+/** `lengthComputable` est faux quand le serveur n'annonce pas de
+ *  `Content-Length` : on transmet alors 0 et la barre passe en indéterminé,
+ *  plutôt que d'afficher un pourcentage inventé. */
+const reportBytes = (e: ProgressEvent) =>
+  useLoading.getState().report(e.loaded, e.lengthComputable ? e.total : 0)
+
 export function RoomModel({ onReady }: RoomModelProps) {
-  const { scene } = useGLTF(MODEL_SRC, DRACO_DECODER_PATH)
+  const { scene } = useLoader(GLTFLoader, MODEL_SRC, withDraco, reportBytes)
   const applied = useRef(false)
 
   useEffect(() => {
@@ -206,4 +238,14 @@ export function RoomModel({ onReady }: RoomModelProps) {
   return <primitive object={scene} onClick={onClick} />
 }
 
-useGLTF.preload(MODEL_SRC, DRACO_DECODER_PATH)
+/* Il n'y a plus de `preload` au niveau du module, et c'est délibéré (#25) :
+   `useLoader.preload(loader, url, extensions)` n'accepte PAS d'`onProgress`.
+   Comme il partait à l'évaluation du module, c'était LUI qui lançait le
+   téléchargement, et l'`onProgress` du rendu n'était jamais atteint — `suspend`
+   trouvait la promesse déjà en vol. Mesuré : zéro événement de progression, une
+   barre structurellement muette. Le chargement part donc au premier rendu de
+   RoomModel, une poignée de millisecondes plus tard.
+
+   L'import paresseux d'App3D reste porteur (issue #24) : sans lui, tout three /
+   R3F / drei atterrirait dans le chunk d'entrée, que le visiteur choisisse la 3D
+   ou non. Ce n'est simplement plus le `.glb` qu'il retient, c'est le code. */

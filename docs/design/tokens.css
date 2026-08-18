@@ -30,11 +30,12 @@
   --r-item: 18px;
 
   /* Empilement (contrainte code) */
-  --z-canvas: 0; --z-bubble: 100; --z-bar: 200; --z-panel: 300;
+  --z-canvas: 0; --z-bubble: 100; --z-bar: 200; --z-panel: 300; --z-preload: 400;
 
   /* Motion — budgets */
   --t-bubble-in: 480ms;   /* cubic-bezier(.2,.8,.2,1), reveal bas→haut */
   --t-bubble-out: 200ms;  /* fade simple avant départ caméra (1200 ms) */
+  --t-preload-out: 320ms; /* fondu du preloader — couvre la 1re frame du canvas */
   --t-bar: 180ms;         /* opacité .4 → .75 */
   --t-item: 140ms;
   --t-accordion: 260ms;
@@ -152,7 +153,16 @@
 /* Statique : le menu est du mobilier, il ne respire pas. */
 .menu__logo { width: 12px; height: 12px; margin-bottom: 8px; filter: drop-shadow(0 0 10px rgba(var(--glow-rgb), .5)); }
 .menu__rule { width: 22px; height: 1px; background: rgba(var(--cream-rgb), .14); }
+/* Les deux filets n'ont pas le même voisinage : le premier sépare le logo des
+   sections, le second les sections des liens externes. */
+.menu__rule--head { margin-bottom: 6px; }
+.menu__rule--mid  { margin: 6px 0; }
+/* Les maquettes en font des <a>, l'app des <button> (ce sont des actions, pas
+   des liens) — d'où le reset : un bouton arrive avec un fond gris système, une
+   bordure biseautée, et surtout N'HÉRITE PAS de font-family. Sans ces quatre
+   lignes, la barre rend trois boutons Arial gris sur du verre fumé. */
 .menu__link {
+  appearance: none; background: none; border: 0; font-family: inherit;
   display: flex; flex-direction: column; align-items: center; gap: 7px;
   width: 36px; padding: 10px 0; border-radius: var(--r-item);
   font-size: var(--fs-kicker); font-weight: 500; letter-spacing: .18em;
@@ -167,6 +177,7 @@
   background: var(--glow); box-shadow: 0 0 6px rgba(var(--glow-rgb), .8);
 }
 .menu__social {
+  appearance: none; background: none; border: 0; font-family: inherit;
   display: flex; align-items: center; justify-content: center;
   width: 36px; height: 30px; border-radius: 15px;
   font-size: var(--fs-kicker); font-weight: 600; letter-spacing: .04em;
@@ -176,8 +187,50 @@
 .menu__lang { display: flex; flex-direction: column; align-items: center; gap: 3px; margin-top: 10px; font-size: 10px; font-weight: 600; letter-spacing: .08em; }
 .menu__lang-on  { color: var(--glow); }
 .menu__lang-off { color: rgba(var(--cream-rgb), .45); cursor: pointer; }
-.menu__lang-off:hover { color: var(--cream); }
+/* `:not([aria-disabled])` : tant que le bilingue n'existe pas (#33), EN est
+   rendu inerte — il ne doit pas s'allumer au survol comme s'il attendait un clic. */
+.menu__lang-off:not([aria-disabled='true']):hover { color: var(--cream); }
+.menu__lang-off[aria-disabled='true'] { cursor: default; }
 .menu__lang-rule { width: 14px; height: 1px; background: rgba(var(--cream-rgb), .2); }
+
+/* ===== Pré-loader (écran 0b) =====
+   L'anatomie vit ici plutôt que dans le `<style>` de la maquette : l'app la
+   recrée telle quelle (issue #25), et deux copies d'un même composant finissent
+   toujours par diverger. */
+.preload {
+  position: absolute; inset: 0; z-index: var(--z-preload);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 44px;
+  background: radial-gradient(1100px 750px at 50% 115%, #22160D, var(--ink) 70%);
+  transition: opacity var(--t-preload-out) var(--ease-out);
+}
+/* Sortie : la scène est prête, le fondu couvre sa première frame. */
+.preload--out { opacity: 0; }
+.preload__bar { position: relative; width: 340px; height: 2px; border-radius: 1px; background: rgba(var(--cream-rgb), .14); }
+.preload__fill {
+  position: absolute; left: 0; top: 0; bottom: 0; border-radius: 1px;
+  background: linear-gradient(90deg, rgba(var(--glow-rgb), .35), var(--glow));
+  box-shadow: 0 0 12px rgba(var(--glow-rgb), .7);
+  transition: width 300ms var(--ease-out);
+}
+/* Le point de tête vit DANS le fil : il suit sa largeur sans dupliquer le
+   pourcentage dans une seconde propriété à tenir synchronisée. */
+.preload__head {
+  position: absolute; left: 100%; top: 50%; transform: translate(-50%, -50%);
+  width: 5px; height: 5px; border-radius: 50%;
+  background: var(--glow); box-shadow: 0 0 10px rgba(var(--glow-rgb), .9);
+}
+.preload__row { display: flex; justify-content: space-between; align-items: baseline; width: 340px; margin-top: 14px; }
+.preload__copy { font-family: var(--font-voice); font-style: italic; font-size: 15px; color: rgba(var(--cream-rgb), .85); }
+.preload__pct { font-family: ui-monospace, monospace; font-size: 11px; color: rgba(var(--cream-rgb), .5); }
+
+/* Sans `Content-Length`, aucun pourcentage n'est vrai : la barre fait la
+   navette et le chiffre disparaît, plutôt que d'afficher un nombre inventé. */
+.preload__bar--unknown .preload__fill { width: 25%; animation: preload-shuttle 1.4s var(--ease-out) infinite alternate; }
+.preload__bar--unknown .preload__head { display: none; }
+/* 300 % = (100 - 25) / 25 : la navette s'arrête pile au bord droit de la piste.
+   Pas d'`overflow: hidden` sur la piste — il rognerait aussi la lueur du fil
+   dans le cas normal. */
+@keyframes preload-shuttle { from { transform: translateX(0); } to { transform: translateX(300%); } }
 
 /* ===== Mouvement réduit =====
    Le critère est l'autonomie, pas le déplacement : ce qui part tout seul ou
@@ -203,6 +256,8 @@
     animation: none !important; opacity: 1 !important;
     filter: drop-shadow(0 0 6px rgba(var(--glow-rgb), .55)) !important;
   }
+  /* la navette de la barre indéterminée est une boucle autonome, elle aussi */
+  .preload__bar--unknown .preload__fill { animation: none !important; width: 100%; opacity: .35; }
   /* reveal typo mot à mot — pas encore dans les maquettes, à honorer côté app */
   .bubble__text > * { animation: none !important; }
 }
