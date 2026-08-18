@@ -65,15 +65,15 @@ Un emplacement, pas une forme de BD : panneau de verre, pas de queue.
 
 - 52 px de large, collée à **12 px** du bord droit, centrée verticalement, rayon 26.
 - Repos : **opacité .4** ; survol / focus-within : **.75** (180 ms). Jamais invisible.
-- De haut en bas : logo losange accent (12 px, lueur) · filet · **Accueil / Résumé / Projets en texte vertical** (`writing-mode: vertical-rl` + `rotate(180deg)` — se lit tête penchée à gauche) · filet · in · gh · toggle FR/EN.
+- De haut en bas : logo triangle accent (12 px, lueur, statique — il ne respire que sur les écrans de chargement) · filet · **Accueil / Résumé / Projets en texte vertical** (`writing-mode: vertical-rl` + `rotate(180deg)` — se lit tête penchée à gauche) · filet · in · gh · toggle FR/EN.
 - Item actif : cartouche crème .09 **+ point accent 4,5 px** au-dessus du mot (flux flex, padding symétrique).
 - Survol d'item : cartouche crème .09, 140 ms.
 - Cibles 36–40 px (≥ 44 px avec zone étendue) ; Tab = focus (état survol), ↑↓ entre items.
 
 ## Écrans hors visite
 
-- **0a Pré-sélection** : fond radial braise→encre, logo (triangle pointe en bas depuis le 2026-08-10, respirant en 2,6 s — les autres écrans portent encore le losange, à propager une fois validé), question en Newsreader italique 30, deux cartes verre 340 px — aucun halo au repos : la carte survolée ou focusée l'allume et il respire en boucle au rythme du logo du preloader (2,6 s ease-in-out). Note mono : choix mémorisé.
-- **0b Pré-loader** : logo en respiration 2,6 s, barre 340×2 px (piste crème .14, fil dégradé→accent, point de tête lumineux), microcopie Newsreader (« On allume les lampes… ») + pourcentage mono.
+- **0a Pré-sélection** : fond radial braise→encre, logo (triangle pointe en bas depuis le 2026-08-10, respirant en 2,6 s — propagé au menu et au preloader avec #65 : le losange n'existe plus nulle part), question en Newsreader italique 30, deux cartes verre 340 px — aucun halo au repos : la carte survolée ou focusée l'allume et il respire en boucle au rythme du logo du preloader (2,6 s ease-in-out). Note mono : choix mémorisé.
+- **0b Pré-loader** : logo triangle en respiration 2,6 s (opacité **et** portée de la lueur, comme sur 0a — sur 16 px l'opacité seule ne se lit pas), barre 340×2 px (piste crème .14, fil dégradé→accent, point de tête lumineux), microcopie Newsreader (« On allume les lampes… ») + pourcentage mono.
 - **02 CV** : contenu « affiché par l'écran » — photo (placeholder hachuré) + carte langues/permis, puis cartouches poste—entreprise—période en **accordéon au survol** (260 ms, max-height) révélant les missions à puces.
 
 ## Budgets de motion
