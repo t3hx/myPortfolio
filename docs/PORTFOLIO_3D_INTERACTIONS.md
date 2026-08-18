@@ -199,25 +199,13 @@ La caméra se déplace entre des **points d'arrêt prédéfinis** (`CameraStop_*
 
 Chaque stop caméra affiche un texte descriptif (overlay HTML piloté par le stop actif — composant livré : `src/scene/Bubble.tsx`, issue #47).
 
-> **À rédiger par Thibault** — le contenu narratif est personnel (présentation, projets, compétences). Structure suggérée : un titre court + 1–2 phrases par stop.
+**Le texte des onze bulles est écrit et livré** (issue #48) : il vient de la session design du 2026-08-10 et vit dans **`src/content/bubbles.ts`**, source unique. Ce tableau n'en garde pas de copie — deux endroits où lire la même phrase, c'est une phrase qui diverge. Les maquettes correspondantes sont `docs/design/screens/*.html`, et un test verrouille le texte livré sur le leur.
 
-| Stop | Texte à afficher (à compléter) |
-|------|--------------------------------|
-| `CameraStop_Home` | _(accroche / intro — "Bienvenue", nom, tagline)_ |
-| `CameraStop_Desk` | _(setup / stack technique / ce sur quoi tu travailles)_ |
-| `CameraStop_Cat` | _(touche perso / le chat)_ |
-| `CameraStop_Cabinet` | _(à définir — ex : expériences, à ouvrir le tiroir pour découvrir)_ |
-| `CameraStop_BookshelfPlant` | _(veille / lectures / centres d'intérêt)_ |
-| `CameraStop_GuitarPoster` | _(hobbies — musique, guitare LTD EC-1000)_ |
-| `CameraStop_PosterTelescope` | _(à définir)_ |
-| `CameraStop_Scoreboard` | _(la mappemonde / voyages / projets par pays)_ |
-| `CameraStop_Telescope` | _(invitation à cliquer sur le télescope)_ |
-| `CameraStop_TelescopeMoon` | _(moment contemplatif / conclusion / contact)_ |
-
-**Implémentation des textes** (livrée — `src/scene/Bubble.tsx`, issue #47) :
+**Implémentation des textes** (livrée — `src/scene/Bubble.tsx`, issues #47 et #48) :
 - Overlay HTML ancré par projection écran (pas du texte 3D) ; anatomie et motion dans `docs/design/tokens.css` (in : reveal 480 ms, out : fondu 200 ms).
 - Affichage piloté par le stop actif en phase `parked` (machine à états `src/state/interaction.ts`) — jamais indexé sur le scroll (décision DESIGN.md).
-- Un seul bloc de texte visible à la fois ; contenus et ancres par stop : issue #48.
+- Un seul bloc de texte visible à la fois. L'ancre monde est dé-projetée depuis le placement du design ; l'objet visé (`Cat_Merged`, `Map_Sheet`, `Outside_Moon`…) donne la profondeur, donc la parallaxe au départ de la caméra — `src/lib/bubbleAnchors.ts`.
+- Reste ouvert : accessibilité des bulles (#49), bilingue FR/EN (#33).
 
 ---
 

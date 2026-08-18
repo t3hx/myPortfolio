@@ -1,6 +1,8 @@
 import { useCallback, useState, type RefObject } from 'react'
-import { Vector3 } from 'three'
+import type { Object3D, Vector3 } from 'three'
 import { CAMERA_STOPS } from '@/config/cameraStops'
+import { BUBBLES, bubbleKicker } from '@/content/bubbles'
+import { resolveBubbleAnchors } from '@/lib/bubbleAnchors'
 import type { StopTransform } from '@/lib/stops'
 import { Bubble } from '@/scene/Bubble'
 import { CameraRig } from '@/scene/CameraRig'
@@ -13,11 +15,13 @@ import { useInteraction } from '@/state/interaction'
  * commands GSAP strokes); panels keep their native wheel because the rig
  * ignores events targeting them.
  *
- * The Cat stop carries the demo <Bubble> (issue #47): screen-projection
- * anchoring, explicit portal to App3D's `.bubble-layer`, capped zIndexRange.
- * The bubble is purely narrative — it opens nothing; the panel's wheel
- * routing stays validated by the HUD's "Open panel" button. Per-stop
- * content/anchors are issue #48.
+ * Les onze bulles narratives (issue #48) sont montées ENSEMBLE et pilotées par
+ * leur seul `visible` : démonter celle de l'arrêt qu'on quitte emporterait son
+ * fondu de sortie avec elle. Tant qu'elle n'est ni visible ni en train de
+ * sortir, une `<Bubble>` ne rend rien — dix composants nuls ne coûtent rien.
+ *
+ * Une bulle n'apparaît qu'à l'arrêt (`phase === 'parked'`), jamais indexée sur
+ * un défilement continu : la phase TELESCOPE, elle aussi, l'efface.
  */
 interface ExperienceProps {
   /** Stable DOM layer OUTSIDE the ScrollControls scroller — see App.tsx. */
@@ -26,25 +30,23 @@ interface ExperienceProps {
 
 export function Experience({ bubbleLayer }: ExperienceProps) {
   const [stops, setStops] = useState<StopTransform[]>([])
+  const [anchors, setAnchors] = useState<(Vector3 | null)[]>([])
   const phase = useInteraction((s) => s.phase)
   const stopIndex = useInteraction((s) => s.stopIndex)
   const setReady = useInteraction((s) => s.setReady)
 
   const onReady = useCallback(
-    (ordered: StopTransform[]) => {
+    (ordered: StopTransform[], scene: Object3D) => {
       setStops(ordered)
+      // Une seule fois : la dé-projection ne dépend que des caméras du .glb et
+      // des boîtes englobantes, tous deux figés après le chargement.
+      setAnchors(resolveBubbleAnchors(scene, ordered))
       setReady()
     },
     [setReady],
   )
 
-  // Anchor the demo bubble 1.2 m in front of the Cat stop camera.
-  const catIndex = CAMERA_STOPS.findIndex((s) => s.label === 'Cat')
-  const cat = stops[catIndex]
-  const bubblePos = cat
-    ? new Vector3(0, 0, -1.2).applyQuaternion(cat.quaternion).add(cat.position)
-    : null
-  const bubbleVisible = phase === 'parked' && stopIndex === catIndex
+  const parkedStop = phase === 'parked' ? CAMERA_STOPS[stopIndex]?.label : undefined
 
   return (
     <>
@@ -57,16 +59,24 @@ export function Experience({ bubbleLayer }: ExperienceProps) {
       {/* Contours spike: ?outline=off|hull|edges|both — see Outlines.tsx. */}
       {stops.length > 0 && <Outlines />}
 
-      {bubblePos && (
-        <Bubble
-          anchor={bubblePos}
-          portal={bubbleLayer}
-          visible={bubbleVisible}
-          kicker={`${String(catIndex + 1).padStart(2, '0')} — ${CAMERA_STOPS[catIndex].label}`}
-        >
-          {CAMERA_STOPS[catIndex].caption}
-        </Bubble>
-      )}
+      {BUBBLES.map((bubble, i) => {
+        const anchor = anchors[i]
+        if (!anchor) return null
+        return (
+          <Bubble
+            key={bubble.stop}
+            anchor={anchor}
+            portal={bubbleLayer}
+            visible={parkedStop === bubble.stop}
+            kicker={bubbleKicker(BUBBLES, i)}
+            maxWidth={bubble.maxWidth}
+            tick={bubble.tick}
+            tilt={bubble.tilt}
+          >
+            {bubble.text}
+          </Bubble>
+        )
+      })}
     </>
   )
 }

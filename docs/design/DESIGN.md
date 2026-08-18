@@ -57,6 +57,10 @@ Un emplacement, pas une forme de BD : panneau de verre, pas de queue.
 | 09 telescope | left 62 %, top 3,5 % | 340 | coin haut-droit, dans le ciel |
 | 10 moon | left 1,2 %, top 82 % | 330 | coin bas-gauche, hors lune |
 
+**Numérotation — tranchée avec #48 (2026-08-18) : c'est l'ordre du TOUR qui numérote, pas celui des maquettes.** Les écrans ci-dessus ont été capturés dans leur propre ordre (01 bureau, 02 CV…) alors que le tour, lui, va Accueil → CV → bureau → mappemonde → étagère → commode → chat → guitare → posters → télescope → lune. Le kicker se calcule donc à l'exécution depuis `CAMERA_STOPS` (accueil non numéroté) : réordonner la visite renumérote tout seul, et les numéros gravés dans les maquettes sont périmés par construction — leur texte, lui, fait toujours foi (`tests/bubbleAnchors.test.ts` le vérifie mot pour mot).
+
+**Le placement est implémenté par dé-projection, pas en CSS.** Les fractions du tableau donnent la DIRECTION du point monde ancré, l'objet visé en donne la profondeur (donc la parallaxe au départ de la caméra) — voir `src/lib/bubbleAnchors.ts`. Les onze positions ont été re-mesurées au navigateur : elles retombent à moins de 0,1 px des maquettes en 1280×720. Hors 16:9, une marge de sécurité de 12 px (la plus serrée du design : celle de la barre de menu) empêche les bulles de bord de sortir du cadre — une bulle garde sa largeur en pixels quand le cadre, lui, rétrécit.
+
 ## Anatomie — barre de menu
 
 - 52 px de large, collée à **12 px** du bord droit, centrée verticalement, rayon 26.

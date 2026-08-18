@@ -1,6 +1,15 @@
 import { Html } from '@react-three/drei'
-import { useEffect, useState, type ReactNode, type RefObject } from 'react'
-import type { Vector3 } from 'three'
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type ReactNode,
+  type RefObject,
+} from 'react'
+import { Vector3, type Camera, type Object3D } from 'three'
+import { clampToSafeArea } from '@/lib/bubbleAnchors'
 
 /**
  * Bulle narrative ancrée par projection écran (issue #47).
@@ -25,12 +34,18 @@ import type { Vector3 } from 'three'
  * La bulle est purement narrative (décision #47) : jamais un bouton, elle
  * n'ouvre rien — `pointer-events: none`, la molette et les clics la
  * traversent. Le `.bubble--interactive` de tokens.css reste une spécification
- * dormante. Le contenu et l'ancre par stop (table de placement, variantes
- * --tilted…) relèvent de #48 ; l'accessibilité complète de #49.
+ * dormante. L'accessibilité complète relève de #49.
+ *
+ * Le composant ne connaît AUCUN texte ni aucune position : le contenu, le
+ * placement et les variantes du design viennent de `src/content/bubbles.ts`,
+ * l'ancre monde de `src/lib/bubbleAnchors.ts` (issue #48).
  */
 
 /** Doit suivre --t-bubble-out (tokens.css) — synchro verrouillée par tests/bubble.test.ts. */
 export const BUBBLE_OUT_MS = 200
+
+/** Scratch : la projection tourne à chaque frame, pour chaque bulle montée. */
+const projected = new Vector3()
 
 export interface BubbleProps {
   /** Point monde suivi par projection écran (recalculée chaque frame). */
@@ -41,7 +56,13 @@ export interface BubbleProps {
   visible: boolean
   /** Étiquette caps du kicker (« NN — Objet ») ; absente = variante inline (home). */
   kicker?: string
-  /** Variantes/placement par stop (#48) : classes ajoutées à `.bubble`. */
+  /** `max-width` de la table de placement, en px content-box ; `null` = libre. */
+  maxWidth?: number | null
+  /** Ligne de rappel de 44 px vers l'objet, du côté indiqué. */
+  tick?: 'left' | 'right'
+  /** Variante `--tilted` : rotation en degrés (guitare : −11,15°). */
+  tilt?: number
+  /** Classes supplémentaires ajoutées à `.bubble`. */
   className?: string
   /** La phrase — une seule, voix Newsreader italique. */
   children: ReactNode
@@ -52,6 +73,9 @@ export function Bubble({
   portal,
   visible,
   kicker,
+  maxWidth,
+  tick,
+  tilt,
   className,
   children,
 }: BubbleProps) {
@@ -68,15 +92,63 @@ export function Bubble({
     return () => window.clearTimeout(timer)
   }, [visible])
 
+  // La taille rendue de la bulle, relevée aux seuls changements de taille : la
+  // lire à chaque frame forcerait un calcul de mise en page par frame.
+  //
+  // Ref callback et non `useEffect` : drei rend les enfants dans une RACINE
+  // REACT À PART (`createRoot` sur son propre div). Ses commits ne sont pas
+  // synchronisés avec les nôtres — au moment où nos effets tournent, l'article
+  // n'est pas encore dans le DOM, et un effet à dépendances figées ne
+  // repasserait jamais. Le callback, lui, se déclenche quand le nœud arrive.
+  const box = useRef({ width: 0, height: 0 })
+  const measureBox = useCallback((el: HTMLElement | null) => {
+    if (!el) return
+    const measure = () => {
+      const rect = el.getBoundingClientRect()
+      box.current = { width: rect.width, height: rect.height }
+    }
+    measure()
+    const observer = new ResizeObserver(measure)
+    observer.observe(el)
+    return () => {
+      observer.disconnect()
+      box.current = { width: 0, height: 0 }
+    }
+  }, [])
+
+  // Projection maison, pour insérer la marge de sécurité entre le point projeté
+  // et la position finale (voir clampToSafeArea). `center` de drei pose ensuite
+  // le translate(−50 %, −50 %) qui fait de ce point le CENTRE de la bulle.
+  const calculatePosition = useCallback(
+    (el: Object3D, camera: Camera, size: { width: number; height: number }) => {
+      projected.setFromMatrixPosition(el.matrixWorld).project(camera)
+      const centre = {
+        x: (projected.x * 0.5 + 0.5) * size.width,
+        y: (-projected.y * 0.5 + 0.5) * size.height,
+      }
+      const safe = clampToSafeArea(centre, box.current, size)
+      return [safe.x, safe.y]
+    },
+    [],
+  )
+
   // Garde anti-fallback : drei résout sa cible AU RENDER (`portal?.current ||
   // conteneur du canvas`) et ne se re-parente jamais si le ref se remplit
   // après. Aujourd'hui le Suspense du glb garantit l'ordre ; ce garde le
   // garantit par le code (un montage trop tôt attend le re-render suivant).
   if (!mounted || !portal.current) return null
 
-  const cls = ['bubble', !visible && 'bubble--out', className]
+  const cls = ['bubble', !visible && 'bubble--out', tilt !== undefined && 'bubble--tilted', className]
     .filter(Boolean)
     .join(' ')
+
+  // `--bubble-rotate` est la variable que lit `.bubble--tilted` (tokens.css) :
+  // la rotation passe par la propriété individuelle `rotate`, jamais par
+  // `transform`, que l'animation `bubble-in` remplacerait (DESIGN.md).
+  const style: CSSProperties = {
+    maxWidth: maxWidth ?? 'none',
+    ...(tilt !== undefined ? { '--bubble-rotate': `${tilt}deg` } : {}),
+  } as CSSProperties
 
   return (
     <Html
@@ -84,12 +156,14 @@ export function Bubble({
       center
       portal={portal}
       zIndexRange={[40, 0]}
+      calculatePosition={calculatePosition}
       // Hook d'inspection (DevTools / Playwright) — volontairement sans CSS.
       className="bubble-anchor"
     >
       {/* Markup des maquettes : kicker (point + étiquette) puis phrase, ou
           variante « sans titre » point + phrase sur une ligne (home). */}
-      <article className={cls} role="note">
+      <article ref={measureBox} className={cls} role="note" style={style}>
+        {tick && <span className={`bubble__tick bubble__tick--${tick}`} aria-hidden="true" />}
         {kicker ? (
           <>
             <header className="bubble__kicker">

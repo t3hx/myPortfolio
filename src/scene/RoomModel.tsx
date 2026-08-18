@@ -23,7 +23,10 @@ import { extractStops, orderedStops, type StopTransform } from '@/lib/stops'
 import { useInteraction } from '@/state/interaction'
 
 interface RoomModelProps {
-  onReady: (stops: StopTransform[]) => void
+  /** Appelé une fois la scène parsée et ses matériaux reconstruits. La scène
+   *  est passée telle quelle : les ancres de bulles (#48) ont besoin des
+   *  boîtes englobantes de ses objets, pas seulement des caméras. */
+  onReady: (stops: StopTransform[], scene: Object3D) => void
 }
 
 /**
@@ -171,7 +174,7 @@ export function RoomModel({ onReady }: RoomModelProps) {
       if (detailed) detailed.visible = false
     }
 
-    onReady(orderedStops(extractStops(scene)))
+    onReady(orderedStops(extractStops(scene)), scene)
   }, [scene, onReady])
 
   // TELESCOPE phase drives the low-def ↔ high-def moon swap.
