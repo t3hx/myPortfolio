@@ -6,7 +6,9 @@ import {
   TONE_MAPPING,
 } from '@/config/renderPipeline'
 import { Experience } from '@/scene/Experience'
+import { viewMode } from '@/lib/viewMode'
 import { Hud } from '@/ui/Hud'
+import { Menu } from '@/ui/Menu'
 
 /**
  * L'expérience 3D complète. One Canvas, one render camera. The scene is
@@ -44,7 +46,14 @@ export default function App3D() {
         </Suspense>
       </Canvas>
       <div ref={bubbleLayer} className="bubble-layer" />
-      <Hud />
+      {/* Le HUD est l'outillage du spike : bandeau de phase, rail de stops,
+          boutons de test des phases. `?debug` le déclarait déjà (viewMode.ts)
+          mais rien ne branchait le fil, alors il s'affichait toujours — et son
+          rail se superposait pixel pour pixel à la barre de menu, les deux à
+          z-index 200. L'issue #26 le disait : le rail est un prototype de
+          diagnostic, pas la navigation. */}
+      {viewMode === 'tour' && <Hud />}
+      <Menu />
     </div>
   )
 }

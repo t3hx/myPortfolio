@@ -153,7 +153,16 @@
 /* Statique : le menu est du mobilier, il ne respire pas. */
 .menu__logo { width: 12px; height: 12px; margin-bottom: 8px; filter: drop-shadow(0 0 10px rgba(var(--glow-rgb), .5)); }
 .menu__rule { width: 22px; height: 1px; background: rgba(var(--cream-rgb), .14); }
+/* Les deux filets n'ont pas le même voisinage : le premier sépare le logo des
+   sections, le second les sections des liens externes. */
+.menu__rule--head { margin-bottom: 6px; }
+.menu__rule--mid  { margin: 6px 0; }
+/* Les maquettes en font des <a>, l'app des <button> (ce sont des actions, pas
+   des liens) — d'où le reset : un bouton arrive avec un fond gris système, une
+   bordure biseautée, et surtout N'HÉRITE PAS de font-family. Sans ces quatre
+   lignes, la barre rend trois boutons Arial gris sur du verre fumé. */
 .menu__link {
+  appearance: none; background: none; border: 0; font-family: inherit;
   display: flex; flex-direction: column; align-items: center; gap: 7px;
   width: 36px; padding: 10px 0; border-radius: var(--r-item);
   font-size: var(--fs-kicker); font-weight: 500; letter-spacing: .18em;
@@ -168,6 +177,7 @@
   background: var(--glow); box-shadow: 0 0 6px rgba(var(--glow-rgb), .8);
 }
 .menu__social {
+  appearance: none; background: none; border: 0; font-family: inherit;
   display: flex; align-items: center; justify-content: center;
   width: 36px; height: 30px; border-radius: 15px;
   font-size: var(--fs-kicker); font-weight: 600; letter-spacing: .04em;
@@ -177,7 +187,10 @@
 .menu__lang { display: flex; flex-direction: column; align-items: center; gap: 3px; margin-top: 10px; font-size: 10px; font-weight: 600; letter-spacing: .08em; }
 .menu__lang-on  { color: var(--glow); }
 .menu__lang-off { color: rgba(var(--cream-rgb), .45); cursor: pointer; }
-.menu__lang-off:hover { color: var(--cream); }
+/* `:not([aria-disabled])` : tant que le bilingue n'existe pas (#33), EN est
+   rendu inerte — il ne doit pas s'allumer au survol comme s'il attendait un clic. */
+.menu__lang-off:not([aria-disabled='true']):hover { color: var(--cream); }
+.menu__lang-off[aria-disabled='true'] { cursor: default; }
 .menu__lang-rule { width: 14px; height: 1px; background: rgba(var(--cream-rgb), .2); }
 
 /* ===== Pré-loader (écran 0b) =====

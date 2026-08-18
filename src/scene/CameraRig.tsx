@@ -158,6 +158,10 @@ export function CameraRig({ stops }: CameraRigProps) {
         if (phase === 'telescope') exitTelescope()
         return
       }
+      // La barre de menu possède ses flèches (focus glissant d'un item à
+      // l'autre) — pendant clavier de la règle `.panel` de la molette : chaque
+      // surface qui a une navigation interne la garde pour elle.
+      if (e.target instanceof Element && e.target.closest('.menu')) return
       if (phase !== 'touring' && phase !== 'parked') return
       const forward = ['ArrowDown', 'ArrowRight', 'PageDown'].includes(e.key)
       const backward = ['ArrowUp', 'ArrowLeft', 'PageUp'].includes(e.key)

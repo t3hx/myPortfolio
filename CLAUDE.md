@@ -112,6 +112,30 @@ One bubble per stop (issue #48). `BUBBLES` is the **single source of the copy** 
 
 The eleven bubbles are all mounted at once in `Experience.tsx` and driven by `visible` alone — unmounting the one being left would take its exit fade with it. A bubble that is neither visible nor fading renders `null`.
 
+### The preloader (`src/ui/Preloader.tsx` + `src/state/loading.ts`)
+
+Issue #25, and the only interesting part is **where the progress comes from**. Not drei's `useProgress`: it is fed by `DefaultLoadingManager.onProgress`, which counts **items**. Measured on v13, the manager sees 18 — the `.glb`, the two draco files, and 14 `blob:` URLs (the embedded webp textures, which GLTFLoader re-loads through ImageLoader). The 3 MB `.glb`, the only thing that takes time on a real network, is therefore 1/18 of the bar; worse, `total` grows as items are discovered (1 → 4 → 18), so the bar **goes backwards** (1/4 = 25% at t+33 ms, then 2/18 = 11% at t+41 ms).
+
+So the bar tracks the `.glb`'s **bytes**, via `useLoader`'s `onProgress` — which is why `RoomModel` calls `useLoader` directly instead of drei's `useGLTF` (it drops the callback), and why **the module-scope `preload` is gone**: `useLoader.preload` takes no `onProgress`, and being the call that actually started the fetch, it made the bar structurally mute. `three-stdlib` supplies the loaders, not `three/examples/jsm`, whose DRACOLoader declares its decoder files as `new URL(…, import.meta.url)` — Vite resolves those statically and emits 1.3 MB of decoder into `dist/` that nothing ever fetches.
+
+Two signals, two jobs: **bytes move the bar, `ready` unmounts the screen.** Between them sits a mute tail (draco decode, 14 textures, 146 materials rebuilt) measured at ~300 ms on a fast desktop, which emits no progress at all — so bytes only fill `BYTES_SHARE` (90%) of the bar, and the last tenth closes on `ready`. The preloader is mounted by `App.tsx` **outside** the `<Suspense>`, because there are two waits to cover — the 3D chunk, then the `.glb` — and mounting it inside App3D left the first one bare (measured: 306 ms of empty screen in dev). It **unmounts** rather than hiding, so `?stop=` captures stay deterministic; `PRELOAD_OUT_MS` must equal `--t-preload-out`, and `tests/preloader.test.ts` is the only thing linking them.
+
+### The menu bar (`src/ui/Menu.tsx` + `src/content/menu.ts`)
+
+Issue #26: the persistent navigation, never unmounted — that is what makes it reachable from any point of the tour, and the 40% resting opacity is what lets it be permanent without competing with the room. Accueil → `Home`, Résumé → `CV`, **Projets → `Cabinet`** (product decision, 2026-08-18: the projects live in the chest of drawers, not on the desk). It requests a stop by `label` and `CameraRig` flies there; there is no pose in the menu.
+
+Three input routings, none of which may regress:
+
+- **Wheel**: the bar does *not* capture it. `CameraRig` listens on `.stage` and only ignores `.panel`; a wheel over the menu still tours (verified — the gesture fires normally). The bar has nothing to scroll.
+- **Arrows**: `CameraRig` steps stop-to-stop with them, so it now bails on any key event whose target is inside `.menu` — the keyboard counterpart of the `.panel` wheel rule. Inside the bar, ↑↓ roll focus between items.
+- **Mouse**: a mouse click blurs the item afterwards (`e.detail > 0`), handing the arrows back to the tour. A keyboard activation (`detail === 0`) keeps focus where it is.
+
+**The diagnostic HUD is now gated behind `?debug`.** `viewMode.ts` had declared that contract since the spike but nothing was wired to it, so the HUD rendered always — and its stop rail sat pixel-for-pixel on top of the menu bar, both at `z-index: 200`. Two navigations stacked in the same place is what a "cheap" bar looks like. The HUD is still the phase/rail/panel-button tooling, one `?debug` away.
+
+The active item is an exact stop match, and it lights up on *departure*, not arrival — `goToIndex` sets `stopIndex` when the tween starts. A section pointing at a stop that no longer exists is dropped with a console warning (same discipline as a missing `CameraStop_*`); `tests/menu.test.ts` fails before that can ship. A social with no URL is not rendered at all — a bar whose promise is "contact in two clicks" may not show a dead link. The FR/EN toggle is rendered because it is the mockups' anatomy, but EN is `disabled` until #33.
+
+**The second click does not exist yet.** #26 was closed on the bar alone (product decision, 2026-08-18); reaching a project card once parked at the Cabinet was deliberately deferred, and this paragraph is its only written trace — there is no follow-up issue.
+
 ### The preselection gate (`src/App.tsx` + `src/lib/experienceChoice.ts`)
 
 `App.tsx` is a DOM-only router (issue #24): preselection screen → lazy-loaded `App3D` (the Canvas) or the classic placeholder. The lazy import is **load-bearing** — a static import path from the entry chunk would ship all of three/R3F/drei to every visitor, including the ones who pick classic. It used to be even more load-bearing: `RoomModel` fired `useGLTF.preload` at module scope, so importing it *at all* started the 3 MB download. That preload is gone (#25) — `useLoader.preload` takes no `onProgress`, and being the call that actually started the fetch, it left the preloader's bar with no data to show. The load now starts on `RoomModel`'s first render, a few ms later. A stored `classic` choice (localStorage, `portfolio.experience`) is honoured without ever probing WebGL; a missing WebGL context auto-falls back to classic. Every dev URL param below bypasses the gate straight to 3D so the render-comparison loop stays deterministic. The screen recreates `docs/design/screens/0a-preselection.html`; `docs/design/tokens.css` is imported directly by `main.tsx` (single source of truth, no copy).
@@ -120,7 +144,7 @@ The eleven bubbles are all mounted at once in `Experience.tsx` and driven by `vi
 
 - `?stop=<label>` — deterministic camera snap (render-comparison loop + shareable links)
 - `?outline=`, `?lw=` — ink A/B and width
-- `?debug`, `?debug-fly` — view modes (fly mode not yet ported to R3F)
+- `?debug` — the diagnostic HUD (phase banner, stop rail, panel/telescope buttons); `?debug-fly` — fly mode, not yet ported to R3F
 - `?choose` — clears the stored 3D/classic choice and reopens the preselection screen
 
 ## Conventions
