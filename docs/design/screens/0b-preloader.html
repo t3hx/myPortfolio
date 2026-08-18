@@ -8,17 +8,9 @@
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600&family=Newsreader:ital,opsz,wght@0,6..72,400;1,6..72,400;1,6..72,500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../tokens.css">
 <style>
-.preload { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:44px;
-  background:radial-gradient(1100px 750px at 50% 115%, #22160D, var(--ink) 70%); }
-.preload__bar { position:relative; width:340px; height:2px; border-radius:1px; background:rgba(var(--cream-rgb),.14); }
-.preload__fill { position:absolute; left:0; top:0; bottom:0; width:62%; border-radius:1px;
-  background:linear-gradient(90deg, rgba(var(--glow-rgb),.35), var(--glow)); box-shadow:0 0 12px rgba(var(--glow-rgb),.7);
-  transition:width 300ms var(--ease-out); }
-.preload__head { position:absolute; left:62%; top:50%; transform:translate(-50%,-50%); width:5px; height:5px; border-radius:50%;
-  background:var(--glow); box-shadow:0 0 10px rgba(var(--glow-rgb),.9); }
-.preload__row { display:flex; justify-content:space-between; align-items:baseline; width:340px; margin-top:14px; }
-.preload__copy { font-family:var(--font-voice); font-style:italic; font-size:15px; color:rgba(242,233,218,.85); }
-.preload__pct { font-family:ui-monospace,monospace; font-size:11px; color:rgba(var(--cream-rgb),.5); }
+/* L'anatomie du preloader vit dans tokens.css (issue #25) : cette maquette ne
+   fixe plus que l'avancement figé de la capture. */
+.preload__fill { width:62%; }
 </style>
 </head>
 <body>
@@ -26,7 +18,7 @@
   <div class="preload" role="status" aria-label="Chargement">
     <svg class="logo preload__logo" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 2.5 H14 L8 13.5 Z"/></svg>
     <div>
-      <div class="preload__bar"><div class="preload__fill"></div><div class="preload__head"></div></div>
+      <div class="preload__bar"><div class="preload__fill"><div class="preload__head"></div></div></div>
       <div class="preload__row"><span class="preload__copy">On allume les lampes…</span><span class="preload__pct">62 %</span></div>
     </div>
   </div>

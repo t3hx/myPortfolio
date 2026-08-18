@@ -9,17 +9,23 @@ import {
   type ExperienceResolution,
 } from '@/lib/experienceChoice'
 import { ClassicApp } from '@/ui/ClassicApp'
+import { Preloader } from '@/ui/Preloader'
 import { Preselection } from '@/ui/Preselection'
 
 /**
  * Aiguillage racine (issue #24) : pré-sélection → expérience 3D ou classique.
  *
- * L'import dynamique d'App3D est OBLIGATOIRE, pas une optimisation :
- * `RoomModel` lance `useGLTF.preload` dès l'évaluation de son module. Le
- * code-splitting est donc la seule garantie que le `.glb` (3 Mo) — et tout
- * three/r3f/drei — ne partent qu'APRÈS le choix du visiteur. La route
- * classique, elle, ne doit jamais créer de contexte WebGL (voir
+ * L'import dynamique d'App3D est OBLIGATOIRE, pas une optimisation : le
+ * code-splitting est la seule garantie que three / r3f / drei — et le `.glb` de
+ * 3 Mo qu'ils vont chercher — ne partent qu'APRÈS le choix du visiteur. La
+ * route classique, elle, ne doit jamais créer de contexte WebGL (voir
  * experienceChoice.ts pour l'ordre choix mémorisé / sonde).
+ *
+ * Le preloader est monté ICI, hors du <Suspense> (issue #25). Il y a deux
+ * attentes à couvrir — le chunk 3D, puis le `.glb` — et une seule est
+ * mesurable. Le monter à l'intérieur d'App3D laissait la première à découvert :
+ * mesuré à 306 ms d'écran nu en dev. Hors du <Suspense>, un seul preloader
+ * traverse les deux et se démonte sur `ready`, quand la scène est reconstruite.
  */
 const App3D = lazy(() => import('@/App3D'))
 
@@ -55,20 +61,13 @@ export default function App() {
   }
 
   return (
-    <Suspense fallback={<ChunkLoader />}>
-      <App3D />
-    </Suspense>
-  )
-}
-
-/** Tient l'écran pendant le chargement du chunk 3D (le .glb a son loader à lui, dans le HUD). */
-function ChunkLoader() {
-  return (
-    <div className="stage">
-      <div className="loader">
-        <span className="spinner" />
-        <p>Chargement…</p>
-      </div>
-    </div>
+    <>
+      <Suspense fallback={null}>
+        <App3D />
+      </Suspense>
+      {/* Après App3D dans l'ordre du DOM, et z-index 400 : il recouvre le canvas
+          jusqu'à sa première frame. */}
+      <Preloader />
+    </>
   )
 }
