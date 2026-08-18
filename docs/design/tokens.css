@@ -112,6 +112,30 @@
   to   { opacity: 1; transform: translateY(0);    clip-path: inset(-35%); }
 }
 
+/* ===== Logo =====
+   Un seul logo dans le produit : le triangle pointe en bas (2026-08-10, en
+   remplacement du losange des premières maquettes — issue #65). SVG plutôt que
+   div : le losange était un carré pivoté à 45°, une astuce qui ne fait pas un
+   triangle, et un `clip-path` rognerait la bordure ET sa lueur. La géométrie
+   vit dans le markup (`<path d="M2 2.5 H14 L8 13.5 Z">`, viewBox 0 0 16 16),
+   son habillage ici. Côté app, c'est `src/ui/Logo.tsx` qui la rend. */
+.logo { overflow: visible; } /* la lueur du drop-shadow déborde du viewBox */
+.logo path {
+  fill: none; stroke: var(--glow); stroke-width: 1.5;
+  vector-effect: non-scaling-stroke; /* même trait à 12 px qu'à 16 px */
+  stroke-linejoin: round;            /* pointes adoucies — l'équivalent du border-radius du losange */
+}
+
+/* Respiration (2,6 s) : opacité ET portée de la lueur. Sur 16 px l'opacité
+   seule ne se lit pas — mesuré pendant la session design. */
+@keyframes logo-breathe {
+  0%, 100% { opacity: .45; filter: drop-shadow(0 0 3px  rgba(var(--glow-rgb), .35)); }
+  50%      { opacity: 1;   filter: drop-shadow(0 0 10px rgba(var(--glow-rgb), .8));  }
+}
+
+/* Preloader : le logo respire pendant le chargement. */
+.preload__logo { width: 16px; height: 16px; animation: logo-breathe 2.6s ease-in-out infinite; }
+
 /* ===== Barre de menu ===== */
 .menu {
   position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
@@ -125,11 +149,8 @@
   opacity: .4; transition: opacity var(--t-bar) var(--ease-out);
 }
 .menu:hover, .menu:focus-within { opacity: .75; }
-.menu__logo {
-  width: 12px; height: 12px; transform: rotate(45deg);
-  border: 1.5px solid var(--glow); border-radius: 2px; margin-bottom: 8px;
-  box-shadow: 0 0 10px rgba(var(--glow-rgb), .5);
-}
+/* Statique : le menu est du mobilier, il ne respire pas. */
+.menu__logo { width: 12px; height: 12px; margin-bottom: 8px; filter: drop-shadow(0 0 10px rgba(var(--glow-rgb), .5)); }
 .menu__rule { width: 22px; height: 1px; background: rgba(var(--cream-rgb), .14); }
 .menu__link {
   display: flex; flex-direction: column; align-items: center; gap: 7px;
@@ -176,7 +197,12 @@
      preloader, dont la respiration continuait de tourner. */
   /* respiration du logo (boucle infinie) ; la barre continue de progresser,
      c'est de l'information, pas de la décoration */
-  .preload__logo { animation: none !important; opacity: 1 !important; }
+  /* la lueur est figée explicitement : la respiration anime aussi le `filter`,
+     et le simple fait de couper l'animation la ramènerait à `none`. */
+  .preload__logo {
+    animation: none !important; opacity: 1 !important;
+    filter: drop-shadow(0 0 6px rgba(var(--glow-rgb), .55)) !important;
+  }
   /* reveal typo mot à mot — pas encore dans les maquettes, à honorer côté app */
   .bubble__text > * { animation: none !important; }
 }

@@ -15,7 +15,7 @@ export function Preselection({ onChoose }: { onChoose: (choice: ExperienceChoice
     <main className="stage">
       <div className="presel">
         <header className="presel__head">
-          <Logo />
+          <Logo className="presel__logo" />
           <p className="presel__eyebrow">Portfolio — la visite d'une pièce</p>
           <h1 className="presel__title">Comment souhaitez-vous visiter&nbsp;?</h1>
         </header>

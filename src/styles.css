@@ -301,42 +301,23 @@ body,
   text-align: center;
 }
 
-/* Triangle au trait lumineux (SVG — voir Logo.tsx pour le pourquoi). Il
-   respire au même rythme que les halos, en plus marqué : opacité ET portée de
-   la lueur, sinon la pulsation ne se lit pas sur 16 px. */
+/* La forme, son trait et la respiration vivent dans `.logo` / `logo-breathe`
+   (tokens.css, issue #65) : ici, seulement ce qui est propre à cet écran. */
 .presel__logo {
   width: 16px;
   height: 16px;
-  overflow: visible; /* la lueur du drop-shadow déborde du viewBox */
   animation: logo-breathe 2.6s ease-in-out infinite;
 }
 
-@keyframes logo-breathe {
-  0%, 100% {
-    opacity: 0.45;
-    filter: drop-shadow(0 0 3px rgba(var(--glow-rgb), 0.35));
-  }
-  50% {
-    opacity: 1;
-    filter: drop-shadow(0 0 10px rgba(var(--glow-rgb), 0.8));
-  }
-}
-
 /* Boucle autonome : neutralisée en mouvement réduit (même règle que le logo
-   du preloader dans tokens.css). */
+   du preloader dans tokens.css — la lueur est figée à la main parce que la
+   respiration anime aussi le `filter`). */
 @media (prefers-reduced-motion: reduce) {
   .presel__logo {
     animation: none !important;
     opacity: 1;
     filter: drop-shadow(0 0 6px rgba(var(--glow-rgb), 0.55));
   }
-}
-
-.presel__logo path {
-  fill: none;
-  stroke: var(--glow);
-  stroke-width: 1.5;
-  stroke-linejoin: round; /* pointes adoucies, l'équivalent du border-radius du losange */
 }
 
 .presel__eyebrow {
