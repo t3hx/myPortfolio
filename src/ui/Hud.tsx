@@ -20,13 +20,6 @@ export function Hud() {
 
   return (
     <div className="hud">
-      {!ready && (
-        <div className="loader">
-          <span className="spinner" />
-          <p>Loading scene…</p>
-        </div>
-      )}
-
       {ready && (
         <>
           <div className="status">
