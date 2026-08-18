@@ -30,6 +30,14 @@ import { useInteraction } from '@/state/interaction'
  * la bulle n'est pas affichée, et TELESCOPE comme PANEL l'effacent aussi.
  * Fermer un panneau ramène à `parked` et redit la bulle — c'est voulu, on
  * revient à la pièce et l'annonce resitue l'arrêt.
+ *
+ * C'est exactement la condition dont dépend l'affichage de la bulle
+ * (Experience.tsx) : l'annonce ne parle donc JAMAIS d'une bulle qui n'est pas
+ * à l'écran. Vérifié sur le seul chemin où `parked` ne signifie pas une
+ * arrivée caméra — sortie de TELESCOPE par Échap : bulle et annonce
+ * disparaissent ensemble à l'entrée, reviennent ensemble pendant le vol de
+ * retour de 1,2 s. Si ce retour anticipé gêne un jour, c'est la bulle qu'il
+ * faudra retarder, pas l'annonce.
  */
 export function StopAnnouncer() {
   const phase = useInteraction((s) => s.phase)
