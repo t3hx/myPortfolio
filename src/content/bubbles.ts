@@ -163,3 +163,21 @@ export function bubbleKicker(bubbles: BubbleContent[], index: number): string | 
   const rank = bubbles.slice(0, index + 1).filter((b) => b.subject).length
   return `${String(rank).padStart(2, '0')} — ${bubble.subject}`
 }
+
+/**
+ * La bulle `index` telle qu'elle est ANNONCÉE à l'arrivée à l'arrêt (issue #49)
+ * — ce que lit `<StopAnnouncer>`, pas ce qui est peint.
+ *
+ * Volontairement PAS le kicker : « 01 — Le bureau » se prononce « zéro un tiret
+ * cadratin le bureau », un numéro de repère visuel qui n'aide pas à l'oreille.
+ * L'annonce garde le sujet (il situe l'objet cadré, que l'utilisateur ne voit
+ * pas) puis la phrase. Sans sujet (home), la phrase suffit.
+ *
+ * Index hors table = chaîne vide : l'annonceur ne rend alors aucun texte, et
+ * une région live vide n'annonce rien.
+ */
+export function bubbleAnnouncement(bubbles: BubbleContent[], index: number): string {
+  const bubble = bubbles[index]
+  if (!bubble) return ''
+  return bubble.subject ? `${bubble.subject}. ${bubble.text}` : bubble.text
+}

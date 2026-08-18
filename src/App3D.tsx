@@ -7,6 +7,7 @@ import {
 } from '@/config/renderPipeline'
 import { Experience } from '@/scene/Experience'
 import { Hud } from '@/ui/Hud'
+import { StopAnnouncer } from '@/ui/StopAnnouncer'
 
 /**
  * L'expérience 3D complète. One Canvas, one render camera. The scene is
@@ -43,6 +44,9 @@ export default function App3D() {
         </Suspense>
       </Canvas>
       <div ref={bubbleLayer} className="bubble-layer" />
+      {/* Frère de la couche des bulles, jamais dedans : ce div est la cible de
+          portail de drei, qui y insère et retire ses propres nœuds (#49). */}
+      <StopAnnouncer />
       <Hud />
     </div>
   )

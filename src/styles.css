@@ -254,6 +254,37 @@ body,
   margin: 0;
 }
 
+/* Accessibilité (issue #49) : la phrase — ET RIEN D'AUTRE — reprend les
+   événements pointeur, pour être sélectionnable à la souris. tokens.css garde
+   `.bubble { pointer-events: none }` tel qu'il est dessiné : la levée est
+   locale à la couche projetée, comme les deux règles ci-dessus.
+   Ce que ça ne casse pas : la molette. L'écouteur du tour est posé sur
+   `.stage` (CameraRig), la bulle n'est pas un `.panel`, donc l'événement
+   remonte et l'arrêt suivant part quand même — vérifié au navigateur.
+   Ce que ça coûte : un clic sur la phrase ne redescend plus au raycaster de la
+   scène. La bulle n'en devient pas cliquable pour autant — aucun curseur
+   « main », aucun état de survol, `.bubble--interactive` reste dormant. */
+.bubble-layer .bubble__text {
+  pointer-events: auto;
+  user-select: text;
+  cursor: text;
+}
+
+/* Réservé au lecteur d'écran : hors de l'image, mais DANS l'arbre
+   d'accessibilité — `display: none` ou `visibility: hidden` l'en sortiraient et
+   l'annonce de <StopAnnouncer> mourrait sans bruit. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
 /* Sortie : fondu simple avant le départ caméra (budget DESIGN.md : 200 ms,
    la caméra part en 1200 ms). Déclarée après tokens.css : à spécificité
    égale, elle bat `bubble-in` — y compris la variante mouvement réduit. */

@@ -32,9 +32,21 @@ import { clampToSafeArea } from '@/lib/bubbleAnchors'
  *   temps du fondu de sortie avant de se démonter.
  *
  * La bulle est purement narrative (décision #47) : jamais un bouton, elle
- * n'ouvre rien — `pointer-events: none`, la molette et les clics la
- * traversent. Le `.bubble--interactive` de tokens.css reste une spécification
- * dormante. L'accessibilité complète relève de #49.
+ * n'ouvre rien, et le `.bubble--interactive` de tokens.css reste une
+ * spécification dormante.
+ *
+ * Accessibilité (issue #49) — deux choses, et elles vont ensemble :
+ *
+ * - L'article est `aria-hidden` : la phrase est DITE par `<StopAnnouncer>`
+ *   (App3D), la seule copie du texte dans l'arbre d'accessibilité. Sans ça,
+ *   elle serait annoncée à l'arrivée puis relue une seconde fois à la
+ *   navigation. Retirer l'un sans l'autre casse la moitié de l'issue.
+ * - Le texte redevient sélectionnable : `.bubble-layer .bubble__text` relève
+ *   `pointer-events` sur la SEULE phrase (styles.css). La molette continue de
+ *   traverser — l'écouteur du tour est sur `.stage` et l'événement y remonte —
+ *   mais un clic sur la phrase ne descend plus au raycaster : c'est le prix
+ *   assumé de la sélection, et il s'arrête au texte (le point, le trait de
+ *   rappel et le fond restent transparents aux clics).
  *
  * Le composant ne connaît AUCUN texte ni aucune position : le contenu, le
  * placement et les variantes du design viennent de `src/content/bubbles.ts`,
@@ -162,7 +174,7 @@ export function Bubble({
     >
       {/* Markup des maquettes : kicker (point + étiquette) puis phrase, ou
           variante « sans titre » point + phrase sur une ligne (home). */}
-      <article ref={measureBox} className={cls} role="note" style={style}>
+      <article ref={measureBox} className={cls} aria-hidden="true" style={style}>
         {tick && <span className={`bubble__tick bubble__tick--${tick}`} aria-hidden="true" />}
         {kicker ? (
           <>
