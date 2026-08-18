@@ -20,7 +20,11 @@ export type ExperienceChoice = '3d' | 'classic'
 
 export type ExperienceResolution =
   | { kind: 'ask' }
-  | { kind: 'route'; choice: ExperienceChoice; reason: 'dev-params' | 'stored' | 'no-webgl' | 'chosen' }
+  | {
+      kind: 'route'
+      choice: ExperienceChoice
+      reason: 'dev-params' | 'stored' | 'no-webgl' | 'chosen'
+    }
 
 export const CHOICE_STORAGE_KEY = 'portfolio.experience'
 

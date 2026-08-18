@@ -23,19 +23,13 @@ export function Preselection({ onChoose }: { onChoose: (choice: ExperienceChoice
           {/* autoFocus : Entrée = 3D (la carte vedette), Tab puis Entrée = classique.
               Le halo n'est plus porté d'office : il s'allume au survol/focus et
               respire (décision du 2026-08-10, remplace le « halo d'office »). */}
-          <button
-            type="button"
-            className="presel-card"
-            autoFocus
-            onClick={() => onChoose('3d')}
-          >
+          <button type="button" className="presel-card" autoFocus onClick={() => onChoose('3d')}>
             <span className="bubble__kicker">
               <span className="bubble__dot" />
               <span className="bubble__label presel-card__label--lit">Expérience 3D</span>
             </span>
             <p className="bubble__text">
-              Entrez dans la pièce — la caméra vous guide d'objet en objet, au fil de la
-              molette.
+              Entrez dans la pièce — la caméra vous guide d'objet en objet, au fil de la molette.
             </p>
             <span className="presel-card__meta">WebGL · ~3 Mo · souris, tactile ou clavier</span>
           </button>
@@ -45,13 +39,14 @@ export function Preselection({ onChoose }: { onChoose: (choice: ExperienceChoice
               <span className="bubble__label">Expérience classique</span>
             </span>
             <p className="bubble__text">
-              La même histoire, en une page légère — idéale en déplacement ou au lecteur
-              d'écran.
+              La même histoire, en une page légère — idéale en déplacement ou au lecteur d'écran.
             </p>
             <span className="presel-card__meta">HTML · instantané · accessible</span>
           </button>
         </div>
-        <p className="presel__note">votre choix est mémorisé — modifiable à tout moment depuis le menu</p>
+        <p className="presel__note">
+          votre choix est mémorisé — modifiable à tout moment depuis le menu
+        </p>
       </div>
     </main>
   )

@@ -1,7 +1,7 @@
 name: Bug
 description: Quelque chose ne fonctionne pas comme prévu
-title: "myPortfolio-TK#/ "
-labels: ["type:bug"]
+title: 'myPortfolio-TK#/ '
+labels: ['type:bug']
 body:
   # Bloc d'affichage : n'apparaît pas dans le corps de l'issue créée.
   - type: markdown

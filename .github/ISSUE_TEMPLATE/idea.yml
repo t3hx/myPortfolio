@@ -1,6 +1,6 @@
 name: Idée
 description: Une piste à explorer, pas encore décidée
-labels: ["type:idea"]
+labels: ['type:idea']
 body:
   - type: textarea
     id: idea

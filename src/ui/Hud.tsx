@@ -76,13 +76,13 @@ export function Hud() {
               </header>
               <div className="panel-body">
                 <p>
-                  This panel exists to validate risk point #2: while it is open, the wheel
-                  belongs to THIS scroll area — the camera must not move.
+                  This panel exists to validate risk point #2: while it is open, the wheel belongs
+                  to THIS scroll area — the camera must not move.
                 </p>
                 {Array.from({ length: 24 }, (_, i) => (
                   <p key={i}>
-                    Scrollable filler block {i + 1}. Keep wheeling: if the room behind you
-                    starts touring, the input routing is broken and the spike fails.
+                    Scrollable filler block {i + 1}. Keep wheeling: if the room behind you starts
+                    touring, the input routing is broken and the spike fails.
                   </p>
                 ))}
                 <p className="panel-end">— end of panel content —</p>

@@ -37,7 +37,7 @@ afterEach(() => {
 })
 
 describe('verticalFov', () => {
-  it("rend le champ horizontal inchangé sur un cadre carré", () => {
+  it('rend le champ horizontal inchangé sur un cadre carré', () => {
     // Un cadre carré ne distingue pas horizontal et vertical.
     expect(verticalFov(54.43, 1)).toBeCloseTo(54.43, 5)
   })
@@ -103,7 +103,7 @@ describe('extractStops', () => {
     expect(pose.position.y).toBeCloseTo(5, 5)
   })
 
-  it("avertit et saute un nœud qui porte le bon nom mais AUCUNE caméra", () => {
+  it('avertit et saute un nœud qui porte le bon nom mais AUCUNE caméra', () => {
     // Le piège central. Un Empty nommé `CameraStop_*` produisait un stop
     // parfaitement fonctionnel avec un cadrage de 45° que personne n'a
     // autorisé — plausible à l'œil, donc jamais remarqué.
@@ -117,9 +117,7 @@ describe('extractStops', () => {
     // Compter les avertissements de CE type : la scène de test ne contient
     // qu'un nœud, donc les dix autres stops avertissent légitimement qu'ils
     // sont absents du graphe.
-    const sansCamera = avertir.mock.calls.filter((c) =>
-      String(c[0]).includes('carries no camera'),
-    )
+    const sansCamera = avertir.mock.calls.filter((c) => String(c[0]).includes('carries no camera'))
     expect(sansCamera).toHaveLength(1)
     expect(sansCamera[0][0]).toContain('CameraStop_Home')
   })

@@ -14,7 +14,29 @@ Package manager is **pnpm** (see `pnpm-lock.yaml`).
 
 `tsconfig.json` includes `tests` and both config files, so `type-check` covers them too — it did not before, and a green type-check said nothing about the tests.
 
-No linter and no formatter yet (issue #21). Playwright and the render-comparison loop are issue #22.
+- `pnpm lint` — ESLint **and** `prettier --check`. This is the script CI calls (`pnpm run --if-present lint`), so both must pass.
+- `pnpm format` — `prettier --write` then `eslint --fix`.
+
+Playwright and the render-comparison loop are issue #22.
+
+### Two TypeScripts, on purpose (issue #21)
+
+`package.json` looks wrong at a glance and is not:
+
+```json
+"@typescript/native": "npm:typescript@^7.0.2",
+"typescript": "npm:@typescript/typescript6@^6.0.2"
+```
+
+TypeScript 7 is the **native (Go) port**: its npm package ships a binary and _no JavaScript compiler API_ — `ts.createSourceFile` and `ts.createProgram` are `undefined`. typescript-eslint needs that API, imports it from the bare name `typescript` as a peer dependency, and refuses to load at all against v7 (it throws by name: _"typescript-eslint does not support TS 7.0"_). No release of it supports v7, canary included.
+
+This is the side-by-side layout Microsoft documents for exactly this case: the **name** `typescript` resolves to the v6 package (the JS API, for tooling), while the native v7 compiler keeps the `tsc` binary under an alias. Verified after a `--frozen-lockfile` install: `.bin/tsc` is 7.0.2, `.bin/tsc6` is the v6 one, and `require('typescript')` gives 6.0.3 with a working API. So `pnpm type-check` still runs the fast native compiler; only the linter and your editor's LSP read the v6 API. `pnpm overrides` cannot do this job — `typescript` is a _peer_ dependency and resolves from the root either way.
+
+The lint rules are deliberately **not** type-aware (`tseslint.configs.recommended`, not `recommendedTypeChecked`): pointing a second compiler version at the same `tsconfig.json` invites a silent gap between what `tsc` sees and what the linter believes. `pnpm type-check` stays the authority on types.
+
+`eslint-plugin-react-hooks@7` ships the sixteen **React Compiler** rules in its `recommended` preset, and this repo enables only `rules-of-hooks` and `exhaustive-deps` from it. The compiler rules model pure React data flow; this app is an imperative react-three-fiber shell, where mutating a three.js material from an effect (`Outlines.tsx`) is the normal pattern, not a fault — and `set-state-in-effect` condemns the deferred unmount validated in #47. Adopting the React Compiler is a decision of its own, not a side effect of adding a linter.
+
+`docs/design/` is excluded from both tools: the mockups document committed captures, and `tokens.css` is written in the compact style the design session reviewed.
 
 ## Architecture
 
@@ -42,33 +64,33 @@ The UI is **two components only** — a vertical menu bar on the right edge and 
 - The baked image of each material lives in its **emissive texture slot** (100 of the 124 materials have one). Any other slot is dead weight: an unlit pipeline ignores normal/AO/roughness maps.
 - **11 `CameraStop_*` cameras**, each carrying its own focal length — the tour's single source of truth (see below). v13 also declares `aspectRatio: 16/9`, which v12 did not.
 - Compression: **Draco geometry + webp textures** (`KHR_draco_mesh_compression`, `EXT_texture_webp`). 90 MB of PNG/raw → 7.6 MB webp → 3.0 MB with Draco; geometry was ~5.4 MB of that. Draco needs the decoder in `public/draco/` (see `DRACO_DECODER_PATH`).
-- **No `runtime` tags** (dropped in v10). `RoomModel` therefore *derives* each material's treatment from the glTF itself — see below. Tags are still read first if a future export restores them.
+- **No `runtime` tags** (dropped in v10). `RoomModel` therefore _derives_ each material's treatment from the glTF itself — see below. Tags are still read first if a future export restores them.
 - Texture VRAM is the real mobile risk and compression does **not** reduce it: KTX2 in CI is still required.
 
 ### Render pipeline (`src/config/renderPipeline.ts` + `src/scene/RoomModel.tsx`)
 
 WYSIWYG rule: what Blender shows is what WebGL must show. `RoomModel` traverses the scene and rebuilds every material as `MeshBasicMaterial`, choosing the treatment per material (not per mesh — merged meshes mix baked surfaces with emitters):
 
-| Condition | Treatment |
-|---|---|
-| alpha-blended, no texture | **glass** — transparent at the authored alpha, no depth write (PC case pane) |
-| alpha-blended/masked + texture | **decal** — alphaTest 0.5, no depth write (amp's Sharmall logo) |
+| Condition                      | Treatment                                                                                                 |
+| ------------------------------ | --------------------------------------------------------------------------------------------------------- |
+| alpha-blended, no texture      | **glass** — transparent at the authored alpha, no depth write (PC case pane)                              |
+| alpha-blended/masked + texture | **decal** — alphaTest 0.5, no depth write (amp's Sharmall logo)                                           |
 | no texture, emissive non-black | **emissive** — colour = `emissive × emissiveIntensity` (fans, LEDs, bulbs, cat eyes, keyboard backlight…) |
-| anything else | **unlit** — the baked emissive texture as `map` |
+| anything else                  | **unlit** — the baked emissive texture as `map`                                                           |
 
-Folding `emissiveIntensity` into the colour is load-bearing: `KHR_materials_emissive_strength` reaches ×5 on the bulbs, and an unlit material has no emissive channel to carry it. The renderer runs `NoToneMapping` + sRGB, zero lights, zero shadows. **Never add lights, a runtime tone mapping, or an `<Environment>`** — `MeshBasicMaterial` is unlit by definition and ignores environment lighting; if something renders black, it is a *material treatment* bug in the table above, not a missing light.
+Folding `emissiveIntensity` into the colour is load-bearing: `KHR_materials_emissive_strength` reaches ×5 on the bulbs, and an unlit material has no emissive channel to carry it. The renderer runs `NoToneMapping` + sRGB, zero lights, zero shadows. **Never add lights, a runtime tone mapping, or an `<Environment>`** — `MeshBasicMaterial` is unlit by definition and ignores environment lighting; if something renders black, it is a _material treatment_ bug in the table above, not a missing light.
 
 This replaced the legacy `blenderMatch.ts` calibration system (git history), which belonged to the old lit export. If colors look wrong, the bake is wrong — fix it in Blender.
 
 ### Camera stops (`src/config/cameraStops.ts` + `src/lib/stops.ts`)
 
-**Blender is the single source of truth for poses AND focal lengths.** `extractStops()` samples each `CameraStop_*` node's world transform straight from the loaded graph (no Z-up→Y-up conversion to get wrong); the glb's cameras are never made active, we tween *our* render camera to match.
+**Blender is the single source of truth for poses AND focal lengths.** `extractStops()` samples each `CameraStop_*` node's world transform straight from the loaded graph (no Z-up→Y-up conversion to get wrong); the glb's cameras are never made active, we tween _our_ render camera to match.
 
-**Field of view is stored HORIZONTALLY — do not "simplify" this.** A glTF camera describes its framing as `yfov` **+ `aspectRatio`**, and Blender derives that pair from the scene's render resolution. The horizontal field is the invariant: `extractStops()` computes it from *both* numbers, `applyProgress()` interpolates it, and `verticalFov()` converts it per viewport — a **horizontal fit**, so Blender's framing survives every screen ratio and a shorter viewport crops top/bottom instead of pulling back and losing the shot.
+**Field of view is stored HORIZONTALLY — do not "simplify" this.** A glTF camera describes its framing as `yfov` **+ `aspectRatio`**, and Blender derives that pair from the scene's render resolution. The horizontal field is the invariant: `extractStops()` computes it from _both_ numbers, `applyProgress()` interpolates it, and `verticalFov()` converts it per viewport — a **horizontal fit**, so Blender's framing survives every screen ratio and a shorter viewport crops top/bottom instead of pulling back and losing the shot.
 
-**v13 made this trap harder to catch, not easier.** v12 declared `aspectRatio: 1` — a square frame — so feeding its `yfov` straight into three's `camera.fov` framed everything far too wide and visibly broke the Home reveal. v13 declares 16:9, so the same shortcut now looks *correct on a 16:9 viewport* and only drifts on other ratios: an ultrawide monitor or a laptop at 16:10 would quietly get a framing nobody authored. The derivation is still load-bearing; it just no longer fails loudly. `tests/stops.test.ts` is what keeps it honest.
+**v13 made this trap harder to catch, not easier.** v12 declared `aspectRatio: 1` — a square frame — so feeding its `yfov` straight into three's `camera.fov` framed everything far too wide and visibly broke the Home reveal. v13 declares 16:9, so the same shortcut now looks _correct on a 16:9 viewport_ and only drifts on other ratios: an ultrawide monitor or a laptop at 16:10 would quietly get a framing nobody authored. The derivation is still load-bearing; it just no longer fails loudly. `tests/stops.test.ts` is what keeps it honest.
 
-Adding a stop = name a camera `CameraStop_<X>` in Blender **+** add one line to `CAMERA_STOPS` (the array *is* the tour order, and its `label` is the `?stop=` key). A stop listed in code but missing from the glb is skipped with a console warning.
+Adding a stop = name a camera `CameraStop_<X>` in Blender **+** add one line to `CAMERA_STOPS` (the array _is_ the tour order, and its `label` is the `?stop=` key). A stop listed in code but missing from the glb is skipped with a console warning.
 
 There is deliberately **no hardcoded pose table** any more: it existed only while an export shipped without cameras, and two sources of truth for the same thing is a bug waiting to happen.
 
@@ -108,7 +130,7 @@ One bubble per stop (issue #48). `BUBBLES` is the **single source of the copy** 
 
 `clampToSafeArea()` then keeps the bubble 12 px from every edge: the table is written in fractions but a bubble keeps its pixel width, so on a frame narrower than 1280 an edge bubble would clip (measured: −2 px at 1000 px wide). 12 px is the design's own tightest margin — a wider one would move bubbles the design session validated. It is a no-op at 16:9, verified stop by stop.
 
-**Numbering follows the tour, not the mockups** (product decision, 2026-08-18): `bubbleKicker()` numbers by rank among titled bubbles, so home stays unnumbered and reordering `CAMERA_STOPS` renumbers everything on its own. The mockups' numbers are their capture order (01 desk, 02 cv…) and are stale by construction; their *text* is not.
+**Numbering follows the tour, not the mockups** (product decision, 2026-08-18): `bubbleKicker()` numbers by rank among titled bubbles, so home stays unnumbered and reordering `CAMERA_STOPS` renumbers everything on its own. The mockups' numbers are their capture order (01 desk, 02 cv…) and are stale by construction; their _text_ is not.
 
 The eleven bubbles are all mounted at once in `Experience.tsx` and driven by `visible` alone — unmounting the one being left would take its exit fade with it. A bubble that is neither visible nor fading renders `null`.
 
@@ -126,19 +148,19 @@ Issue #26: the persistent navigation, never unmounted — that is what makes it 
 
 Three input routings, none of which may regress:
 
-- **Wheel**: the bar does *not* capture it. `CameraRig` listens on `.stage` and only ignores `.panel`; a wheel over the menu still tours (verified — the gesture fires normally). The bar has nothing to scroll.
+- **Wheel**: the bar does _not_ capture it. `CameraRig` listens on `.stage` and only ignores `.panel`; a wheel over the menu still tours (verified — the gesture fires normally). The bar has nothing to scroll.
 - **Arrows**: `CameraRig` steps stop-to-stop with them, so it now bails on any key event whose target is inside `.menu` — the keyboard counterpart of the `.panel` wheel rule. Inside the bar, ↑↓ roll focus between items.
 - **Mouse**: a mouse click blurs the item afterwards (`e.detail > 0`), handing the arrows back to the tour. A keyboard activation (`detail === 0`) keeps focus where it is.
 
 **The diagnostic HUD is now gated behind `?debug`.** `viewMode.ts` had declared that contract since the spike but nothing was wired to it, so the HUD rendered always — and its stop rail sat pixel-for-pixel on top of the menu bar, both at `z-index: 200`. Two navigations stacked in the same place is what a "cheap" bar looks like. The HUD is still the phase/rail/panel-button tooling, one `?debug` away.
 
-The active item is an exact stop match, and it lights up on *departure*, not arrival — `goToIndex` sets `stopIndex` when the tween starts. A section pointing at a stop that no longer exists is dropped with a console warning (same discipline as a missing `CameraStop_*`); `tests/menu.test.ts` fails before that can ship. A social with no URL is not rendered at all — a bar whose promise is "contact in two clicks" may not show a dead link. The FR/EN toggle is rendered because it is the mockups' anatomy, but EN is `disabled` until #33.
+The active item is an exact stop match, and it lights up on _departure_, not arrival — `goToIndex` sets `stopIndex` when the tween starts. A section pointing at a stop that no longer exists is dropped with a console warning (same discipline as a missing `CameraStop_*`); `tests/menu.test.ts` fails before that can ship. A social with no URL is not rendered at all — a bar whose promise is "contact in two clicks" may not show a dead link. The FR/EN toggle is rendered because it is the mockups' anatomy, but EN is `disabled` until #33.
 
 **The second click does not exist yet.** #26 was closed on the bar alone (product decision, 2026-08-18); reaching a project card once parked at the Cabinet was deliberately deferred, and this paragraph is its only written trace — there is no follow-up issue.
 
 ### The preselection gate (`src/App.tsx` + `src/lib/experienceChoice.ts`)
 
-`App.tsx` is a DOM-only router (issue #24): preselection screen → lazy-loaded `App3D` (the Canvas) or the classic placeholder. The lazy import is **load-bearing** — a static import path from the entry chunk would ship all of three/R3F/drei to every visitor, including the ones who pick classic. It used to be even more load-bearing: `RoomModel` fired `useGLTF.preload` at module scope, so importing it *at all* started the 3 MB download. That preload is gone (#25) — `useLoader.preload` takes no `onProgress`, and being the call that actually started the fetch, it left the preloader's bar with no data to show. The load now starts on `RoomModel`'s first render, a few ms later. A stored `classic` choice (localStorage, `portfolio.experience`) is honoured without ever probing WebGL; a missing WebGL context auto-falls back to classic. Every dev URL param below bypasses the gate straight to 3D so the render-comparison loop stays deterministic. The screen recreates `docs/design/screens/0a-preselection.html`; `docs/design/tokens.css` is imported directly by `main.tsx` (single source of truth, no copy).
+`App.tsx` is a DOM-only router (issue #24): preselection screen → lazy-loaded `App3D` (the Canvas) or the classic placeholder. The lazy import is **load-bearing** — a static import path from the entry chunk would ship all of three/R3F/drei to every visitor, including the ones who pick classic. It used to be even more load-bearing: `RoomModel` fired `useGLTF.preload` at module scope, so importing it _at all_ started the 3 MB download. That preload is gone (#25) — `useLoader.preload` takes no `onProgress`, and being the call that actually started the fetch, it left the preloader's bar with no data to show. The load now starts on `RoomModel`'s first render, a few ms later. A stored `classic` choice (localStorage, `portfolio.experience`) is honoured without ever probing WebGL; a missing WebGL context auto-falls back to classic. Every dev URL param below bypasses the gate straight to 3D so the render-comparison loop stays deterministic. The screen recreates `docs/design/screens/0a-preselection.html`; `docs/design/tokens.css` is imported directly by `main.tsx` (single source of truth, no copy).
 
 ### URL parameters (dev tooling — keep working)
 
@@ -167,6 +189,7 @@ Creating an issue has four mandatory steps — numbered title, labels **and** Pr
 When the user's request matches an available skill, invoke it via the Skill tool. When in doubt, invoke the skill.
 
 Key routing rules:
+
 - Product ideas/brainstorming → invoke /office-hours
 - Strategy/scope → invoke /plan-ceo-review
 - Architecture → invoke /plan-eng-review

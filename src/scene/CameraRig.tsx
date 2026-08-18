@@ -120,7 +120,13 @@ export function CameraRig({ stops }: CameraRigProps) {
       if (import.meta.env.DEV) {
         const w = window as unknown as { __wheelLog?: unknown[] }
         w.__wheelLog ??= []
-        w.__wheelLog.push({ delta, acc: acc.current, armed: armed.current, peak: prevAbs.current, tail: tailMode.current })
+        w.__wheelLog.push({
+          delta,
+          acc: acc.current,
+          armed: armed.current,
+          peak: prevAbs.current,
+          tail: tailMode.current,
+        })
         if (w.__wheelLog.length > 50) w.__wheelLog.shift()
       }
       if (abs < MIN_COUNTED_DELTA) return

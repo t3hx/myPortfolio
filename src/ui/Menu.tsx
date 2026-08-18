@@ -38,7 +38,9 @@ export function Menu() {
       MENU_SECTIONS.map((section) => {
         const index = CAMERA_STOPS.findIndex((s) => s.label === section.stop)
         if (index === -1) {
-          console.warn(`[menu] "${section.label}" vise l'arrêt "${section.stop}", absent de CAMERA_STOPS`)
+          console.warn(
+            `[menu] "${section.label}" vise l'arrêt "${section.stop}", absent de CAMERA_STOPS`,
+          )
         }
         return { ...section, index }
       }).filter((s) => s.index !== -1),

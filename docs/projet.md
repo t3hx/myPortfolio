@@ -28,7 +28,7 @@ Inspiration principale : <https://guillaumegouessan.com/>
 - NanoLeaf : dégradé animé qui parcourt les tuiles
 - Rideaux : simulation de vent
 - Commode : ouverture du tiroir, parcours des dossiers, ouverture d'un dossier
-- **Vue télescope** : au clic sur le télescope, mouvement de caméra vers l'oculaire, vignette, et bascule de la lune vers sa texture haute définition. La lune a deux états : *simple* (low-poly, par défaut) et *détail* (vue télescope, grossissement, texture HD).
+- **Vue télescope** : au clic sur le télescope, mouvement de caméra vers l'oculaire, vignette, et bascule de la lune vers sa texture haute définition. La lune a deux états : _simple_ (low-poly, par défaut) et _détail_ (vue télescope, grossissement, texture HD).
 - **Éléments cliquables** : mise en exergue au survol (contour animé ou autre), via raycasting. Chantier à prévoir.
 
 ### Contenu & texte
@@ -101,7 +101,7 @@ feat/xxx ──squash──▶ dev ──merge commit──▶ main ──▶ CI
 ```
 
 - **Intégration GitHub (Orca IDE) au max** : une **issue** par unité de travail — **epic** / **feature** / **task** — avec **taille** (S à XL) et **priorité** (P0, P1, P2), versées automatiquement dans un projet GitHub suivi et mis à jour au fil de l'eau.
-  - Nomenclature : *EPIC* = `Project_name-EP#x/Titre`, *FEATURE* = `Project_name-FEAT#x/Titre`, *TASK* = `Project_name-TK#x/Titre` (x entier).
+  - Nomenclature : _EPIC_ = `Project_name-EP#x/Titre`, _FEATURE_ = `Project_name-FEAT#x/Titre`, _TASK_ = `Project_name-TK#x/Titre` (x entier).
 - **Une branche par feature, gros fix ou gros refacto**, nommée d'après l'issue. On squash en conservant les branches. Idée : un epic pourrait finir en déploiement (pipeline complet).
 - **Avant tout squash sur `dev`, me faire tester.**
 - Ne pas hésiter à créer des **worktrees via Orca** quand c'est pertinent.

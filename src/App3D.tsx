@@ -1,10 +1,6 @@
 import { Canvas } from '@react-three/fiber'
 import { Suspense, useRef } from 'react'
-import {
-  CLEAR_COLOR,
-  OUTPUT_COLOR_SPACE,
-  TONE_MAPPING,
-} from '@/config/renderPipeline'
+import { CLEAR_COLOR, OUTPUT_COLOR_SPACE, TONE_MAPPING } from '@/config/renderPipeline'
 import { Experience } from '@/scene/Experience'
 import { viewMode } from '@/lib/viewMode'
 import { Hud } from '@/ui/Hud'

@@ -60,7 +60,10 @@ export function Outlines() {
   }, [])
 
   useEffect(() => {
-    lineMat.resolution = new Vector2(size.width * gl.getPixelRatio(), size.height * gl.getPixelRatio())
+    lineMat.resolution = new Vector2(
+      size.width * gl.getPixelRatio(),
+      size.height * gl.getPixelRatio(),
+    )
   }, [lineMat, size, gl])
 
   // --- edges: screen-space fat crease lines per mesh ----------------------------------
@@ -132,9 +135,12 @@ export function Outlines() {
     [gl, wantHull],
   )
 
-  useFrame(() => {
-    if (effect) effect.render(scene, camera)
-  }, wantHull ? 1 : -1)
+  useFrame(
+    () => {
+      if (effect) effect.render(scene, camera)
+    },
+    wantHull ? 1 : -1,
+  )
 
   return null
 }

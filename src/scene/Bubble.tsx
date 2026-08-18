@@ -138,7 +138,12 @@ export function Bubble({
   // garantit par le code (un montage trop tôt attend le re-render suivant).
   if (!mounted || !portal.current) return null
 
-  const cls = ['bubble', !visible && 'bubble--out', tilt !== undefined && 'bubble--tilted', className]
+  const cls = [
+    'bubble',
+    !visible && 'bubble--out',
+    tilt !== undefined && 'bubble--tilted',
+    className,
+  ]
     .filter(Boolean)
     .join(' ')
 

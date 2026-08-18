@@ -9,18 +9,18 @@
 
 ### ✨ Ce que ça fait
 
-| URL | Mode | Affichage |
-|---|---|---|
-| `/` | `default` | **Scène seule.** Caméra positionnée sur le stop `Home`. Aucun HUD, aucun contrôle. |
-| `/?debug` | `tour` | Scène + HUD `TourControls` (boutons pour passer d'un `CameraStop_*` à l'autre). |
-| `/?debug-fly` | `fly` | **Navigation libre première personne** (souris + clavier), pas de HUD. |
+| URL           | Mode      | Affichage                                                                          |
+| ------------- | --------- | ---------------------------------------------------------------------------------- |
+| `/`           | `default` | **Scène seule.** Caméra positionnée sur le stop `Home`. Aucun HUD, aucun contrôle. |
+| `/?debug`     | `tour`    | Scène + HUD `TourControls` (boutons pour passer d'un `CameraStop_*` à l'autre).    |
+| `/?debug-fly` | `fly`     | **Navigation libre première personne** (souris + clavier), pas de HUD.             |
 
 > [!IMPORTANT]
 > Le mode `default` est ce qui sera servi en production. `?debug` et `?debug-fly` sont des **outils de diagnostic uniquement** — jamais exposés aux visiteurs.
 
 ### 🤔 Pourquoi
 
-Pendant l'investigation du bug *"boutons visibles, scène invisible"*, on avait besoin d'un moyen reproductible d'inspecter la scène sous différents angles **sans toucher au code**. Plutôt que de bricoler un flag à modifier à la main :
+Pendant l'investigation du bug _"boutons visibles, scène invisible"_, on avait besoin d'un moyen reproductible d'inspecter la scène sous différents angles **sans toucher au code**. Plutôt que de bricoler un flag à modifier à la main :
 
 - **`?debug-fly`** permet de "rentrer" physiquement dans la scène et confirmer que la géométrie est bien chargée.
 - **`?debug`** exerce le tour caméra dans son contexte HUD complet.
@@ -28,12 +28,13 @@ Pendant l'investigation du bug *"boutons visibles, scène invisible"*, on avait 
 
 ### ⚙️ Implémentation
 
-**`src/composables/useViewMode.ts`** lit `window.location.search` *une seule fois* au chargement du module et renvoie le mode comme une `const` (pas un `ref` réactif).
+**`src/composables/useViewMode.ts`** lit `window.location.search` _une seule fois_ au chargement du module et renvoie le mode comme une `const` (pas un `ref` réactif).
 
 > [!TIP]
-> **Changer de mode = recharger la page.** Décision volontaire : `<KeyboardControls>` installe un *pointer-lock* navigateur et des listeners DOM globaux. Les démonter/remonter à chaud peut laisser des listeners orphelins ou un pointer-lock coincé. Un reload garantit un état propre.
+> **Changer de mode = recharger la page.** Décision volontaire : `<KeyboardControls>` installe un _pointer-lock_ navigateur et des listeners DOM globaux. Les démonter/remonter à chaud peut laisser des listeners orphelins ou un pointer-lock coincé. Un reload garantit un état propre.
 
 **`src/components/PortfolioScene.vue`** branche sur le mode :
+
 - `tour` → monte `<TourControls>`.
 - `fly` → monte `<KeyboardControls>` de `@tresjs/cientos` (qui embarque déjà `PointerLockControls` + le mapping clavier).
 - `default` → rien d'extra, juste la scène.
@@ -46,7 +47,7 @@ Géré gratuitement par cientos via **`event.code`** (position physique de la to
 
 - 🆕 **`src/composables/useViewMode.ts`** — nouveau, 25 lignes. Résolveur d'URL.
 - ✏️ **`src/components/PortfolioScene.vue`** — remplace l'ancien flag `freeLook` par le branchement sur `mode`, ajoute l'overlay de hint pour le mode fly.
-- 📖 **`CLAUDE.md`** — section *"View modes"* pour les futures sessions Claude Code.
+- 📖 **`CLAUDE.md`** — section _"View modes"_ pour les futures sessions Claude Code.
 - ⚙️ **`.gitignore`** — ajustement mineur.
 
 ### ✅ Comment tester
@@ -69,18 +70,18 @@ Géré gratuitement par cientos via **`event.code`** (position physique de la to
 
 ### ✨ What it does
 
-| URL | Mode | Renders |
-|---|---|---|
-| `/` | `default` | **Scene only.** Camera snaps to the `Home` stop. No HUD, no controls. |
-| `/?debug` | `tour` | Scene + `TourControls` HUD (buttons to step between `CameraStop_*` cameras). |
-| `/?debug-fly` | `fly` | **Free first-person navigation** (mouse + keyboard), no HUD. |
+| URL           | Mode      | Renders                                                                      |
+| ------------- | --------- | ---------------------------------------------------------------------------- |
+| `/`           | `default` | **Scene only.** Camera snaps to the `Home` stop. No HUD, no controls.        |
+| `/?debug`     | `tour`    | Scene + `TourControls` HUD (buttons to step between `CameraStop_*` cameras). |
+| `/?debug-fly` | `fly`     | **Free first-person navigation** (mouse + keyboard), no HUD.                 |
 
 > [!IMPORTANT]
 > `default` is what ships to production. `?debug` and `?debug-fly` are **diagnostic tools only** — never exposed to visitors.
 
 ### 🤔 Why
 
-While investigating the *"buttons visible, scene invisible"* bug, we needed a reproducible way to inspect the scene from arbitrary angles **without editing code**. Instead of toggling a flag by hand:
+While investigating the _"buttons visible, scene invisible"_ bug, we needed a reproducible way to inspect the scene from arbitrary angles **without editing code**. Instead of toggling a flag by hand:
 
 - **`?debug-fly`** lets us physically walk into the scene to confirm geometry actually loaded.
 - **`?debug`** exercises the camera tour in its full HUD context.
@@ -88,12 +89,13 @@ While investigating the *"buttons visible, scene invisible"* bug, we needed a re
 
 ### ⚙️ Implementation
 
-**`src/composables/useViewMode.ts`** reads `window.location.search` *once* at module load and returns the mode as a `const` (not a reactive `ref`).
+**`src/composables/useViewMode.ts`** reads `window.location.search` _once_ at module load and returns the mode as a `const` (not a reactive `ref`).
 
 > [!TIP]
-> **Switching modes = page reload.** Deliberate: `<KeyboardControls>` installs a browser *pointer-lock* and global DOM listeners. Tearing them down and re-mounting mid-session can leak listeners or strand the pointer-lock. A reload guarantees a clean state.
+> **Switching modes = page reload.** Deliberate: `<KeyboardControls>` installs a browser _pointer-lock_ and global DOM listeners. Tearing them down and re-mounting mid-session can leak listeners or strand the pointer-lock. A reload guarantees a clean state.
 
 **`src/components/PortfolioScene.vue`** branches on mode:
+
 - `tour` → mounts `<TourControls>`.
 - `fly` → mounts `<KeyboardControls>` from `@tresjs/cientos` (already bundles `PointerLockControls` + keyboard mapping).
 - `default` → nothing extra, just the scene.
@@ -106,7 +108,7 @@ Handled for free by cientos via **`event.code`** (physical key position), not `e
 
 - 🆕 **`src/composables/useViewMode.ts`** — new, 25 lines. URL resolver.
 - ✏️ **`src/components/PortfolioScene.vue`** — replaces the old `freeLook` flag with `mode` branching, adds the fly-mode hint overlay.
-- 📖 **`CLAUDE.md`** — *"View modes"* section for future Claude Code sessions.
+- 📖 **`CLAUDE.md`** — _"View modes"_ section for future Claude Code sessions.
 - ⚙️ **`.gitignore`** — minor tweak.
 
 ### ✅ How to test
