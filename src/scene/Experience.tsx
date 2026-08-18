@@ -5,6 +5,7 @@ import { BUBBLES, bubbleKicker } from '@/content/bubbles'
 import { resolveBubbleAnchors } from '@/lib/bubbleAnchors'
 import type { StopTransform } from '@/lib/stops'
 import { Bubble } from '@/scene/Bubble'
+import { CabinetDrawer } from '@/scene/CabinetDrawer'
 import { CameraRig } from '@/scene/CameraRig'
 import { Outlines } from '@/scene/Outlines'
 import { RoomModel } from '@/scene/RoomModel'
@@ -30,6 +31,9 @@ interface ExperienceProps {
 
 export function Experience({ bubbleLayer }: ExperienceProps) {
   const [stops, setStops] = useState<StopTransform[]>([])
+  // La scène est conservée : le tiroir de la commode (#76) a besoin du graphe
+  // lui-même, pas seulement des poses qu'on en a extraites.
+  const [scene, setScene] = useState<Object3D | null>(null)
   const [anchors, setAnchors] = useState<(Vector3 | null)[]>([])
   const phase = useInteraction((s) => s.phase)
   const stopIndex = useInteraction((s) => s.stopIndex)
@@ -38,6 +42,7 @@ export function Experience({ bubbleLayer }: ExperienceProps) {
   const onReady = useCallback(
     (ordered: StopTransform[], scene: Object3D) => {
       setStops(ordered)
+      setScene(scene)
       // Une seule fois : la dé-projection ne dépend que des caméras du .glb et
       // des boîtes englobantes, tous deux figés après le chargement.
       setAnchors(resolveBubbleAnchors(scene, ordered))
@@ -55,6 +60,12 @@ export function Experience({ bubbleLayer }: ExperienceProps) {
       {/* Stop-to-stop navigation model (2026-08-05): no ScrollControls — the
           wheel is owned and gestures command GSAP strokes; see CameraRig. */}
       {stops.length > 0 && <CameraRig stops={stops} />}
+
+      {/* Le tiroir de la commode s'ouvre à l'arrivée sur l'arrêt Cabinet (#76).
+          Monté APRÈS CameraRig : celui-ci publie l'arrêt initial dans son
+          effet, et le tiroir lit cet état au montage pour se poser sans
+          animation. */}
+      {scene && <CabinetDrawer scene={scene} />}
 
       {/* Contours spike: ?outline=off|hull|edges|both — see Outlines.tsx. */}
       {stops.length > 0 && <Outlines />}
