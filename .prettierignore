@@ -1,0 +1,8 @@
+dist
+pnpm-lock.yaml
+public/draco
+# Les fichiers de la session design sont des artefacts figés : les maquettes
+# documentent des captures, et le style compact de tokens.css (plusieurs
+# déclarations par ligne) est celui dans lequel le design system a été écrit et
+# relu. Les reformater les ferait diverger de ce que DESIGN.md décrit.
+docs/design
