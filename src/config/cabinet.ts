@@ -79,3 +79,47 @@ export const DRAWER_CAPACITY = 5
  * entre ; ce plafond sert à ce qu'aucun libellé n'arrive jusque-là.
  */
 export const TAB_LABEL_MAX_CHARS = 11
+
+/**
+ * Où les dossiers se rangent, dans le repère du tiroir FERMÉ.
+ *
+ * Le couloir n'est pas l'intérieur du tiroir : `Cabinet_Top` couvre `z` de
+ * -2.500 à -1.950 à hauteur `y` 0.730-0.750, et le haut d'une étiquette est
+ * déjà à 0.745. Un dossier rangé plus au fond aurait donc son étiquette dans
+ * le plateau de la commode et ne pourrait pas se soulever au survol (#81).
+ *
+ * Ces bornes sont exprimées tiroir fermé — le groupe les emmène de +0.28 en
+ * s'ouvrant, ce qui les amène de -1.930 à -1.710 : entièrement devant la
+ * commode, donc libres de monter.
+ */
+export const FOLDER_Z_BACK = -2.21
+export const FOLDER_Z_FRONT = -1.99
+
+/**
+ * L'étiquette : un plan de texte posé devant la face de `Folder_Tab`.
+ *
+ * Peindre dans la texture existante supposerait des UV faits pour ça — ceux de
+ * `Folder_Tab` sont ceux d'un dépliage de bake. Un plan neuf donne des UV
+ * maîtrisés et laisse le bake intact : il sert de fond papier au texte.
+ *
+ * 1.2 mm : assez pour ne pas se battre en profondeur avec la face de
+ * l'étiquette, trop peu pour se voir décollé.
+ */
+export const LABEL_OFFSET_Z = 0.0012
+export const LABEL_WIDTH = 0.088
+export const LABEL_HEIGHT = 0.039
+
+/** La texture de l'étiquette. 512 px pour 90 mm, dont 84 % utiles : le texte
+ *  ne colle pas au bord du carton. Voir `TAB_LABEL_MAX_CHARS` pour la mesure. */
+export const LABEL_TEXTURE_W = 512
+export const LABEL_TEXTURE_H = 228
+export const LABEL_SAFE_RATIO = 0.84
+
+/** `--font-ui` du design system : les micro-étiquettes sont en Space Grotesk.
+ *  La graisse et le corps final sont à trancher en session design (#78). */
+export const LABEL_FONT_FAMILY = "'Space Grotesk', sans-serif"
+export const LABEL_FONT_WEIGHT = 600
+export const LABEL_FONT_PX = 66
+/** Encre sur carton : un brun chaud, pas le `--ink` du verre fumé — celui-ci
+ *  est un fond d'écran, il virerait au trou noir sur du papier crème. */
+export const LABEL_INK = '#2B2418'
