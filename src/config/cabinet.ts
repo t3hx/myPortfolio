@@ -53,3 +53,29 @@ export const DRAWER_CONTENT_NAMES = [
 /** Sans la façade, il n'y a pas de tiroir à faire coulisser : c'est la seule
  *  pièce dont l'absence annule l'interaction au lieu de la dégrader. */
 export const DRAWER_REQUIRED_PART = 'Cabinet_TopDrawer_Front'
+
+/**
+ * Combien de dossiers le tiroir peut porter.
+ *
+ * Les dossiers doivent tous tenir dans le couloir `z > -1.950` — les 0.28 m que
+ * le tiroir sort — sinon leur étiquette entre dans le plateau de la commode et
+ * ils ne peuvent plus se soulever au survol (#81). À cinq, le pas tombe à
+ * 0.055 m, ce qui reste confortable à viser à la souris ; au-delà, les dossiers
+ * du fond deviennent des cibles trop serrées.
+ */
+export const DRAWER_CAPACITY = 5
+
+/**
+ * Ce qu'une étiquette de dossier peut porter comme texte.
+ *
+ * Mesuré, pas estimé : la texture d'étiquette fait 512 px de large pour 90 mm,
+ * dont 430 utiles une fois la marge de 8 % retirée. À 78 px de fonte,
+ * « Portfolio » (9 signes) occupe 360 px et passe, « myPortfolio » (11) en
+ * réclame 483 et déborde ; à 66 px, 11 signes passent (409 px). « Celestial
+ * Walker » (16) ne tient à aucune taille lisible.
+ *
+ * Le compte de signes n'est qu'un garde-fou — onze « M » sont plus larges que
+ * onze « i ». #80 doit **en plus** réduire la fonte jusqu'à ce que le texte
+ * entre ; ce plafond sert à ce qu'aucun libellé n'arrive jusque-là.
+ */
+export const TAB_LABEL_MAX_CHARS = 11
