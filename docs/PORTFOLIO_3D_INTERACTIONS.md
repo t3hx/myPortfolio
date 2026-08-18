@@ -20,12 +20,12 @@ La scène est **entièrement pré-bakée en unlit**. Le rendu runtime doit repro
 
 Au chargement du `.glb`, traverser tous les nœuds et reconstruire les matériaux selon leur tag :
 
-| Tag | Count | Traitement Three.js |
-|-----|-------|---------------------|
-| `unlit` | 85 | `MeshBasicMaterial({ map, side: DoubleSide })` — texture émissive bakée |
-| `emissive` | 27 | `MeshBasicMaterial` couleur/texture émissive pleine (émetteurs réels) |
-| `decal` | 1 | `MeshBasicMaterial({ map, transparent: true, alphaTest: 0.5, depthWrite: false, side: DoubleSide })` — logo Sharmall de l'ampli |
-| `glass` | 1 | `MeshBasicMaterial({ transparent: true, opacity: 0.28, depthWrite: false, side: DoubleSide })` — vitre du PC |
+| Tag        | Count | Traitement Three.js                                                                                                             |
+| ---------- | ----- | ------------------------------------------------------------------------------------------------------------------------------- |
+| `unlit`    | 85    | `MeshBasicMaterial({ map, side: DoubleSide })` — texture émissive bakée                                                         |
+| `emissive` | 27    | `MeshBasicMaterial` couleur/texture émissive pleine (émetteurs réels)                                                           |
+| `decal`    | 1     | `MeshBasicMaterial({ map, transparent: true, alphaTest: 0.5, depthWrite: false, side: DoubleSide })` — logo Sharmall de l'ampli |
+| `glass`    | 1     | `MeshBasicMaterial({ transparent: true, opacity: 0.28, depthWrite: false, side: DoubleSide })` — vitre du PC                    |
 
 > Le tag se lit sur `object.userData.runtime` ou `parent.userData.runtime` (le glTF peut placer les `extras` sur le node ou le parent). Traverser et vérifier les deux.
 
@@ -168,18 +168,18 @@ La caméra se déplace entre des **points d'arrêt prédéfinis** (`CameraStop_*
 > Rotation en degrés Euler (XYZ). Appliquer la conversion d'axes Blender→Three avant usage.
 > Ces empties donnent la **pose cible de la caméra** (position + orientation).
 
-| Stop | Position (Blender) | Rotation Euler° (Blender) | Élément ciblé |
-|------|--------------------|-----------------------------|---------------|
-| `CameraStop_Home` | `[0.0, 1.718, 1.1]` | `[90, 0, 0]` | Vue d'accueil (face à la pièce) |
-| `CameraStop_Desk` | `[0.0, -0.08, 1.46]` | `[76.8, 0, 0]` | Bureau / setup PC |
-| `CameraStop_Cat` | `[-1.035, 1.995, 1.769]` | `[108.6, 0, 45]` | Le chat sur son étagère |
-| `CameraStop_Cabinet` | `[0.77, 0.87, 1.24]` | `[58.9, 0, -21]` | Commode à tiroirs |
-| `CameraStop_BookshelfPlant` | `[-0.52, 1.48, 1.61]` | `[77, 0, 90]` | Bibliothèque / plante |
-| `CameraStop_GuitarPoster` | `[-1.27, 1.787, 0.001]` | `[131.8, 0, 26.9]` | Guitare + poster |
-| `CameraStop_PosterTelescope` | `[0.78, 1.82, 1.6]` | `[90, 0, -90]` | Poster télescope |
-| `CameraStop_Scoreboard` | `[-0.3, -0.5, 1.5]` | `[90, 0, 90]` | Tableau / mappemonde |
-| `CameraStop_Telescope` | `[-0.2, -1.0, 1.0]` | `[103, 0, -67]` | Vue vers le télescope |
-| `CameraStop_TelescopeMoon` | `[1.969, -0.356, 1.285]` | `[111.4, 0, -51.5]` | Gros plan Lune (via télescope) |
+| Stop                         | Position (Blender)       | Rotation Euler° (Blender) | Élément ciblé                   |
+| ---------------------------- | ------------------------ | ------------------------- | ------------------------------- |
+| `CameraStop_Home`            | `[0.0, 1.718, 1.1]`      | `[90, 0, 0]`              | Vue d'accueil (face à la pièce) |
+| `CameraStop_Desk`            | `[0.0, -0.08, 1.46]`     | `[76.8, 0, 0]`            | Bureau / setup PC               |
+| `CameraStop_Cat`             | `[-1.035, 1.995, 1.769]` | `[108.6, 0, 45]`          | Le chat sur son étagère         |
+| `CameraStop_Cabinet`         | `[0.77, 0.87, 1.24]`     | `[58.9, 0, -21]`          | Commode à tiroirs               |
+| `CameraStop_BookshelfPlant`  | `[-0.52, 1.48, 1.61]`    | `[77, 0, 90]`             | Bibliothèque / plante           |
+| `CameraStop_GuitarPoster`    | `[-1.27, 1.787, 0.001]`  | `[131.8, 0, 26.9]`        | Guitare + poster                |
+| `CameraStop_PosterTelescope` | `[0.78, 1.82, 1.6]`      | `[90, 0, -90]`            | Poster télescope                |
+| `CameraStop_Scoreboard`      | `[-0.3, -0.5, 1.5]`      | `[90, 0, 90]`             | Tableau / mappemonde            |
+| `CameraStop_Telescope`       | `[-0.2, -1.0, 1.0]`      | `[103, 0, -67]`           | Vue vers le télescope           |
+| `CameraStop_TelescopeMoon`   | `[1.969, -0.356, 1.285]` | `[111.4, 0, -51.5]`       | Gros plan Lune (via télescope)  |
 
 ### 3.2 Transitions de caméra
 
@@ -202,6 +202,7 @@ Chaque stop caméra affiche un texte descriptif (overlay HTML piloté par le sto
 **Le texte des onze bulles est écrit et livré** (issue #48) : il vient de la session design du 2026-08-10 et vit dans **`src/content/bubbles.ts`**, source unique. Ce tableau n'en garde pas de copie — deux endroits où lire la même phrase, c'est une phrase qui diverge. Les maquettes correspondantes sont `docs/design/screens/*.html`, et un test verrouille le texte livré sur le leur.
 
 **Implémentation des textes** (livrée — `src/scene/Bubble.tsx`, issues #47 et #48) :
+
 - Overlay HTML ancré par projection écran (pas du texte 3D) ; anatomie et motion dans `docs/design/tokens.css` (in : reveal 480 ms, out : fondu 200 ms).
 - Affichage piloté par le stop actif en phase `parked` (machine à états `src/state/interaction.ts`) — jamais indexé sur le scroll (décision DESIGN.md).
 - Un seul bloc de texte visible à la fois. L'ancre monde est dé-projetée depuis le placement du design ; l'objet visé (`Cat_Merged`, `Map_Sheet`, `Outside_Moon`…) donne la profondeur, donc la parallaxe au départ de la caméra — `src/lib/bubbleAnchors.ts`.
@@ -213,31 +214,34 @@ Chaque stop caméra affiche un texte descriptif (overlay HTML piloté par le sto
 
 Objets à rendre cliquables/survolables :
 
-| Objet | Interaction |
-|-------|-------------|
-| `Telescope_Merged` | Clic → vue Lune + vignette télescope |
-| `Cat_Merged` (ou zone chat) | Hover → les pupilles suivent déjà la souris globalement |
-| `Cabinet_TopDrawer_Front` (+ poignée) | Clic → ouvrir/fermer tiroir |
-| `Cabinet_MidDrawer_Front` (+ poignée) | Clic → ouvrir/fermer tiroir |
-| `Cabinet_BotDrawer_Front` (+ poignée) | Clic → ouvrir/fermer tiroir |
+| Objet                                 | Interaction                                             |
+| ------------------------------------- | ------------------------------------------------------- |
+| `Telescope_Merged`                    | Clic → vue Lune + vignette télescope                    |
+| `Cat_Merged` (ou zone chat)           | Hover → les pupilles suivent déjà la souris globalement |
+| `Cabinet_TopDrawer_Front` (+ poignée) | Clic → ouvrir/fermer tiroir                             |
+| `Cabinet_MidDrawer_Front` (+ poignée) | Clic → ouvrir/fermer tiroir                             |
+| `Cabinet_BotDrawer_Front` (+ poignée) | Clic → ouvrir/fermer tiroir                             |
 
 ---
 
 ## 6. Checklist d'implémentation
 
 **Setup de base**
+
 - [ ] Charger `portfolio_final.glb` (GLTFLoader).
 - [ ] Traverser la scène, lire `userData.runtime`, reconstruire les matériaux (unlit / emissive / decal / glass).
 - [ ] Renderer : `NoToneMapping`, `outputColorSpace = SRGB`, pas de lumières.
 - [ ] Vérifier le rendu = parité avec Blender (WYSIWYG).
 
 **Animations continues**
+
 - [ ] Rotation des 10 ventilateurs (axes convertis, pivots centrés, phases désync).
 - [ ] Fumée du mug de café (particules/sprite/shader).
 - [ ] Dégradé animé des tuiles NanoLeaf (`Mat_LEDEmissive` → shader ou hue cycle).
 - [ ] Mouvement des rideaux (oscillation ou vertex shader).
 
 **Interactions**
+
 - [ ] Raycaster + hover states.
 - [ ] Clic télescope → transition caméra + vignette + toggle Lune high-def.
 - [ ] Vignette "vue télescope" (overlay circulaire).
@@ -246,11 +250,13 @@ Objets à rendre cliquables/survolables :
 - [ ] Tiroirs cliquables (translation + easing).
 
 **Caméra & narration**
+
 - [ ] Récupérer/hardcoder les poses des 10 `CameraStop_*` (conversion d'axes).
 - [ ] Séquence de scénario + interpolation scroll-driven (GSAP ScrollTrigger, slerp d'orientation).
 - [ ] Overlays de texte synchronisés par stop (contenu à écrire).
 
 **Finitions**
+
 - [ ] Vérifier la vitre PC (`glass`, opacité 0.28).
 - [ ] Vérifier le décal Sharmall de l'ampli (`decal`, alphaTest, transparent).
 - [ ] Responsive / perf (le glb fait 85 Mo — envisager compression Draco/KTX2 si besoin de réduire).

@@ -1,7 +1,7 @@
 name: Chore
 description: Entretien, outillage, dette technique, documentation
-title: "myPortfolio-TK#/ "
-labels: ["type:chore"]
+title: 'myPortfolio-TK#/ '
+labels: ['type:chore']
 body:
   # Bloc d'affichage : n'apparaît pas dans le corps de l'issue créée.
   - type: markdown
@@ -20,7 +20,7 @@ body:
     id: done
     attributes:
       label: Definition of done
-      placeholder: "- [ ] ..."
+      placeholder: '- [ ] ...'
   - type: textarea
     id: notes
     attributes:

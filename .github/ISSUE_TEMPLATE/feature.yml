@@ -1,7 +1,7 @@
 name: Feature
 description: Une capacité nouvelle, visible par le visiteur
-title: "myPortfolio-FEAT#/ "
-labels: ["type:feat"]
+title: 'myPortfolio-FEAT#/ '
+labels: ['type:feat']
 body:
   # Bloc d'affichage : n'apparaît pas dans le corps de l'issue créée.
   - type: markdown
@@ -22,7 +22,7 @@ body:
     attributes:
       label: Definition of done
       description: Ce qui doit être vrai pour clore l'issue.
-      placeholder: "- [ ] ..."
+      placeholder: '- [ ] ...'
     validations: { required: true }
   - type: textarea
     id: notes

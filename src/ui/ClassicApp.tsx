@@ -24,13 +24,12 @@ export function ClassicApp({
           <h1 className="presel__title">La version légère arrive.</h1>
         </header>
         <p className="classic__body">
-          Cette page racontera la même histoire que la pièce en 3D — projets, CV, contact —
-          en HTML léger et accessible. Elle est en construction.
+          Cette page racontera la même histoire que la pièce en 3D — projets, CV, contact — en HTML
+          léger et accessible. Elle est en construction.
         </p>
         {autoFallback ? (
           <p className="presel__note">
-            WebGL n'est pas disponible sur cet appareil — vous avez été orienté ici
-            automatiquement.
+            WebGL n'est pas disponible sur cet appareil — vous avez été orienté ici automatiquement.
           </p>
         ) : (
           <button type="button" className="classic__switch" onClick={onReopen}>

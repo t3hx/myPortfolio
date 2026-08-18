@@ -55,11 +55,7 @@ export function Preloader() {
   const pct = Math.round(progress * 100)
 
   return (
-    <div
-      className={`preload${ready ? ' preload--out' : ''}`}
-      role="status"
-      aria-label="Chargement"
-    >
+    <div className={`preload${ready ? ' preload--out' : ''}`} role="status" aria-label="Chargement">
       <Logo className="preload__logo" />
       <div>
         <div className={`preload__bar${known ? '' : ' preload__bar--unknown'}`}>

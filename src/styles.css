@@ -96,7 +96,9 @@ body,
   border-radius: 50%;
   border: 1px solid rgba(120, 200, 255, 0.5);
   background: transparent;
-  transition: background 0.2s, transform 0.2s;
+  transition:
+    background 0.2s,
+    transform 0.2s;
 }
 
 .rail button.active .dot {
@@ -243,7 +245,6 @@ body,
   }
 }
 
-
 /* Les tokens (importés avant ce fichier) posent Space Grotesk sur .stage ; le
    HUD diagnostic garde sa mono de spike tant qu'il n'est pas redessiné. */
 .hud {
@@ -263,7 +264,7 @@ body,
   gap: 40px;
   padding: 24px;
   pointer-events: auto;
-  background: radial-gradient(1100px 750px at 50% 115%, #26190F, var(--ink) 70%);
+  background: radial-gradient(1100px 750px at 50% 115%, #26190f, var(--ink) 70%);
 }
 
 .presel__head {
@@ -307,7 +308,7 @@ body,
   font-style: italic;
   font-size: 30px;
   font-weight: 400;
-  color: #F2E9DA;
+  color: #f2e9da;
 }
 
 .presel__cards {
@@ -329,7 +330,9 @@ body,
   box-shadow: 0 14px 44px rgba(0, 0, 0, 0.38);
   font-family: var(--font-ui);
   color: var(--cream);
-  transition: border-color 200ms var(--ease-out), box-shadow 200ms var(--ease-out);
+  transition:
+    border-color 200ms var(--ease-out),
+    box-shadow 200ms var(--ease-out);
 }
 
 /* Le halo EST l'indicateur de focus (même style que le survol) : l'anneau
@@ -349,15 +352,18 @@ body,
 }
 
 @keyframes presel-halo {
-  0%, 100% {
-    box-shadow: 0 0 0 1.5px rgba(var(--glow-deep-rgb), 0.2),
-                0 0 22px 2px rgba(var(--glow-deep-rgb), 0.2),
-                0 14px 44px rgba(0, 0, 0, 0.38);
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 1.5px rgba(var(--glow-deep-rgb), 0.2),
+      0 0 22px 2px rgba(var(--glow-deep-rgb), 0.2),
+      0 14px 44px rgba(0, 0, 0, 0.38);
   }
   50% {
-    box-shadow: 0 0 0 1.5px rgba(var(--glow-deep-rgb), 0.34),
-                0 0 38px 4px rgba(var(--glow-deep-rgb), 0.38),
-                0 14px 44px rgba(0, 0, 0, 0.38);
+    box-shadow:
+      0 0 0 1.5px rgba(var(--glow-deep-rgb), 0.34),
+      0 0 38px 4px rgba(var(--glow-deep-rgb), 0.38),
+      0 14px 44px rgba(0, 0, 0, 0.38);
   }
 }
 
@@ -367,9 +373,10 @@ body,
   .presel-card:hover,
   .presel-card:focus-visible {
     animation: none;
-    box-shadow: 0 0 0 1.5px rgba(var(--glow-deep-rgb), 0.3),
-                0 0 38px 4px rgba(var(--glow-deep-rgb), 0.34),
-                0 14px 44px rgba(0, 0, 0, 0.38);
+    box-shadow:
+      0 0 0 1.5px rgba(var(--glow-deep-rgb), 0.3),
+      0 0 38px 4px rgba(var(--glow-deep-rgb), 0.34),
+      0 14px 44px rgba(0, 0, 0, 0.38);
   }
 }
 
@@ -427,7 +434,9 @@ body,
   text-transform: uppercase;
   color: rgba(var(--cream-rgb), 0.72);
   cursor: pointer;
-  transition: border-color 200ms var(--ease-out), color 200ms var(--ease-out);
+  transition:
+    border-color 200ms var(--ease-out),
+    color 200ms var(--ease-out);
 }
 
 .classic__switch:hover,

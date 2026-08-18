@@ -90,7 +90,7 @@ Ce sont **deux mécanismes distincts, à remplir tous les deux** :
   tableau ; **poser le label ne les remplit pas.** Une issue synchronisée sans
   champs arrive dans le tableau sans priorité ni taille, donc invisible au tri.
 
-Les champs sont des *single-select* : l'API attend l'**identifiant de
+Les champs sont des _single-select_ : l'API attend l'**identifiant de
 l'option**, pas son libellé. Les relever une fois par projet :
 
 ```sh
@@ -118,7 +118,7 @@ bruit.
 
 ### 4. Le corps suit la forme du gabarit
 
-Intention, *definition of done* cochable, notes. Et surtout : **les pièges
+Intention, _definition of done_ cochable, notes. Et surtout : **les pièges
 déjà connus vont dans l'issue**, pas seulement dans un document. Une issue qui
 répète le piège que l'on vient de découvrir évite de le redécouvrir dans six
 mois.
@@ -146,13 +146,13 @@ Ce que ça déclenche, dans l'ordre :
    parent avance tout seul — c'est la raison pratique de préférer les
    sous-issues natives aux cases à cocher.
 
-Ces automatismes se règlent dans le tableau (⚙️ → *Workflows*). Deux valent le
+Ces automatismes se règlent dans le tableau (⚙️ → _Workflows_). Deux valent le
 détour :
 
-| Workflow | État au 2026-08-09 | Effet |
-|---|---|---|
-| **Item closed** | ✅ activé | l'issue fermée passe en `done` |
-| **Pull request linked to issue** | ❌ désactivé | ferait passer l'issue en `in-review` dès l'ouverture de la PR |
+| Workflow                         | État au 2026-08-09 | Effet                                                         |
+| -------------------------------- | ------------------ | ------------------------------------------------------------- |
+| **Item closed**                  | ✅ activé          | l'issue fermée passe en `done`                                |
+| **Pull request linked to issue** | ❌ désactivé       | ferait passer l'issue en `in-review` dès l'ouverture de la PR |
 
 Les activer ou non se fait **dans l'interface** : il n'existe pas de mutation
 publique pour piloter les workflows d'un Project.
@@ -166,11 +166,11 @@ qu'une partie du travail, c'est le signe qu'il manque des sous-issues.
 `gh` demande des portées différentes selon l'objet touché. Les trois utiles ici,
 à demander avant de se retrouver bloqué en plein script :
 
-| Action | Portée | Symptôme si absente |
-|---|---|---|
-| Écrire dans `.github/workflows/` | `workflow` | 403 « refusing to allow… without `workflow` scope » |
-| Lire un Project | `read:project` | 404 sur le projet |
-| **Écrire les champs d'un Project** | `project` | « your authentication token is missing required scopes [project] » |
+| Action                             | Portée         | Symptôme si absente                                                |
+| ---------------------------------- | -------------- | ------------------------------------------------------------------ |
+| Écrire dans `.github/workflows/`   | `workflow`     | 403 « refusing to allow… without `workflow` scope »                |
+| Lire un Project                    | `read:project` | 404 sur le projet                                                  |
+| **Écrire les champs d'un Project** | `project`      | « your authentication token is missing required scopes [project] » |
 
 ```sh
 gh auth refresh -h github.com -s workflow -s project
@@ -194,8 +194,8 @@ Les labels sont des objets **par dépôt** — il n'existe pas de label global.
 
 `ADD_TO_PROJECT_PAT` (jeton personnel, portée `project`) vit dans les **secrets
 Actions du dépôt**, pas dans Doppler. Ce sont deux plans distincts : Doppler
-alimente l'application *qui tourne* (Dokploy l'injecte au démarrage du
-conteneur), le PAT est consommé par le *runner GitHub Actions*, avant qu'une
+alimente l'application _qui tourne_ (Dokploy l'injecte au démarrage du
+conteneur), le PAT est consommé par le _runner GitHub Actions_, avant qu'une
 image existe.
 
 Un compte personnel n'a pas de coffre partagé — le secret se dépose dans chacun
