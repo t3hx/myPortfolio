@@ -130,6 +130,14 @@ export function CabinetDrawer({ scene }: CabinetDrawerProps) {
         get state() {
           return useInteraction.getState().cabinet
         },
+        get selected() {
+          return useInteraction.getState().selectedProject
+        },
+        // `__rigDebug` cesse d'être écrit dès que la phase est PANEL — son
+        // `useFrame` rend la main avant. La phase se lit donc ici.
+        get phase() {
+          return useInteraction.getState().phase
+        },
       }
     }
 

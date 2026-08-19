@@ -40,11 +40,15 @@ interface InteractionState {
   pendingStopRequest: number | null
   /** Le tiroir de la commode — voir `CabinetState`. */
   cabinet: CabinetState
+  /** Le `slug` du projet dont le dossier a quitté le tiroir, s'il y en a un.
+   *  C'est ce que le panneau (#83) lira pour savoir quelle fiche afficher. */
+  selectedProject: string | null
 
   setPhase: (phase: Phase) => void
   setStopIndex: (index: number) => void
   setReady: () => void
   setCabinet: (state: CabinetState) => void
+  selectProject: (slug: string | null) => void
   requestStop: (index: number) => void
   consumeStopRequest: () => number | null
   openPanel: () => void
@@ -59,6 +63,7 @@ export const useInteraction = create<InteractionState>((set, get) => ({
   ready: false,
   pendingStopRequest: null,
   cabinet: 'closed',
+  selectedProject: null,
 
   setPhase: (phase) => set({ phase }),
   setStopIndex: (stopIndex) => {
@@ -67,6 +72,9 @@ export const useInteraction = create<InteractionState>((set, get) => ({
   setReady: () => set({ ready: true }),
   setCabinet: (cabinet) => {
     if (get().cabinet !== cabinet) set({ cabinet })
+  },
+  selectProject: (selectedProject) => {
+    if (get().selectedProject !== selectedProject) set({ selectedProject })
   },
 
   requestStop: (index) => set({ pendingStopRequest: index }),
