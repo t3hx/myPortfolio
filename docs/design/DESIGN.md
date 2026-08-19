@@ -70,6 +70,71 @@ Un emplacement, pas une forme de BD : panneau de verre, pas de queue.
 - Survol d'item : cartouche crème .09, 140 ms.
 - Cibles 36–40 px (≥ 44 px avec zone étendue) ; Tab = focus (état survol), ↑↓ entre items.
 
+## Anatomie — fiche projet
+
+Maquettes : `screens/03b-project.html` (fiche) et `screens/03c-project-empty.html` (tiroir vide).
+
+**La fiche est une bulle à l'échelle de l'écran.** Même anatomie en trois temps —
+kicker à point accent · titre · une seule phrase en Newsreader italique — même
+matériau, même accent. Ce qui change est l'échelle, et la raison en est
+mécanique : la scène a disparu du cadre, le dossier la remplit entièrement.
+
+- **Le verre reste du verre**, à la densité haute de la plage : `rgba(24,17,12, .74)` +
+  `blur(26px) saturate(.9)`, plein cadre. Un panneau opaque effacerait le carton
+  crème du dossier qu'on vient de mettre 850 ms à amener sous le nez du visiteur ;
+  le `backdrop-filter` le laisse transparaître, ce qui est exactement ce pour quoi
+  la direction l'a retenu. Un dégradé radial crème à .07 empêche le verre de lire
+  comme un aplat mort.
+- **Composition en deux colonnes**, `min(1040px, 84%)` centrée : couverture 300 px
+  à gauche, texte à droite, gouttière 48. La couverture est **portrait et pleine
+  hauteur** — c'est une page dans un dossier, pas une vignette ; alignée sur la
+  colonne de texte elle tient la composition par la gauche au lieu de flotter.
+- **Titre** : Space Grotesk 500, `--fs-display` 44/1,05, `-.015em`. Le nom d'un
+  projet relève de ce qui s'opère, pas de ce que la pièce dit — la voix italique
+  est réservée à la phrase, une seule, comme dans une bulle. **`--fs-display` est
+  un échelon neuf de l'échelle typo** (11 · 12 · 19 · 26 · **44**), ajouté ici
+  volontairement : les six autres échelons servent des îlots posés sur la scène,
+  celui-ci sert le seul écran qui occupe tout le cadre. Aucun autre écran n'a le
+  droit de s'en servir sans la même raison.
+- **Méta** (année, rôle) entre deux filets crème .12 ; **stack** en pastilles mono
+  11,5 ; **faits saillants** en liste dont la puce est le point accent du kicker —
+  un seul signe dans tout le système.
+- **Liens** : bouton verre, halo accent au survol et au focus (mêmes valeurs que
+  `.bubble--interactive`). Une fiche sans lien n'affiche **rien** : trois des cinq
+  dépôts sont privés, et la règle de `MENU_SOCIALS` vaut ici — jamais de porte
+  fermée à clé.
+- **Couverture manquante** : illustration générique (`GENERIC_COVER_SRC`), jamais
+  un trou.
+
+**La fiche couvre la barre de menu** — l'empilement `panneaux 300 > barre 200` est
+une contrainte de code, pas un choix pris ici. Elle est donc **modale par
+construction**, et sa sortie doit être la chose la plus évidente après le titre :
+deux sorties toujours, `Échap` affiché en pastille mono et un bouton rond en haut
+à droite. Jamais une seule des deux.
+
+### Le tiroir vide n'ouvre aucune fiche
+
+À zéro projet il n'y a **aucun dossier à cliquer**, donc aucun panneau ne s'ouvre
+jamais : un écran vide plein cadre serait une porte qui ne s'ouvre pas. Le repli
+vit là où l'utilisateur se trouve — devant le tiroir ouvert et vide — et le
+système n'admet qu'un seul bloc de texte à la fois. **C'est donc la bulle de la
+commode, à sa place habituelle, avec une autre phrase.** Aucun composant nouveau,
+et #83 s'en trouve réduit d'autant.
+
+### L'étiquette des dossiers 3D
+
+Le seul texte du projet qui vive dans une **texture** et non dans le DOM
+(exception tranchée le 2026-08-18 : c'est une affordance, comme l'icône d'un
+bouton, et le nom existe aussi dans la fiche accessible).
+
+| Point | Valeur | Pourquoi |
+|---|---|---|
+| Fonte | `--font-ui` (Space Grotesk) 600 | les micro-étiquettes sont déjà son travail |
+| Casse | **phrase, sans interlettrage** | les caps à +0.2em mangeraient la largeur : 430 px utiles seulement |
+| Encre | `#2B2418` | brun chaud sur carton crème ; `--ink` est un fond d'écran, il virerait au trou noir sur du papier |
+| Corps | 66 px dans une texture de 512, **réduit jusqu'à ce que ça entre** | mesuré : « Portfolio » (9 signes) tient à 78 px, « myPortfolio » (11) déborde ; un compte de signes reste un proxy |
+| Visibilité | **permanente**, pas au survol | c'est ce qui rend le tiroir lisible d'un coup d'œil, et le survol sert déjà à désigner |
+
 ## Écrans hors visite
 
 - **0a Pré-sélection** : fond radial braise→encre, logo (triangle pointe en bas depuis le 2026-08-10, respirant en 2,6 s — propagé au menu et au preloader avec #65 : le losange n'existe plus nulle part), question en Newsreader italique 30, deux cartes verre 340 px — aucun halo au repos : la carte survolée ou focusée l'allume et il respire en boucle au rythme du logo du preloader (2,6 s ease-in-out). Note mono : choix mémorisé.
@@ -86,6 +151,9 @@ Un emplacement, pas une forme de BD : panneau de verre, pas de queue.
 | barre repos→survol | 180 ms | opacité .4→.75 |
 | item / halo | 140 / 200 ms | |
 | accordéon CV | 260 ms | max-height |
+| **fiche : relais depuis le dossier** (`--t-sheet-in`) | **320 ms** | fondu d'opacité, **démarré à 70 % du vol** (≈ 600 ms sur 850) — la fiche est opaque ~70 ms après l'arrivée du dossier, jamais avant |
+| **fiche : entrée du contenu** | **+40 ms par bloc** | translateY 10→0, même budget que le reveal typo des bulles |
+| **fiche out** (`--t-sheet-out`) | **200 ms** | fondu simple, comme une bulle — puis le dossier repart (850 ms, fourni) |
 
 Deux états de bulle seulement (présente/absente) — aucune opacité indexée sur un pourcentage de scroll.
 
@@ -99,6 +167,8 @@ La session design n'avait pas tranché la variante réduite ; elle est posée ic
 | reveal typo mot à mot | supprimé — la phrase paraît d'un bloc |
 | respiration du logo (boucle 2,6 s) | supprimée ; la barre continue de progresser, c'est de l'information |
 | barre .4→.75, halo, cartouche d'item, accordéon CV | **conservés** — déclenchés par l'utilisateur |
+| fiche : relais 320 ms + entrée par blocs | fondu d'opacité seul, 200 ms ; les blocs paraissent d'un coup |
+| **vol du dossier 850 ms** | **coupe** : la fiche s'ouvre sur place, sans excursion |
 | **déplacement caméra 1,2 s** | **coupe au stop suivant** (`STEP_DURATION` à 0 dans `CameraRig`) |
 
 La dernière ligne est la seule qui compte vraiment : elle ne vit pas dans le CSS, et sans elle le seul mouvement d'ampleur de l'expérience reste entier.

@@ -125,11 +125,14 @@ export const GENERIC_COVER_SRC = '/images/projects/cover-generique.svg'
 /**
  * Ce qu'on dit quand il n'y a aucun projet à montrer.
  *
- * Un tiroir vide est un état possible — pas une panne — et il ne doit jamais
- * se traduire par un écran blanc. Le texte vit ici, avec le reste du contenu ;
- * sa mise en scène appartient au panneau (#83).
+ * **Une phrase, pas un écran.** À zéro projet il n'y a aucun dossier à cliquer,
+ * donc aucune fiche ne s'ouvre jamais : un panneau plein cadre serait une porte
+ * qui ne s'ouvre pas. Le repli prend la place de la bulle de la commode — même
+ * emplacement, même anatomie, autre phrase — parce que le système n'admet
+ * qu'un seul bloc de texte visible à la fois.
+ *
+ * Tranché en session design (#78) ; la maquette
+ * `docs/design/screens/03c-project-empty.html` fait foi pour la copy.
  */
-export const PROJECTS_EMPTY = {
-  title: 'Le tiroir est vide',
-  text: "Rien de classé ici pour l'instant. Les projets arrivent — en attendant, le reste de la pièce se visite.",
-}
+export const PROJECTS_EMPTY =
+  "Le tiroir est vide pour l'instant. Les projets arrivent — le reste de la pièce se visite déjà."
