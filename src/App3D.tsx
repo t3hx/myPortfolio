@@ -5,6 +5,7 @@ import { Experience } from '@/scene/Experience'
 import { viewMode } from '@/lib/viewMode'
 import { Hud } from '@/ui/Hud'
 import { Menu } from '@/ui/Menu'
+import { ProjectSheet } from '@/ui/ProjectSheet'
 
 /**
  * L'expérience 3D complète. One Canvas, one render camera. The scene is
@@ -50,6 +51,10 @@ export default function App3D() {
           diagnostic, pas la navigation. */}
       {viewMode === 'tour' && <Hud />}
       <Menu />
+      {/* La fiche projet (#83) est montée APRÈS la barre : elle la couvre, comme
+          l'empilement panneaux 300 > barre 200 l'impose. Elle ne rend rien tant
+          qu'aucun dossier n'a été ouvert. */}
+      <ProjectSheet />
     </div>
   )
 }

@@ -1,7 +1,8 @@
 import { useCallback, useState, type RefObject } from 'react'
 import type { Object3D, Vector3 } from 'three'
 import { CAMERA_STOPS } from '@/config/cameraStops'
-import { BUBBLES, bubbleKicker } from '@/content/bubbles'
+import { BUBBLES, bubbleKicker, bubbleText } from '@/content/bubbles'
+import { PROJECTS } from '@/content/projects'
 import { resolveBubbleAnchors } from '@/lib/bubbleAnchors'
 import type { StopTransform } from '@/lib/stops'
 import { Bubble } from '@/scene/Bubble'
@@ -84,7 +85,9 @@ export function Experience({ bubbleLayer }: ExperienceProps) {
             tick={bubble.tick}
             tilt={bubble.tilt}
           >
-            {bubble.text}
+            {/* Le tiroir vide n'ouvre aucune fiche : son repli passe par la
+                bulle de la commode, pas par un écran (#78). */}
+            {bubbleText(bubble, PROJECTS.length)}
           </Bubble>
         )
       })}

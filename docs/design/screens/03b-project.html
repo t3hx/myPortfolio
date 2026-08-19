@@ -8,130 +8,64 @@
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600&family=Newsreader:ital,opsz,wght@0,6..72,400;1,6..72,400;1,6..72,500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../tokens.css">
 <style>
-/* La fiche est une BULLE À L'ÉCHELLE DE L'ÉCRAN : même anatomie en trois temps
-   (kicker à point accent · titre · une phrase en italique), même matériau, même
-   accent. Ce qui change est l'échelle, parce que la scène a disparu : le dossier
-   remplit le cadre derrière, et c'est lui que le verre laisse transparaître. */
-.sheet { position:absolute; inset:0; background:rgba(var(--ink-glass), .74); backdrop-filter:blur(26px) saturate(.9);
-  display:flex; align-items:center; justify-content:center; pointer-events:auto; }
-/* Le carton du dossier reste perceptible : un dégradé chaud très bas, pris sur
-   le bake, évite que le verre lise comme un aplat mort. */
-.sheet::before { content:''; position:absolute; inset:0; pointer-events:none;
-  background:radial-gradient(120% 90% at 50% 42%, rgba(239,229,211,.07), transparent 62%); }
-
-.sheet__inner { position:relative; width:min(1040px, 84%); display:grid; grid-template-columns:300px 1fr; gap:48px; align-items:stretch; }
-
-/* Couverture — placeholder hachuré, même facture que la photo du CV (02).
-   PORTRAIT et pleine hauteur : c'est une page dans un dossier, pas une vignette.
-   Alignée sur la colonne de texte, elle tient la composition par la gauche au
-   lieu de flotter en haut. */
-.cover { min-height:380px; border:1px dashed rgba(var(--cream-rgb), .3); border-radius:10px;
-  background:repeating-linear-gradient(45deg, rgba(var(--cream-rgb),.05) 0 8px, transparent 8px 16px);
-  display:flex; align-items:center; justify-content:center; font-family:ui-monospace,monospace; font-size:11px;
-  color:rgba(var(--cream-rgb), .5); }
-
-.head { display:flex; align-items:center; gap:9px; margin-bottom:14px; }
-.head__dot { width:7px; height:7px; border-radius:50%; background:var(--glow); box-shadow:0 0 10px rgba(var(--glow-rgb), .85); flex:none; }
-.head__label { font-family:var(--font-ui); font-size:var(--fs-kicker); font-weight:500; letter-spacing:.2em;
-  text-transform:uppercase; color:rgba(var(--cream-rgb), .66); }
-
-.title { font-family:var(--font-ui); font-size:var(--fs-display); font-weight:500; letter-spacing:-.015em; line-height:1.05;
-  color:var(--cream); margin:0 0 14px; }
-/* La voix de la pièce, exactement comme dans une bulle — une seule phrase. */
-.tagline { font-family:var(--font-voice); font-style:italic; font-size:22px; line-height:1.45; color:#F2E9DA;
-  margin:0 0 26px; text-wrap:pretty; max-width:46ch; }
-
-.meta { display:flex; gap:32px; padding:14px 0 18px; border-top:1px solid rgba(var(--cream-rgb), .12);
-  border-bottom:1px solid rgba(var(--cream-rgb), .12); margin-bottom:20px; }
-.meta__item { display:flex; flex-direction:column; gap:4px; }
-.meta__key { font-family:var(--font-ui); font-size:10px; font-weight:500; letter-spacing:.2em; text-transform:uppercase;
-  color:rgba(var(--cream-rgb), .5); }
-.meta__value { font-size:13.5px; color:var(--cream); }
-.meta__value--mono { font-family:ui-monospace,monospace; font-size:12.5px; }
-
-.stack { display:flex; flex-wrap:wrap; gap:7px; margin-bottom:22px; }
-.stack__chip { font-family:ui-monospace,monospace; font-size:11.5px; color:rgba(var(--cream-rgb), .8);
-  background:rgba(var(--cream-rgb), .07); border:1px solid rgba(var(--cream-rgb), .12); border-radius:6px; padding:4px 9px; }
-
-.points { list-style:none; margin:0 0 26px; padding:0; display:flex; flex-direction:column; gap:10px; }
-.points li { position:relative; padding-left:18px; font-size:13.5px; line-height:1.5; color:rgba(var(--cream-rgb), .78); }
-/* Le point accent du kicker, repris en puce : un seul signe dans tout le système. */
-.points li::before { content:''; position:absolute; left:0; top:8px; width:5px; height:5px; border-radius:50%;
-  background:rgba(var(--glow-rgb), .75); }
-
-.links { display:flex; gap:10px; }
-.link { font-family:var(--font-ui); font-size:12px; font-weight:500; letter-spacing:.04em; color:var(--cream);
-  text-decoration:none; background:rgba(var(--cream-rgb), .07); border:1px solid rgba(var(--cream-rgb), .14);
-  border-radius:8px; padding:9px 16px; transition:background var(--t-item), border-color var(--t-item), box-shadow var(--t-halo); }
-.link:hover, .link:focus-visible { background:rgba(var(--cream-rgb), .11); border-color:rgba(var(--glow-deep-rgb), .6);
-  box-shadow:0 0 0 1.5px rgba(var(--glow-deep-rgb), .35), 0 0 40px 5px rgba(var(--glow-deep-rgb), .42); outline:none; }
-
-/* La fiche couvre la barre de menu (panneaux 300 > barre 200) : elle est modale
-   par construction, donc sa sortie doit être la chose la plus évidente à l'écran
-   après le titre. Deux sorties, la souris et le clavier, jamais une seule. */
-.close { position:absolute; top:28px; right:28px; display:flex; align-items:center; gap:10px; }
-.close__key { font-family:ui-monospace,monospace; font-size:10.5px; color:rgba(var(--cream-rgb), .5);
-  border:1px solid rgba(var(--cream-rgb), .18); border-radius:5px; padding:3px 7px; }
-.close__btn { appearance:none; background:rgba(var(--cream-rgb), .07); border:1px solid rgba(var(--cream-rgb), .14);
-  border-radius:50%; width:36px; height:36px; color:var(--cream); font-family:inherit; font-size:15px; line-height:1;
-  cursor:pointer; display:flex; align-items:center; justify-content:center;
-  transition:background var(--t-item), border-color var(--t-item); }
-.close__btn:hover, .close__btn:focus-visible { background:rgba(var(--cream-rgb), .11); border-color:rgba(var(--glow-deep-rgb), .6); outline:none; }
+/* Rien ici : l'anatomie de la fiche vit dans `tokens.css`, comme celle de la
+   bulle et de la barre. L'app monte exactement le même balisage, avec en plus
+   la classe `panel` qui fait ignorer sa molette par CameraRig. Le seul écart de
+   cette page est le délai d'entrée : ici il n'y a pas de vol à attendre. */
+.sheet { animation-delay: 0ms; }
 </style>
 </head>
 <body>
 <!-- Fond : la capture réelle de fin de vol (docs/renders/spikes/), pas un rendu
      de référence — c'est littéralement ce que le panneau recouvre. -->
 <main class="stage" style="background-image:url(../../renders/spikes/cabinet-folder-flight.png)">
-  <div class="overlay-root">
-    <section class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title">
-      <div class="close">
-        <span class="close__key">Échap</span>
-        <button class="close__btn" type="button" aria-label="Fermer la fiche">&times;</button>
-      </div>
+  <section class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title">
+    <div class="sheet__close">
+      <span class="sheet__key">Échap</span>
+      <button class="sheet__close-btn" type="button" aria-label="Fermer la fiche">&times;</button>
+    </div>
 
-      <div class="sheet__inner">
-        <div class="cover">illustration</div>
+    <div class="sheet__inner">
+      <div class="sheet__cover">illustration</div>
 
-        <div>
-          <header class="head">
-            <span class="head__dot"></span>
-            <span class="head__label">Projet</span>
-          </header>
+      <div>
+        <header class="sheet__kicker">
+          <span class="sheet__dot"></span>
+          <span class="sheet__label">Projet</span>
+        </header>
 
-          <h1 class="title" id="sheet-title">Ce portfolio</h1>
-          <p class="tagline">Une pièce modélisée sous Blender, parcourue au défilement.</p>
+        <h1 class="sheet__title" id="sheet-title">Ce portfolio</h1>
+        <p class="sheet__tagline">Une pièce modélisée sous Blender, parcourue au défilement.</p>
 
-          <div class="meta">
-            <div class="meta__item">
-              <span class="meta__key">Année</span>
-              <span class="meta__value meta__value--mono">2026</span>
-            </div>
-            <div class="meta__item">
-              <span class="meta__key">Rôle</span>
-              <span class="meta__value">Conception, modélisation et développement</span>
-            </div>
+        <div class="sheet__meta">
+          <div class="sheet__meta-item">
+            <span class="sheet__meta-key">Année</span>
+            <span class="sheet__meta-value sheet__meta-value--mono">2026</span>
           </div>
-
-          <div class="stack">
-            <span class="stack__chip">React</span>
-            <span class="stack__chip">react-three-fiber</span>
-            <span class="stack__chip">Blender</span>
-            <span class="stack__chip">GSAP</span>
-          </div>
-
-          <ul class="points">
-            <li>Rendu entièrement pré-cuit : aucune lumière au runtime, tout est dans les textures.</li>
-            <li>La caméra suit onze cadrages composés dans Blender, jamais réécrits en code.</li>
-          </ul>
-
-          <div class="links">
-            <a class="link" href="#">Code</a>
+          <div class="sheet__meta-item">
+            <span class="sheet__meta-key">Rôle</span>
+            <span class="sheet__meta-value">Conception, modélisation et développement</span>
           </div>
         </div>
+
+        <ul class="sheet__stack">
+          <li class="sheet__chip">React</li>
+          <li class="sheet__chip">react-three-fiber</li>
+          <li class="sheet__chip">Blender</li>
+          <li class="sheet__chip">GSAP</li>
+        </ul>
+
+        <ul class="sheet__points">
+          <li>Rendu entièrement pré-cuit : aucune lumière au runtime, tout est dans les textures.</li>
+          <li>La caméra suit onze cadrages composés dans Blender, jamais réécrits en code.</li>
+        </ul>
+
+        <div class="sheet__links">
+          <a class="sheet__link" href="#">Code</a>
+        </div>
       </div>
-    </section>
-  </div>
+    </div>
+  </section>
 </main>
 </body>
 </html>

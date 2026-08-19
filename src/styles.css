@@ -127,7 +127,7 @@ body,
 }
 
 .actions button,
-.panel header button {
+.hud-panel header button {
   padding: 6px 12px;
   border-radius: 8px;
   border: 1px solid rgba(120, 200, 255, 0.35);
@@ -152,8 +152,14 @@ body,
   color: rgba(190, 215, 255, 0.45);
 }
 
-/* --- Panel (risk point #2: wheel belongs to the panel) ----------------------------- */
-.panel {
+/* --- Panneaux ---------------------------------------------------------------------- */
+/* `.panel` est un MARQUEUR DE COMPORTEMENT, pas une apparence : `CameraRig`
+   ignore toute molette dont la cible est dedans. Il ne doit donc porter AUCUN
+   style, sinon tout panneau qui le réclame pour la molette hérite d'une
+   géométrie qui n'est pas la sienne — mesuré : la fiche projet (#83) sortait à
+   420 px de large, collée à droite, avec le fond bleu du HUD.
+   L'apparence du panneau de démonstration du HUD vit sous `.hud-panel`. */
+.hud-panel {
   position: absolute;
   top: 0;
   right: 0;
@@ -168,7 +174,7 @@ body,
   backdrop-filter: blur(8px);
 }
 
-.panel header {
+.hud-panel header {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -176,13 +182,13 @@ body,
   border-bottom: 1px solid rgba(120, 200, 255, 0.25);
 }
 
-.panel h2 {
+.hud-panel h2 {
   margin: 0;
   font-size: 14px;
   letter-spacing: 0.05em;
 }
 
-.panel-body {
+.hud-panel-body {
   overflow-y: auto;
   overscroll-behavior: contain;
   padding: 14px 16px;
@@ -191,7 +197,7 @@ body,
   color: rgba(210, 228, 255, 0.8);
 }
 
-.panel-end {
+.hud-panel-end {
   text-align: center;
   color: #6fd0ff;
 }
