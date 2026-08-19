@@ -2,12 +2,15 @@ import gsap from 'gsap'
 import { useEffect, useRef } from 'react'
 import type { Object3D } from 'three'
 import { DRAWER_EASE, DRAWER_OPEN_Z, DRAWER_TWEEN_S } from '@/config/cabinet'
+import { PROJECTS } from '@/content/projects'
 import {
   buildDrawerGroup,
   cabinetStopPresent,
   drawerClosedZ,
   drawerShouldBeOpen,
 } from '@/lib/cabinetDrawer'
+import { labelFontReady } from '@/lib/folderLabel'
+import { buildFolders } from '@/lib/folders'
 import { useInteraction } from '@/state/interaction'
 
 /**
@@ -43,6 +46,20 @@ export function CabinetDrawer({ scene }: CabinetDrawerProps) {
     if (!group) return
 
     const closedZ = drawerClosedZ(group)
+
+    // Un dossier par projet (#80). L'attente de la fonte est load-bearing :
+    // `canvas` ne connaît pas `font-display: swap` et peindrait l'étiquette
+    // dans la police de secours, sans rien signaler, une fois pour toutes.
+    //
+    // Elle ne retarde rien en pratique, et surtout elle ne rend pas `?stop=`
+    // indéterministe : mesuré, les fontes sont prêtes à 273 ms quand ce code
+    // s'exécute à 3874 ms — le .glb de 3 Mo met bien plus longtemps à arriver
+    // que deux fontes. Le tiroir, lui, n'attend pas : il coulisse pendant ce
+    // temps.
+    let cancelled = false
+    void labelFontReady().then(() => {
+      if (!cancelled) buildFolders(group, PROJECTS)
+    })
     const setCabinet = useInteraction.getState().setCabinet
 
     const apply = (open: boolean, instant: boolean) => {
@@ -112,6 +129,7 @@ export function CabinetDrawer({ scene }: CabinetDrawerProps) {
     }
 
     return () => {
+      cancelled = true
       unsub()
       tween.current?.kill()
       tween.current = null
