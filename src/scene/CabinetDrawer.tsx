@@ -1,5 +1,5 @@
 import gsap from 'gsap'
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { Object3D } from 'three'
 import { DRAWER_EASE, DRAWER_OPEN_Z, DRAWER_TWEEN_S } from '@/config/cabinet'
 import { PROJECTS } from '@/content/projects'
@@ -10,7 +10,8 @@ import {
   drawerShouldBeOpen,
 } from '@/lib/cabinetDrawer'
 import { labelFontReady } from '@/lib/folderLabel'
-import { buildFolders } from '@/lib/folders'
+import { buildFolders, type FolderHandle } from '@/lib/folders'
+import { CabinetFolders } from '@/scene/CabinetFolders'
 import { useInteraction } from '@/state/interaction'
 
 /**
@@ -38,6 +39,10 @@ interface CabinetDrawerProps {
 
 export function CabinetDrawer({ scene }: CabinetDrawerProps) {
   const tween = useRef<gsap.core.Tween | null>(null)
+  // Les dossiers ne peuvent pas être construits au rendu : ils attendent la
+  // fonte de leurs étiquettes. Ils remontent donc par un état, et le survol
+  // (#81) se monte derrière eux.
+  const [folders, setFolders] = useState<FolderHandle[]>([])
 
   useEffect(() => {
     if (!cabinetStopPresent(scene)) return
@@ -58,7 +63,7 @@ export function CabinetDrawer({ scene }: CabinetDrawerProps) {
     // temps.
     let cancelled = false
     void labelFontReady().then(() => {
-      if (!cancelled) buildFolders(group, PROJECTS)
+      if (!cancelled) setFolders(buildFolders(group, PROJECTS))
     })
     const setCabinet = useInteraction.getState().setCabinet
 
@@ -136,5 +141,5 @@ export function CabinetDrawer({ scene }: CabinetDrawerProps) {
     }
   }, [scene])
 
-  return null
+  return <CabinetFolders folders={folders} />
 }

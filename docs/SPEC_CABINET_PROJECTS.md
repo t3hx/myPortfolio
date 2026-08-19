@@ -97,10 +97,13 @@ bien sur le bois chaud.
 
 Deux enseignements de la capture :
 
-- **Soulever ne suffit pas** : dans le spike, le dossier soulevé masque
-  complètement son voisin de derrière. Le survol doit donc décaler le dossier
-  **vers le haut _et_ vers l'avant** (+Y et +Z), pour qu'il dégage ses voisins
-  au lieu d'en cacher un.
+- **Le dossier survolé monte _et_ avance** (+Y et +Z). Attention au
+  raisonnement : le décalage vers l'avant ne dégage **pas** les voisins —
+  vérifié à l'implémentation, c'est l'inverse, approcher le dossier de la
+  caméra l'agrandit et il en couvre davantage. Il est là parce qu'il fait lire
+  le geste comme une **extraction**, le début du mouvement que le clic
+  achèvera. Qu'un dossier survolé masque ses voisins de derrière est attendu :
+  une seule étiquette a besoin d'être lisible à la fois, celle qu'on vise.
 - **La coque inversée n'est pas le bon contour** : à l'échelle testée
   (1.02, 1.03, 3.0) elle se lit comme un cadre flottant, pas comme un cerne.
   Voir la conception ci-dessous.
