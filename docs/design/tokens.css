@@ -39,6 +39,7 @@
   --t-preload-out: 320ms; /* fondu du preloader — couvre la 1re frame du canvas */
   --t-bar: 180ms;         /* opacité .4 → .75 */
   --t-item: 140ms;
+  --t-halo: 200ms;        /* halo accent au survol / focus */
   --t-accordion: 260ms;
   --t-sheet-in: 320ms;    /* relais fiche ← dossier, démarré à 70 % du vol (#78) */
   --t-sheet-out: 200ms;   /* même sortie qu'une bulle */
@@ -235,6 +236,137 @@
    dans le cas normal. */
 @keyframes preload-shuttle { from { transform: translateX(0); } to { transform: translateX(300%); } }
 
+/* ===== Fiche projet (écrans 03b / 03c) =====
+   La fiche est une BULLE À L'ÉCHELLE DE L'ÉCRAN : même anatomie en trois temps
+   (kicker à point accent · titre · une phrase en italique), même matériau, même
+   accent. Ce qui change est l'échelle, parce que la scène a disparu du cadre —
+   le dossier la remplit, et c'est LUI que le verre laisse transparaître. Un
+   panneau opaque effacerait ce qu'on vient de mettre 850 ms à amener.
+
+   La classe `panel` qui l'accompagne dans l'app n'est pas décorative :
+   `CameraRig` ignore toute molette visant `.panel`. Sans elle, le tour
+   continuerait de tourner sous la fiche. */
+.sheet {
+  position: absolute; inset: 0; z-index: var(--z-panel);
+  background: rgba(var(--ink-glass), .74);
+  backdrop-filter: blur(26px) saturate(.9);
+  display: flex; align-items: center; justify-content: center;
+  pointer-events: auto;
+  /* Le relais démarre à 70 % du vol (≈ 595 ms sur 850) : la fiche est opaque
+     ~70 ms après l'arrivée du dossier, jamais avant qu'il remplisse le cadre. */
+  animation: sheet-in var(--t-sheet-in) var(--ease-out) 595ms both;
+}
+/* Le carton du dossier reste perceptible : un dégradé crème très bas évite que
+   le verre lise comme un aplat mort. */
+.sheet::before {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background: radial-gradient(120% 90% at 50% 42%, rgba(var(--cream-rgb), .07), transparent 62%);
+}
+.sheet--out { animation: sheet-out var(--t-sheet-out) linear both; }
+
+.sheet__inner {
+  position: relative; width: min(1040px, 84%);
+  display: grid; grid-template-columns: 300px 1fr; gap: var(--s-7); align-items: stretch;
+}
+
+/* Couverture — PORTRAIT et pleine hauteur : c'est une page dans un dossier, pas
+   une vignette. Alignée sur la colonne de texte, elle tient la composition par
+   la gauche au lieu de flotter en haut. */
+.sheet__cover {
+  min-height: 380px; border: 1px dashed rgba(var(--cream-rgb), .3); border-radius: var(--r-bubble);
+  background: repeating-linear-gradient(45deg, rgba(var(--cream-rgb), .05) 0 8px, transparent 8px 16px);
+  display: flex; align-items: center; justify-content: center;
+  font-family: ui-monospace, monospace; font-size: 11px; color: rgba(var(--cream-rgb), .5);
+  object-fit: cover;
+}
+
+.sheet__kicker { display: flex; align-items: center; gap: 9px; margin-bottom: 14px; }
+.sheet__dot {
+  width: 7px; height: 7px; border-radius: 50%; flex: none;
+  background: var(--glow); box-shadow: 0 0 10px rgba(var(--glow-rgb), .85);
+}
+.sheet__label {
+  font-family: var(--font-ui); font-size: var(--fs-kicker); font-weight: 500;
+  letter-spacing: .2em; text-transform: uppercase; color: rgba(var(--cream-rgb), .66);
+}
+
+.sheet__title {
+  font-family: var(--font-ui); font-size: var(--fs-display); font-weight: 500;
+  letter-spacing: -.015em; line-height: 1.05; color: var(--cream); margin: 0 0 14px;
+}
+/* La voix de la pièce, exactement comme dans une bulle — une seule phrase. */
+.sheet__tagline {
+  font-family: var(--font-voice); font-style: italic; font-size: 22px; line-height: 1.45;
+  color: #F2E9DA; margin: 0 0 26px; text-wrap: pretty; max-width: 46ch;
+}
+
+.sheet__meta {
+  display: flex; gap: var(--s-6); padding: 14px 0 18px; margin-bottom: 20px;
+  border-top: 1px solid rgba(var(--cream-rgb), .12);
+  border-bottom: 1px solid rgba(var(--cream-rgb), .12);
+}
+.sheet__meta-item { display: flex; flex-direction: column; gap: var(--s-1); }
+.sheet__meta-key {
+  font-family: var(--font-ui); font-size: 10px; font-weight: 500; letter-spacing: .2em;
+  text-transform: uppercase; color: rgba(var(--cream-rgb), .5);
+}
+.sheet__meta-value { font-size: 13.5px; color: var(--cream); }
+.sheet__meta-value--mono { font-family: ui-monospace, monospace; font-size: 12.5px; }
+
+.sheet__stack { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 22px; padding: 0; list-style: none; }
+.sheet__chip {
+  font-family: ui-monospace, monospace; font-size: 11.5px; color: rgba(var(--cream-rgb), .8);
+  background: rgba(var(--cream-rgb), .07); border: 1px solid rgba(var(--cream-rgb), .12);
+  border-radius: 6px; padding: 4px 9px;
+}
+
+.sheet__points { list-style: none; margin: 0 0 26px; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.sheet__points li {
+  position: relative; padding-left: 18px; font-size: 13.5px; line-height: 1.5;
+  color: rgba(var(--cream-rgb), .78);
+}
+/* Le point accent du kicker, repris en puce : un seul signe dans tout le système. */
+.sheet__points li::before {
+  content: ''; position: absolute; left: 0; top: 8px; width: 5px; height: 5px;
+  border-radius: 50%; background: rgba(var(--glow-rgb), .75);
+}
+
+.sheet__links { display: flex; gap: 10px; }
+.sheet__link {
+  font-family: var(--font-ui); font-size: 12px; font-weight: 500; letter-spacing: .04em;
+  color: var(--cream); text-decoration: none;
+  background: rgba(var(--cream-rgb), .07); border: 1px solid rgba(var(--cream-rgb), .14);
+  border-radius: 8px; padding: 9px 16px;
+  transition: background var(--t-item), border-color var(--t-item), box-shadow var(--t-halo);
+}
+.sheet__link:hover, .sheet__link:focus-visible {
+  background: rgba(var(--cream-rgb), .11); border-color: rgba(var(--glow-deep-rgb), .6);
+  box-shadow: 0 0 0 1.5px rgba(var(--glow-deep-rgb), .35), 0 0 40px 5px rgba(var(--glow-deep-rgb), .42);
+  outline: none;
+}
+
+/* La fiche couvre la barre de menu (panneaux 300 > barre 200) : elle est modale
+   par construction, donc sa sortie doit être la chose la plus évidente après le
+   titre. Deux sorties, la souris et le clavier, jamais une seule. */
+.sheet__close { position: absolute; top: 28px; right: 28px; display: flex; align-items: center; gap: 10px; }
+.sheet__key {
+  font-family: ui-monospace, monospace; font-size: 10.5px; color: rgba(var(--cream-rgb), .5);
+  border: 1px solid rgba(var(--cream-rgb), .18); border-radius: 5px; padding: 3px 7px;
+}
+.sheet__close-btn {
+  appearance: none; background: rgba(var(--cream-rgb), .07); border: 1px solid rgba(var(--cream-rgb), .14);
+  border-radius: 50%; width: 36px; height: 36px; color: var(--cream);
+  font-family: inherit; font-size: 15px; line-height: 1; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: background var(--t-item), border-color var(--t-item);
+}
+.sheet__close-btn:hover, .sheet__close-btn:focus-visible {
+  background: rgba(var(--cream-rgb), .11); border-color: rgba(var(--glow-deep-rgb), .6); outline: none;
+}
+
+@keyframes sheet-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes sheet-out { from { opacity: 1; } to { opacity: 0; } }
+
 /* ===== Mouvement réduit =====
    Le critère est l'autonomie, pas le déplacement : ce qui part tout seul ou
    tourne en boucle est neutralisé, ce que l'utilisateur déclenche lui-même est
@@ -263,6 +395,9 @@
   .preload__bar--unknown .preload__fill { animation: none !important; width: 100%; opacity: .35; }
   /* reveal typo mot à mot — pas encore dans les maquettes, à honorer côté app */
   .bubble__text > * { animation: none !important; }
+  /* fiche : le relais ne se déclenche plus au milieu du vol, puisque le vol est
+     coupé côté app — elle paraît d'un bloc, sans délai. */
+  .sheet { animation: sheet-in var(--t-sheet-out) linear both !important; }
 }
 @keyframes bubble-in-reduced {
   from { opacity: 0; }

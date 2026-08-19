@@ -181,6 +181,13 @@ Quatre points où recréer « au pixel » dérive silencieusement si on ne les c
 - **Les largeurs de la table de placement sont en `content-box`** — le pack ne pose aucun reset. `01-desk` à `max-width: 460` mesure 506 px de bord à bord (padding 22 × 2 + bord 1 × 2). Avec le `box-sizing: border-box` qu'un projet React pose par défaut, retrancher 46 px ou les largeurs rétrécissent d'autant.
 - **Les polices sont chargées depuis le CDN Google dans les maquettes** (commodité de prototype). En production : Newsreader et Space Grotesk auto-hébergées, sous-réglées sur le latin étendu — les deux couvrent les accents FR.
 - **Les fonds sont `docs/renders/refs/*.png`**, partagés avec la boucle de comparaison de rendus. Dans l'app, le canvas WebGL les remplace ; ils ne sont là que pour juger les placements sur les vraies focales.
+- **`.panel` est un marqueur de COMPORTEMENT, pas une apparence.** `CameraRig`
+  ignore toute molette dont la cible est dedans : c'est le seul rôle de cette
+  classe. `src/styles.css` lui attachait pourtant l'apparence du panneau de
+  démonstration du HUD du spike — `width: min(420px, 90vw)`, collé à droite,
+  fond bleu. La fiche projet, qui réclame `.panel` pour la molette, en héritait :
+  mesuré, elle sortait à 420 px de large au lieu de 1280. L'apparence du HUD vit
+  désormais sous `.hud-panel`, et `.panel` ne porte plus aucun style.
 - **Le halo de survol est spécifié mais non maquetté** : aucun écran de `screens/` ne porte `.bubble--interactive`, faute d'objet cliquable arrêté au moment de la session. Le CSS existe et vaut spécification — ce n'est pas une maquette qu'on aurait oubliée. **Tranché avec #47 : aucune bulle n'est interactive** — la bulle est purement narrative, n'ouvre rien, et laisse passer molette et clics (`pointer-events: none`). `.bubble--interactive` reste une spécification dormante si un futur arrêt en a besoin.
 
 ## Contraintes respectées (rappel code)

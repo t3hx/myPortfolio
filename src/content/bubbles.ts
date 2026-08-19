@@ -28,6 +28,9 @@
  * pré-sélection déjà livré. Le bilingue FR/EN est l'issue #33 — cette table
  * est la seule à modifier le jour où elle arrive.
  */
+import { DRAWER_STOP_LABEL } from '@/config/cabinet'
+import { PROJECTS_EMPTY } from '@/content/projects'
+
 export interface BubbleContent {
   /** Le `label` de `CAMERA_STOPS` — aussi la clé de `?stop=`. */
   stop: string
@@ -162,4 +165,21 @@ export function bubbleKicker(bubbles: BubbleContent[], index: number): string | 
   if (!bubble?.subject) return undefined
   const rank = bubbles.slice(0, index + 1).filter((b) => b.subject).length
   return `${String(rank).padStart(2, '0')} — ${bubble.subject}`
+}
+
+/**
+ * La phrase d'une bulle, avec le repli du tiroir vide (#78, #83).
+ *
+ * À zéro projet il n'y a **aucun dossier à cliquer**, donc aucune fiche ne
+ * s'ouvre jamais : un écran vide plein cadre serait une porte qui ne s'ouvre
+ * pas. Le repli prend donc la place de la bulle de la commode — même
+ * emplacement, même anatomie, autre phrase — parce que le système n'admet
+ * qu'un seul bloc de texte visible à la fois.
+ *
+ * Le compte de projets est passé en paramètre plutôt qu'importé : ce module est
+ * la source des TEXTES, il n'a pas à savoir d'où vient la liste.
+ */
+export function bubbleText(bubble: BubbleContent, projectCount: number): string {
+  if (bubble.stop === DRAWER_STOP_LABEL && projectCount === 0) return PROJECTS_EMPTY
+  return bubble.text
 }
