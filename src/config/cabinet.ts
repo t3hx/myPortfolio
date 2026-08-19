@@ -152,3 +152,32 @@ export const HOVER_OUTLINE_COLOR = '#8FDBE4'
 export const HOVER_OUTLINE_WIDTH_PX = 2.4
 /** Seuil d'angle des arêtes gardées : au-delà, on encre aussi le maillage. */
 export const HOVER_OUTLINE_THRESHOLD_DEG = 30
+
+/**
+ * Le vol du dossier vers la caméra (#82).
+ *
+ * Le dossier **grandit, il ne s'ouvre pas** : ses pièces sont des boîtes
+ * séparées de 1.5 mm, pas des rabats articulés, et leurs faces internes n'ont
+ * aucun bake pour un état ouvert. Le dépliage est une illusion que le panneau
+ * DOM (#83) prend en charge, en fondu, quand le dossier remplit le cadre.
+ */
+export const FLIGHT_DURATION_S = 0.85
+export const FLIGHT_EASE = 'power3.inOut'
+export const FLIGHT_RETURN_EASE = 'power2.inOut'
+
+/**
+ * Plancher devant le plan proche : un dossier qui remplit le cadre s'approche
+ * beaucoup, et rien ne doit finir tranché par le clipping.
+ *
+ * 1.2 et pas davantage : ce plancher est un garde-fou, pas une politique de
+ * cadrage. Trop haut, il l'emporte sur le calcul de remplissage et le dossier
+ * s'arrête trop loin — mesuré, à 2.5 il laissait voir la pièce dès les champs
+ * larges du tour. Il ne doit se déclencher que pour un objet absurdement
+ * petit, jamais pour un dossier.
+ */
+export const FLIGHT_NEAR_MARGIN = 1.2
+
+/** Le dossier déborde un peu plutôt que d'affleurer. Un remplissage calculé au
+ *  plus juste fait coïncider ses bords avec ceux du cadre, et le moindre
+ *  arrondi y laisse voir un liseré de pièce — mesuré, en haut et à gauche. */
+export const FLIGHT_FILL_MARGIN = 1.08
