@@ -20,6 +20,7 @@
   --fs-meta: 12px;
   --fs-body: 19px;     /* bulle, line-height 1.5 */
   --fs-title: 26px;
+  --fs-display: 44px;  /* titres plein cadre (fiche projet) — voir DESIGN.md */
 
   /* Espacement : 4 8 12 16 24 32 48 */
   --s-1: 4px; --s-2: 8px; --s-3: 12px; --s-4: 16px; --s-5: 24px; --s-6: 32px; --s-7: 48px;
@@ -39,6 +40,8 @@
   --t-bar: 180ms;         /* opacité .4 → .75 */
   --t-item: 140ms;
   --t-accordion: 260ms;
+  --t-sheet-in: 320ms;    /* relais fiche ← dossier, démarré à 70 % du vol (#78) */
+  --t-sheet-out: 200ms;   /* même sortie qu'une bulle */
   --ease-out: cubic-bezier(.2, .8, .2, 1);
 }
 

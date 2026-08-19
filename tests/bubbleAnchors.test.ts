@@ -201,11 +201,18 @@ describe('BUBBLES', () => {
       .filter((f) => f.endsWith('.html'))
       .flatMap((f) => {
         const html = readFileSync(`${dir}/${f}`, 'utf8')
-        return [...html.matchAll(/<article[^>]*class="[^"]*\bbubble\b[^"]*"[\s\S]*?<\/article>/g)]
-          .flatMap((article) => [
-            ...article[0].matchAll(/<p class="bubble__text"[^>]*>([\s\S]*?)<\/p>/g),
-          ])
-          .map((m) => m[1].trim())
+        return (
+          [...html.matchAll(/<article[^>]*class="[^"]*\bbubble\b[^"]*"[\s\S]*?<\/article>/g)]
+            // Une bulle marquée `data-variant` documente un REPLI — le tiroir
+            // vide (#78) réutilise la bulle de la commode avec une autre phrase.
+            // Elle n'appartient à aucun arrêt, donc sa copy ne vit pas dans
+            // BUBBLES ; sans ce filtre elle passerait pour une douzième bulle.
+            .filter((article) => !/^<article[^>]*\bdata-variant=/.test(article[0]))
+            .flatMap((article) => [
+              ...article[0].matchAll(/<p class="bubble__text"[^>]*>([\s\S]*?)<\/p>/g),
+            ])
+            .map((m) => m[1].trim())
+        )
       })
 
     // Comparaison par ensemble : l'ordre du tour est une décision produit et

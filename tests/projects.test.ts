@@ -74,10 +74,11 @@ describe('PROJECTS', () => {
 
 describe('les replis', () => {
   it('a de quoi remplir un tiroir vide', () => {
-    // Zéro projet est un état possible, pas une panne : il ne doit jamais se
-    // traduire par un écran blanc.
-    expect(PROJECTS_EMPTY.title.trim()).not.toBe('')
-    expect(PROJECTS_EMPTY.text.trim()).not.toBe('')
+    // Zéro projet est un état possible, pas une panne. Et c'est UNE PHRASE, pas
+    // un écran : sans dossier à cliquer, aucune fiche ne s'ouvre jamais — le
+    // repli prend la place de la bulle de la commode (#78).
+    expect(PROJECTS_EMPTY.trim()).not.toBe('')
+    expect(PROJECTS_EMPTY).not.toMatch(/\n/)
   })
 
   it('vise un seul chemin de couverture générique', () => {
