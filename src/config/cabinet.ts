@@ -123,3 +123,32 @@ export const LABEL_FONT_PX = 66
 /** Encre sur carton : un brun chaud, pas le `--ink` du verre fumé — celui-ci
  *  est un fond d'écran, il virerait au trou noir sur du papier crème. */
 export const LABEL_INK = '#2B2418'
+
+/**
+ * Le survol d'un dossier (#81).
+ *
+ * Il monte **et** avance : au spike, un dossier qui monte seulement masque
+ * complètement son voisin de derrière — le geste censé désigner une fiche en
+ * cachait une autre (`docs/renders/spikes/cabinet-hover-label.png`).
+ *
+ * 0.05 en `y` suffit à dégager l'étiquette au-dessus de ses voisines ; le
+ * couloir en Z garantit qu'il n'y a rien au-dessus pour l'arrêter.
+ */
+export const HOVER_LIFT_Y = 0.05
+export const HOVER_SHIFT_Z = 0.02
+export const HOVER_TWEEN_S = 0.22
+export const HOVER_EASE = 'power2.out'
+
+/**
+ * L'encre du contour : `--glow` du design system, l'accent froid des cordes,
+ * du clavier et des yeux du chat. Validé en capture — il tranche franchement
+ * sur le bois chaud de la commode.
+ *
+ * La largeur est en PIXELS ÉCRAN, comme le mode `edges` d'`Outlines` : un
+ * contour dont l'épaisseur varierait avec la distance ne se lirait plus comme
+ * un trait mais comme une partie de l'objet.
+ */
+export const HOVER_OUTLINE_COLOR = '#8FDBE4'
+export const HOVER_OUTLINE_WIDTH_PX = 2.4
+/** Seuil d'angle des arêtes gardées : au-delà, on encre aussi le maillage. */
+export const HOVER_OUTLINE_THRESHOLD_DEG = 30
