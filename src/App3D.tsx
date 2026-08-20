@@ -4,6 +4,7 @@ import { CLEAR_COLOR, OUTPUT_COLOR_SPACE, TONE_MAPPING } from '@/config/renderPi
 import { Experience } from '@/scene/Experience'
 import { captureMode, viewMode } from '@/lib/viewMode'
 import { Hud } from '@/ui/Hud'
+import { CvScreen } from '@/ui/CvScreen'
 import { Menu } from '@/ui/Menu'
 import { ProjectSheet } from '@/ui/ProjectSheet'
 
@@ -54,6 +55,10 @@ export default function App3D() {
           z-index 200. L'issue #26 le disait : le rail est un prototype de
           diagnostic, pas la navigation. */}
       {viewMode === 'tour' && <Hud />}
+      {/* Le CV (#93) est monté AVANT la barre, et il vit à --z-bubble (100) :
+          il n'est pas modal, la barre (200) reste au-dessus et « Résumé » reste
+          la porte de sortie. Il ne rend rien hors de l'arrêt CV. */}
+      <CvScreen />
       <Menu />
       {/* La fiche projet (#83) est montée APRÈS la barre : elle la couvre, comme
           l'empilement panneaux 300 > barre 200 l'impose. Elle ne rend rien tant

@@ -33,6 +33,7 @@
   /* Empilement (contrainte code) */
   --z-canvas: 0; --z-bubble: 100; --z-bar: 200; --z-panel: 300; --z-preload: 400;
 
+
   /* Motion — budgets */
   --t-bubble-in: 480ms;   /* cubic-bezier(.2,.8,.2,1), reveal bas→haut */
   --t-bubble-out: 200ms;  /* fade simple avant départ caméra (1200 ms) */
@@ -43,6 +44,11 @@
   --t-accordion: 260ms;
   --t-sheet-in: 320ms;    /* relais fiche ← dossier, démarré à 70 % du vol (#78) */
   --t-sheet-out: 200ms;   /* même sortie qu'une bulle */
+  --t-cv-in: 480ms;       /* le CV paraît avec la bulle de son arrêt */
+  --t-cv-out: 200ms;      /* même sortie qu'une bulle — voir CV_OUT_MS */
+  --t-decrypt: 1600ms;    /* déchiffrement du nom — voir DECRYPT_MS */
+  --t-cascade: 420ms;     /* déchiffrement d'un titre — voir CASCADE_MS */
+  --t-sweep: 700ms;       /* balayage d'une cartouche au survol */
   --ease-out: cubic-bezier(.2, .8, .2, 1);
 }
 
@@ -367,6 +373,279 @@
 @keyframes sheet-in { from { opacity: 0; } to { opacity: 1; } }
 @keyframes sheet-out { from { opacity: 1; } to { opacity: 0; } }
 
+/* ===== CV « affiché par l'écran » (#93) =====
+   Le moniteur vertical occupe x 24,5 % → 75,3 % du cadre (mesuré sur
+   `docs/renders/refs/cv.png`) ; le bloc s'y encastre à 27,5 % sur 44,8 %, avec
+   la marge qui fait croire que c'est l'écran qui l'affiche.
+
+   Ces fractions sont HORIZONTALES, donc valables à tout ratio : le tour ajuste
+   son champ horizontalement (`src/lib/stops.ts`), un cadre plus court rogne en
+   haut et en bas sans jamais déplacer l'écran latéralement.
+
+   VÉRIFIÉ HORS 16:9 (2026-08-20), parce que le raisonnement ci-dessus ne dit
+   rien du contenu de la boîte, seulement de sa position — et c'est le contenu
+   qui casse en premier. Mesuré à 1000×720, 1440×900 et 1280×1024 : la ligne
+   `titre / entreprise / période` ne passe jamais à la ligne (17 px de haut
+   partout) et la période reste à 17 px du bord de sa cartouche. À 1000 px de
+   large le bloc tombe à 448 px et tient encore. En dessous, c'est le titre qui
+   cédera le premier : la période porte `flex: none`.
+
+   Le CV vit à `--z-bubble` (100), PAS à `--z-panel` : il n'est pas modal, et la
+   barre de menu (200) doit rester au-dessus — « Résumé » est la porte par
+   laquelle on est entré, elle reste la porte de sortie. Il ne porte pas non
+   plus la classe `panel` : il n'a rien à faire défiler, la molette continue
+   donc de commander le tour. */
+.cv {
+  position: absolute; left: 27.5%; width: 44.8%; top: 0; bottom: 0;
+  z-index: var(--z-bubble);
+  /* Le CV DÉFILE dans l'écran depuis le 2026-08-20, parce qu'il ne tient plus :
+     885 px de contenu (966 accordéon ouvert) dans un cadre de 720. Ce n'est pas
+     un choix esthétique, c'est ce que six sections imposent — et un CV qui
+     défile est ce qu'un CV fait.
+
+     Il lui faut donc `pointer-events: auto` : un élément transparent au
+     pointage ne reçoit pas la molette, elle irait au canevas. Les 45 % de cadre
+     qu'il occupe n'avalent rien d'utile — à cet arrêt, la scène n'a rien de
+     cliquable derrière lui.
+
+     Il ne porte PAS la classe `panel` pour autant : `panel` ferait ignorer au
+     tour TOUTE molette passant ici, et on ne pourrait plus quitter l'arrêt en
+     défilant. C'est `CvScreen` qui arbitre, cran par cran — voir le
+     commentaire du passe-plat là-bas. */
+  pointer-events: auto;
+  overflow-y: auto; overscroll-behavior: contain;
+  scrollbar-width: thin; scrollbar-color: rgba(var(--cream-rgb), .18) transparent;
+  /* `safe center` : centré tant que ça rentre, ancré en haut dès que ça
+     déborde. Le mot-clé `safe` n'est pas décoratif — un `center` seul rend le
+     DÉBUT du contenu inatteignable quand il dépasse : le débordement se produit
+     alors des deux côtés, et un conteneur ne défile jamais vers le négatif. La
+     moitié haute du CV serait perdue sur une fenêtre étroite.
+     Un navigateur qui ignore `safe` jette la déclaration entière et retombe sur
+     `flex-start` : la dégradation va dans le bon sens, elle aussi.
+     Le `padding-block` est l'encastrement dans l'écran, comme les 27,5 % le
+     sont latéralement. */
+  display: flex; flex-direction: column; justify-content: flex-start; gap: 9px;
+  padding-block: 24px;
+  animation: cv-in var(--t-cv-in) var(--ease-out) both;
+}
+/* L'ENTRETOISE, et c'est elle qui tient la promesse « le haut ne bouge jamais ».
+   Le CV n'est PAS centré : il est ancré en haut, sous une entretoise qui lui
+   donne l'air centré au repos. Centré, tout ce qui le fait grandir le fait
+   remonter — c'est de l'arithmétique, pas un réglage : la moitié de ce qu'un
+   accordéon ajoute est reprise en haut. Aucune réserve ne corrige ça
+   exactement, puisque les quatre accordéons n'ont pas la même hauteur.
+
+   `flex: 0 0 auto` — ni croissance, NI COMPRESSION, et c'est le point. Une
+   entretoise compressible (`0 1 auto`) tient tant que rien ne déborde, puis
+   cède : mesuré à 1512 × 945, où le CV déborde déjà au repos, elle rendait
+   9 px au premier accordéon ouvert. Une seconde entretoise en bas, à consommer
+   en premier, n'y change rien — à cette taille elle est déjà à zéro.
+   Incompressible, le haut est figé à toute hauteur de fenêtre, et le prix est
+   une entretoise qui reste en place quand ça défile : on défile un peu plus
+   longtemps, mais rien ne saute sous le curseur.
+
+   Le plafond en pixels évite qu'un très grand écran ne pousse le bloc trop bas. */
+.cv::before {
+  content: ''; flex: 0 0 auto; height: min(13vh, 220px);
+}
+
+/* Déclaré APRÈS `.cv` : à spécificité égale, le dernier gagne — c'est ce qui
+   fait que la sortie l'emporte sur l'entrée. Ne pas remonter cette règle. */
+.cv--out { animation: cv-out var(--t-cv-out) linear both; }
+/* Le nom, en haut de tout. Chasse FIXE, et ce n'est pas un choix de style :
+   le déchiffrement tire des glyphes au sort caractère par caractère, et en
+   chasse proportionnelle chaque tirage change la largeur du mot — le nom
+   gigoterait pendant toute l'animation. La lueur froide est la seule de tout
+   le CV : c'est la ligne qui doit se lire comme un affichage, pas comme du
+   papier. */
+.cv__name {
+  margin: 0 0 4px 2px; font-family: ui-monospace, monospace;
+  font-size: 30px; font-weight: 500; letter-spacing: .05em; color: var(--cream);
+  /* Une lueur portée SANS décalage ni flou du glyphe lui-même : elle rayonne
+     autour, elle n'épaissit pas le trait. C'est la seule ligne assez grande
+     pour l'encaisser — sur du 9 px elle mangerait le contre-poinçon. */
+  text-shadow: 0 0 16px rgba(var(--glow-rgb), .26);
+}
+/* Le caret de bloc, pendant le déchiffrement seulement. C'est lui qui fait
+   lire « console » plutôt que « titre animé » ; le laisser après coup en
+   ferait une décoration clignotante permanente. Il ne vit que tant que
+   l'animation vit, donc `prefers-reduced-motion` l'emporte avec elle. */
+.cv__caret {
+  display: inline-block; width: .55em; height: .95em; margin-left: .12em;
+  vertical-align: -.1em; background: var(--glow);
+  box-shadow: 0 0 10px rgba(var(--glow-rgb), .5);
+  animation: cv-caret 620ms steps(1, end) infinite;
+}
+@keyframes cv-caret { 0%, 49% { opacity: 1; } 50%, 100% { opacity: .1; } }
+
+.cv__row { display: flex; gap: 11px; }
+/* 148 × 180 depuis le 2026-08-20 : à 104 × 126 le cadre ne pesait plus rien
+   face aux cinq blocs qui l'entourent. Les deux cartes de la rangée y perdent
+   en largeur, ce qui est assumé — c'est la photo qui donne la hauteur, et
+   l'agrandir ne coûte donc que 54 px au budget vertical. */
+.cv__photo {
+  flex: none; width: 148px; height: 180px;
+  border: 1px dashed rgba(var(--cream-rgb), .35); border-radius: 8px;
+  background: repeating-linear-gradient(45deg, rgba(var(--cream-rgb), .05) 0 8px, transparent 8px 16px);
+  display: flex; align-items: center; justify-content: center;
+  font-family: ui-monospace, monospace; font-size: 10px; color: rgba(var(--cream-rgb), .55);
+}
+.cv__photo img { width: 100%; height: 100%; object-fit: cover; border-radius: 7px; }
+.cv__card {
+  background: rgba(var(--cream-rgb), .07);
+  border: 1px solid rgba(var(--cream-rgb), .12); border-radius: 8px;
+  padding: 11px 14px; display: flex; flex-direction: column; gap: 7px;
+}
+/* `flex: 1` ne vaut QUE dans la rangée du haut. `.cv` est une colonne flex :
+   posé sur la carte elle-même, il ferait grandir en HAUTEUR les cartes du bas
+   jusqu'à remplir l'écran.
+
+   Le savoir-être prend 1,4 part contre 1 aux faits, et ce n'est pas de
+   l'esthétique : trois colonnes de vignettes ont besoin de place, deux paires
+   « intitulé / valeur » n'en ont pas. À parts égales, mesuré à 1000 px de
+   large, « Curiosité » et « Autonomie » se coupaient en plein mot.
+
+   1,4 et pas plus, et gouttière de 6 px : élargir davantage la carte rétrécit
+   celle des faits, dont les lignes passent alors à deux et rallongent toute la
+   rangée. Mesuré — 1,5 avec 9 px de gouttière fait grimper le CV de 613 à
+   663 px à 1000 px de large, et il déborde de l'écran dès qu'un accordéon
+   s'ouvre. Le point d'équilibre est étroit : ne le déplacer qu'avec une mesure
+   sous les yeux. */
+.cv__row .cv__card { flex: 1; }
+.cv__card--traits { flex: 1.4; }
+.cv__card-title {
+  font-size: 10px; font-weight: 500; letter-spacing: .2em; text-transform: uppercase;
+  color: rgba(var(--cream-rgb), .5); margin: 0 0 2px;
+}
+.cv__fact { display: flex; align-items: baseline; gap: 8px; font-size: 12.5px; }
+.cv__fact b { font-weight: 400; color: var(--cream); }
+.cv__fact span {
+  margin-left: auto; font-size: 11.5px; font-family: ui-monospace, monospace;
+  color: rgba(var(--cream-rgb), .55);
+}
+/* Réglette de vignettes — savoir-être et savoir-faire (2026-08-20).
+   UNE seule anatomie pour les deux : marque au-dessus, nom en dessous. Elles
+   ne diffèrent que par la répartition des colonnes, d'où le seul modificateur.
+
+   Le savoir-être est figé à 3 × 2 parce qu'il doit tenir à la HAUTEUR de la
+   photo, dans la rangée du haut ; le savoir-faire se répartit tout seul et
+   passe à la ligne, parce que rien ne le contraint latéralement.
+
+   La vignette sans SVG affiche l'INITIALE du nom, en crème monochrome : c'est
+   le glyphe neutre en attendant les vraies icônes, et pas un état d'erreur —
+   il n'y a aucun `onError` côté composant. Quand un SVG arrive il est rendu en
+   `<img>`, donc EN COULEUR : une marque monochrome ne ressemble pas à la
+   marque. L'asymétrie repli-monochrome / icône-couleur est voulue. */
+.cv__tiles { display: grid; gap: 8px 6px; }
+.cv__tiles--traits { grid-template-columns: repeat(3, 1fr); }
+.cv__tiles--skills { grid-template-columns: repeat(auto-fit, minmax(46px, 1fr)); }
+.cv__tile { display: flex; flex-direction: column; align-items: center; gap: 5px; min-width: 0; }
+.cv__tile-mark {
+  width: 26px; height: 26px; flex: none; border-radius: 7px;
+  border: 1px solid rgba(var(--cream-rgb), .16); background: rgba(var(--cream-rgb), .06);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 500; color: rgba(var(--cream-rgb), .8);
+}
+.cv__tile-mark img { width: 16px; height: 16px; object-fit: contain; }
+.cv__tile-label {
+  font-size: 9px; line-height: 1.25; text-align: center; max-width: 100%;
+  /* Surtout PAS d'`overflow-wrap: anywhere` : mesuré à 1000 px, il coupait
+     « Curiosité » en « Curiosit / é ». Un nom trop long doit déborder — on le
+     voit, on le raccourcit — plutôt que se briser en silence. */
+  hyphens: none; color: rgba(var(--cream-rgb), .55);
+}
+
+/* Titre d'une pile de cartouches — « Expériences », « Formations ». Même
+   micro-étiquette que celle d'une carte, mais HORS carte : les cartouches sont
+   déjà des boîtes, les emboîter dans une sixième n'ajouterait qu'un cadre.
+   La marge du haut compense le `gap` de la colonne pour attacher le titre à ce
+   qu'il annonce plutôt qu'à ce qui le précède. */
+.cv__section-title {
+  font-size: 10px; font-weight: 500; letter-spacing: .2em; text-transform: uppercase;
+  /* Accent froid, alors que les titres de CARTE restent crème sourd : c'est ce
+     qui distingue les trois sections des cartes qu'elles contiennent, sans
+     ajouter ni corps ni graisse. La couleur porte la hiérarchie. */
+  color: rgba(var(--glow-rgb), .72);
+  /* La marge du haut s'ajoute au `gap` de la colonne : elle creuse la césure
+     AVANT la section, celle du bas rattache le titre à ce qu'il annonce. C'est
+     ce couple qui fait lire trois sections plutôt qu'une pile de cartes. */
+  margin: 12px 0 -1px 2px;
+}
+
+/* « Le cap » — la vision, dans la police de la VOIX, celle des bulles. C'est
+   la seule ligne du CV qui parle à la première personne ; lui donner la même
+   italique qu'à la narration du tour est ce qui la distingue d'une rubrique. */
+.cv__outlook-text {
+  font-family: var(--font-voice); font-style: italic;
+  font-size: 13px; line-height: 1.5; color: rgba(var(--cream-rgb), .78); margin: 0;
+}
+
+/* Le repli quand aucun poste n'est renseigné : une phrase, jamais un trou.
+   Même discipline que le tiroir vide (#78). */
+.cv__empty {
+  font-family: var(--font-voice); font-style: italic; font-size: 13px;
+  line-height: 1.5; color: rgba(var(--cream-rgb), .6); margin: 0; padding: 0 2px;
+}
+.job {
+  pointer-events: auto;
+  background: rgba(var(--cream-rgb), .07); border: 1px solid rgba(var(--cream-rgb), .12);
+  border-radius: 8px; padding: 11px 16px;
+  transition: background var(--t-item), border-color var(--t-item);
+}
+.job:hover, .job:focus-visible { background: rgba(var(--cream-rgb), .1); border-color: rgba(var(--cream-rgb), .2); outline: none; }
+/* Balayage au survol : un liseré froid traverse la cartouche UNE fois. Il
+   n'annonce pas une ouverture — les formations l'ont aussi, elles qui ne
+   s'ouvrent pas — il accuse réception du pointeur, comme un écran qui
+   rafraîchit la ligne qu'on désigne.
+   Déclenché par un geste, donc CONSERVÉ sous `prefers-reduced-motion` : le
+   critère du design system est l'autonomie, pas le déplacement.
+   `overflow: hidden` est ce qui le coupe aux bords arrondis ; il ne gêne pas
+   l'accordéon, qui pousse la cartouche au lieu d'en déborder. */
+.job { position: relative; overflow: hidden; }
+.job::before {
+  content: ''; position: absolute; inset: 0; pointer-events: none; opacity: 0;
+  background: linear-gradient(100deg,
+    transparent 42%, rgba(var(--glow-rgb), .14) 50%, transparent 58%);
+}
+.job:hover::before, .job:focus-visible::before {
+  animation: job-sweep var(--t-sweep) var(--ease-out);
+}
+@keyframes job-sweep {
+  from { transform: translateX(-100%); opacity: 1; }
+  to   { transform: translateX(100%); opacity: 1; }
+}
+/* Une formation ne se déplie pas : elle ne doit donc pas réagir au survol. Un
+   fond qui s'éclaircit sur quelque chose qui n'ouvre rien promet une
+   interaction qui n'existe pas. */
+.job--static:hover { background: rgba(var(--cream-rgb), .07); border-color: rgba(var(--cream-rgb), .12); }
+.job__head { display: flex; align-items: baseline; gap: 10px; }
+.job__title { font-size: 13px; font-weight: 500; color: var(--cream); }
+.job__company { font-size: 11px; color: rgba(var(--cream-rgb), .55); }
+.job__period {
+  margin-left: auto; flex: none; font-size: 11px; font-family: ui-monospace, monospace;
+  color: rgba(var(--cream-rgb), .5);
+}
+/* L'accordéon interpole `grid-template-rows` de 0fr à 1fr plutôt qu'une
+   `max-height` devinée : une valeur en dur (160px dans la maquette d'origine)
+   est un plafond invisible, et la quatrième mission disparaîtrait en silence.
+   Ici la hauteur cible EST celle du contenu, quel qu'il soit. L'`overflow`
+   vit sur la liste — c'est lui qui rogne, y compris ses marges internes,
+   converties en `padding` pour cette raison. Le survol répond à un geste :
+   `prefers-reduced-motion` le conserve délibérément. */
+.job__missions {
+  display: grid; grid-template-rows: 0fr;
+  transition: grid-template-rows var(--t-accordion) var(--ease-out);
+}
+.job:hover .job__missions, .job:focus-within .job__missions { grid-template-rows: 1fr; }
+.job__missions ul {
+  overflow: hidden; margin: 0; padding: 9px 0 2px 15px;
+  display: flex; flex-direction: column; gap: 4px;
+}
+.job__missions li { font-size: 12px; line-height: 1.45; color: rgba(var(--cream-rgb), .75); }
+
+@keyframes cv-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes cv-out { from { opacity: 1; } to { opacity: 0; } }
+
 /* ===== Mouvement réduit =====
    Le critère est l'autonomie, pas le déplacement : ce qui part tout seul ou
    tourne en boucle est neutralisé, ce que l'utilisateur déclenche lui-même est
@@ -398,6 +677,11 @@
   /* fiche : le relais ne se déclenche plus au milieu du vol, puisque le vol est
      coupé côté app — elle paraît d'un bloc, sans délai. */
   .sheet { animation: sheet-in var(--t-sheet-out) linear both !important; }
+  /* CV : il paraît AVEC la bulle de son arrêt, donc il doit se raccourcir avec
+     elle. Sans cette ligne il tiendrait 480 ms pendant que la bulle en prend
+     200, et l'invariant que --t-cv-in annonce serait faux là où il compte le
+     plus. L'accordéon, lui, est conservé : il répond à un geste. */
+  .cv { animation: cv-in var(--t-cv-out) linear both !important; }
 }
 @keyframes bubble-in-reduced {
   from { opacity: 0; }

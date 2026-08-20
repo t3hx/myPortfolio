@@ -8,27 +8,11 @@
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600&family=Newsreader:ital,opsz,wght@0,6..72,400;1,6..72,400;1,6..72,500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../tokens.css">
 <style>
-/* CV « affiché par l'écran » — écran mesuré : x 24,5 % → 75,3 % du cadre */
-.cv { position:absolute; left:27.5%; width:44.8%; top:0; bottom:0; display:flex; flex-direction:column; justify-content:center; gap:11px; pointer-events:auto; }
-.cv__row { display:flex; gap:11px; }
-.cv__photo { flex:none; width:104px; height:126px; border:1px dashed rgba(var(--cream-rgb),.35); border-radius:8px;
-  background:repeating-linear-gradient(45deg, rgba(var(--cream-rgb),.05) 0 8px, transparent 8px 16px);
-  display:flex; align-items:center; justify-content:center; font-family:ui-monospace,monospace; font-size:10px; color:rgba(var(--cream-rgb),.55); }
-.cv__card { flex:1; background:rgba(var(--cream-rgb),.07); border:1px solid rgba(var(--cream-rgb),.12); border-radius:8px; padding:13px 16px; display:flex; flex-direction:column; gap:7px; }
-.cv__card-title { font-size:10px; font-weight:500; letter-spacing:.2em; text-transform:uppercase; color:rgba(var(--cream-rgb),.5); margin:0 0 2px; }
-.cv__fact { display:flex; align-items:baseline; gap:8px; font-size:12.5px; }
-.cv__fact b { font-weight:400; color:var(--cream); }
-.cv__fact span { margin-left:auto; font-size:11.5px; font-family:ui-monospace,monospace; color:rgba(var(--cream-rgb),.55); }
-.job { background:rgba(var(--cream-rgb),.07); border:1px solid rgba(var(--cream-rgb),.12); border-radius:8px; padding:11px 16px; transition:background var(--t-item), border-color var(--t-item); }
-.job:hover { background:rgba(var(--cream-rgb),.1); border-color:rgba(var(--cream-rgb),.2); }
-.job__head { display:flex; align-items:baseline; gap:10px; }
-.job__title { font-size:13px; font-weight:500; color:var(--cream); }
-.job__company { font-size:11px; color:rgba(var(--cream-rgb),.55); }
-.job__period { margin-left:auto; flex:none; font-size:11px; font-family:ui-monospace,monospace; color:rgba(var(--cream-rgb),.5); }
-.job__missions { max-height:0; overflow:hidden; transition:max-height var(--t-accordion) var(--ease-out); }
-.job:hover .job__missions, .job:focus-within .job__missions { max-height:160px; }
-.job__missions ul { margin:9px 0 2px; padding-left:15px; display:flex; flex-direction:column; gap:4px; }
-.job__missions li { font-size:12px; line-height:1.45; color:rgba(var(--cream-rgb),.75); }
+/* Rien ici : l'anatomie du CV vit dans `tokens.css`, comme celle de la bulle,
+   de la barre et de la fiche. L'app monte exactement le même balisage — et
+   l'accordéon y interpole `grid-template-rows`, ce qui a supprimé la
+   `max-height: 160px` que cette page portait : un plafond en dur faisait
+   disparaître en silence la quatrième mission d'un poste. */
 </style>
 </head>
 <body>
@@ -39,9 +23,36 @@
       <header class="bubble__kicker"><span class="bubble__dot"></span><span class="bubble__label">02 — Le CV</span></header>
       <p class="bubble__text" style="margin:0">Le CV, en pied et à jour — la version papier dort dans la commode.</p>
     </article>
+    <!-- Les vignettes affichent l'INITIALE du nom : c'est le glyphe neutre en
+         attendant les vrais SVG, pas un état d'erreur. Avec un fichier, l'app
+         rend un <img> EN COULEUR — une marque monochrome ne ressemble pas à la
+         marque. L'asymétrie est voulue.
+
+         Le bloc est CENTRÉ tant qu'il rentre et ancré en haut dès qu'il
+         déborde (`justify-content: safe center`) : six sections font ~910 px,
+         ce qui tient sur un écran plein et pas dans un cadre de 720. Cette page
+         se comporte donc comme l'app. -->
     <section class="cv" aria-label="Curriculum vitae">
+      <!-- Dans l'app, TOUS les titres se déchiffrent à l'arrivée, en cascade du
+           haut vers le bas : le nom sur 1600 ms (`--t-decrypt`) avec un caret de
+           bloc, les autres sur 420 ms (`--t-cascade`) décalés de 60 ms. La
+           maquette en montre l'état final. La chasse fixe du nom n'est pas
+           décorative : elle l'empêche de gigoter pendant que les glyphes se
+           tirent au sort. -->
+      <h1 class="cv__name">Thibault Vasseur</h1>
       <div class="cv__row">
         <div class="cv__photo">photo</div>
+        <div class="cv__card cv__card--traits">
+          <h2 class="cv__card-title">Savoir-être</h2>
+        <div class="cv__tiles cv__tiles--traits">
+          <div class="cv__tile"><span class="cv__tile-mark" aria-hidden="true">C</span><span class="cv__tile-label">Curiosité</span></div>
+          <div class="cv__tile"><span class="cv__tile-mark" aria-hidden="true">R</span><span class="cv__tile-label">Rigueur</span></div>
+          <div class="cv__tile"><span class="cv__tile-mark" aria-hidden="true">A</span><span class="cv__tile-label">Autonomie</span></div>
+          <div class="cv__tile"><span class="cv__tile-mark" aria-hidden="true">É</span><span class="cv__tile-label">Écoute</span></div>
+          <div class="cv__tile"><span class="cv__tile-mark" aria-hidden="true">P</span><span class="cv__tile-label">Pédagogie</span></div>
+          <div class="cv__tile"><span class="cv__tile-mark" aria-hidden="true">T</span><span class="cv__tile-label">Ténacité</span></div>
+        </div>
+        </div>
         <div class="cv__card">
           <h2 class="cv__card-title">Langues &amp; permis</h2>
           <div class="cv__fact"><b>Français</b><span>natif</span></div>
@@ -49,17 +60,52 @@
           <div class="cv__fact"><b>Permis</b><span>B</span></div>
         </div>
       </div>
+      <div class="cv__card">
+        <h2 class="cv__card-title">Savoir-faire</h2>
+        <div class="cv__tiles cv__tiles--skills">
+          <div class="cv__tile"><span class="cv__tile-mark" aria-hidden="true">T</span><span class="cv__tile-label">TypeScript</span></div>
+          <div class="cv__tile"><span class="cv__tile-mark" aria-hidden="true">R</span><span class="cv__tile-label">React</span></div>
+          <div class="cv__tile"><span class="cv__tile-mark" aria-hidden="true">N</span><span class="cv__tile-label">Node</span></div>
+          <div class="cv__tile"><span class="cv__tile-mark" aria-hidden="true">P</span><span class="cv__tile-label">PostgreSQL</span></div>
+          <div class="cv__tile"><span class="cv__tile-mark" aria-hidden="true">T</span><span class="cv__tile-label">Three.js</span></div>
+          <div class="cv__tile"><span class="cv__tile-mark" aria-hidden="true">D</span><span class="cv__tile-label">Docker</span></div>
+          <div class="cv__tile"><span class="cv__tile-mark" aria-hidden="true">B</span><span class="cv__tile-label">Blender</span></div>
+          <div class="cv__tile"><span class="cv__tile-mark" aria-hidden="true">G</span><span class="cv__tile-label">Git</span></div>
+        </div>
+      </div>
+      <h2 class="cv__section-title">Le cap</h2>
+      <div class="cv__card">
+        <p class="cv__outlook-text">Continuer à faire des interfaces qu'on a envie de toucher, là où le détail compte autant que la structure. Je cherche une équipe qui construit sur plusieurs années plutôt que sur plusieurs sprints, et qui laisse le temps de bien poser les fondations.</p>
+      </div>
+      <h2 class="cv__section-title">Expériences</h2>
       <div class="job" tabindex="0">
         <div class="job__head"><span class="job__title">Développeur front-end senior</span><span class="job__company">Studio Nova</span><span class="job__period">2023 — 2026</span></div>
-        <div class="job__missions"><ul><li>Refonte WebGL du site vitrine (three.js, 60 fps)</li><li>Design system interne — tokens, composants, docs</li><li>Mentorat de deux développeurs juniors</li></ul></div>
+        <div class="job__missions"><ul><li>Refonte WebGL du site vitrine (three.js, 60 fps)</li><li>Design system interne — tokens, composants, docs</li><li>Mentorat de deux développeurs juniors</li><li>Budget de performance tenu sur trois refontes de suite</li></ul></div>
       </div>
       <div class="job" tabindex="0">
         <div class="job__head"><span class="job__title">Développeur full-stack</span><span class="job__company">Atelier K</span><span class="job__period">2020 — 2023</span></div>
-        <div class="job__missions"><ul><li>Plateforme e-commerce (Node, PostgreSQL)</li><li>Intégration paiement et facturation</li><li>Mise en place CI/CD et revues de code</li></ul></div>
+        <div class="job__missions"><ul><li>Plateforme e-commerce (Node, PostgreSQL)</li><li>Intégration paiement et facturation</li><li>Mise en place CI/CD et revues de code</li><li>Migration du catalogue vers un schéma versionné</li></ul></div>
       </div>
       <div class="job" tabindex="0">
         <div class="job__head"><span class="job__title">Intégrateur web</span><span class="job__company">Freelance</span><span class="job__period">2018 — 2020</span></div>
-        <div class="job__missions"><ul><li>Sites vitrines pour artisans et studios</li><li>Audits performance et accessibilité</li></ul></div>
+        <div class="job__missions"><ul><li>Sites vitrines pour artisans et studios</li><li>Audits performance et accessibilité</li><li>Reprise de trois sites laissés sans mainteneur</li><li>Formation des clients à la mise à jour de leur contenu</li></ul></div>
+      </div>
+      <div class="job" tabindex="0">
+        <div class="job__head"><span class="job__title">Alternance développement web</span><span class="job__company">Coopérative Lumen</span><span class="job__period">2016 — 2018</span></div>
+        <div class="job__missions"><ul><li>Outil interne de suivi des adhérents</li><li>Reprise du parc de sites sous un socle commun</li><li>Automatisation des exports comptables mensuels</li><li>Documentation du socle pour les alternants suivants</li></ul></div>
+      </div>
+      <h2 class="cv__section-title">Formations</h2>
+      <div class="job job--static">
+        <div class="job__head"><span class="job__title">Master développement web</span><span class="job__company">École Ardent</span><span class="job__period">2016 — 2018</span></div>
+      </div>
+      <div class="job job--static">
+        <div class="job__head"><span class="job__title">Licence informatique</span><span class="job__company">Université de Verlaine</span><span class="job__period">2013 — 2016</span></div>
+      </div>
+      <div class="job job--static">
+        <div class="job__head"><span class="job__title">DUT informatique</span><span class="job__company">IUT de Vallonne</span><span class="job__period">2011 — 2013</span></div>
+      </div>
+      <div class="job job--static">
+        <div class="job__head"><span class="job__title">Baccalauréat scientifique</span><span class="job__company">Lycée Saint-Aubert</span><span class="job__period">2011</span></div>
       </div>
     </section>
   </div>
