@@ -9,6 +9,7 @@ import type { StopTransform } from '@/lib/stops'
 import { Bubble } from '@/scene/Bubble'
 import { CabinetDrawer } from '@/scene/CabinetDrawer'
 import { CameraRig } from '@/scene/CameraRig'
+import { CatAlive } from '@/scene/CatAlive'
 import { Outlines } from '@/scene/Outlines'
 import { RoomModel } from '@/scene/RoomModel'
 import { useInteraction } from '@/state/interaction'
@@ -69,6 +70,11 @@ export function Experience({ bubbleLayer }: ExperienceProps) {
           effet, et le tiroir lit cet état au montage pour se poser sans
           animation. */}
       {scene && <CabinetDrawer scene={scene} />}
+
+      {/* Le chat vivant (#37) : pupilles, queue, clignement. Que des
+          transformations — aucun matériau touché, donc aucun risque pour le
+          rendu cuit. */}
+      {scene && <CatAlive scene={scene} />}
 
       {/* Contours spike: ?outline=off|hull|edges|both — see Outlines.tsx. */}
       {stops.length > 0 && <Outlines />}
