@@ -39,6 +39,26 @@ export const outlineMode: OutlineMode = (() => {
 })()
 
 /**
+ * `?capture` — le drapeau de la boucle de comparaison de renders (issue #45).
+ *
+ * Il fait UNE chose : demander `preserveDrawingBuffer` au contexte WebGL, sans
+ * quoi `canvas.toDataURL()` rend une image noire — le navigateur vide le
+ * tampon de dessin dès qu'il l'a composité.
+ *
+ * Pourquoi lire le tampon plutôt que capturer la page : les références de
+ * `docs/renders/refs/` sont des rendus Blender NUS, sans une ligne d'interface.
+ * Une capture de page contient la bulle, la barre de menu et, depuis #93, le
+ * CV — l'écart mesuré serait dominé par du DOM qu'on n'a jamais voulu comparer,
+ * et chaque nouvel élément 2D le fausserait un peu plus, en silence. Le tampon
+ * GL, lui, ne contient QUE ce que three a dessiné, par construction.
+ *
+ * Le drapeau est demandé au chargement et jamais en production : garder
+ * `preserveDrawingBuffer` allumé coûte une copie de tampon à chaque image.
+ */
+export const captureMode: boolean =
+  typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('capture')
+
+/**
  * Optional `?stop=<label>` deep-link — snaps the camera to that stop on load.
  * Used by the Playwright render-comparison loop (deterministic framing vs
  * docs/renders/refs/) and shareable URLs. Matches the friendly label,

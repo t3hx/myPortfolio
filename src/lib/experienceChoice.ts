@@ -35,7 +35,7 @@ export const CHOICE_STORAGE_KEY = 'portfolio.experience'
  * capture ; les autres sont des modes de diagnostic qui n'ont pas de sens sans
  * la scène.
  */
-const DEV_PARAMS = ['stop', 'debug', 'debug-fly', 'outline', 'lw'] as const
+const DEV_PARAMS = ['stop', 'debug', 'debug-fly', 'outline', 'lw', 'capture'] as const
 
 export function resolveExperience(opts: {
   search: URLSearchParams

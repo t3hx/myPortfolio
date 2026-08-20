@@ -25,6 +25,12 @@ docs/*.glb
 
 # Throwaway WebGL captures from the render-comparison loop
 docs/renders/actual/
+docs/renders/captures/
+
+# Playwright: browsers' own output. Ce qu'on veut garder d'une exécution est
+# dans docs/renders/actual/, publié en artefact par render-diff.yml.
+test-results/
+playwright-report/
 
 # Playwright MCP session artifacts (snapshots, console logs)
 .playwright-mcp/
