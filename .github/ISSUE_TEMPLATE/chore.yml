@@ -1,0 +1,27 @@
+name: Chore
+description: Entretien, outillage, dette technique, documentation
+title: 'myPortfolio-TK#/ '
+labels: ['type:chore']
+body:
+  # Bloc d'affichage : n'apparaît pas dans le corps de l'issue créée.
+  - type: markdown
+    attributes:
+      value: |
+        **Après création : complète le `#` du titre avec le numéro attribué**
+        (`myPortfolio-TK#42/ …`), puis renseigne `Priority` et `Size` dans le
+        Project — poser le label ne remplit pas ces champs.
+  - type: textarea
+    id: intent
+    attributes:
+      label: Intention
+      description: Ce que ça débloque ou ce que ça arrête de coûter.
+    validations: { required: true }
+  - type: textarea
+    id: done
+    attributes:
+      label: Definition of done
+      placeholder: '- [ ] ...'
+  - type: textarea
+    id: notes
+    attributes:
+      label: Notes

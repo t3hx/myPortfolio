@@ -1,0 +1,405 @@
+/* ===== Portfolio 3D — Design tokens & composants UI 2D =====
+   Direction « Lueur » — verre fumé & lueur froide.
+   Palette extraite à la pipette des rendus Blender (calibrés = rendu WebGL). */
+
+:root {
+  /* Couleurs */
+  --ink: #0D0A07;               /* fond de secours, jamais visible en scène */
+  --ink-glass: 24, 17, 12;      /* base RGB du verre fumé (utilisée à .5–.74) */
+  --cream: #EFE5D3;             /* texte, icônes */
+  --cream-rgb: 239, 229, 211;
+  --glow: #8FDBE4;              /* accent — cordes, clavier, yeux du chat */
+  --glow-rgb: 143, 219, 228;
+  --glow-deep: #6FD8E6;         /* accent saturé — halo survol */
+  --glow-deep-rgb: 111, 216, 230;
+
+  /* Typo */
+  --font-ui: 'Space Grotesk', sans-serif;      /* menu, micro-étiquettes */
+  --font-voice: 'Newsreader', serif;           /* la voix des bulles, italique */
+  --fs-kicker: 11px;   /* caps, letter-spacing .2em */
+  --fs-meta: 12px;
+  --fs-body: 19px;     /* bulle, line-height 1.5 */
+  --fs-title: 26px;
+  --fs-display: 44px;  /* titres plein cadre (fiche projet) — voir DESIGN.md */
+
+  /* Espacement : 4 8 12 16 24 32 48 */
+  --s-1: 4px; --s-2: 8px; --s-3: 12px; --s-4: 16px; --s-5: 24px; --s-6: 32px; --s-7: 48px;
+
+  /* Rayons */
+  --r-bubble: 10px;
+  --r-bar: 26px;
+  --r-item: 18px;
+
+  /* Empilement (contrainte code) */
+  --z-canvas: 0; --z-bubble: 100; --z-bar: 200; --z-panel: 300; --z-preload: 400;
+
+  /* Motion — budgets */
+  --t-bubble-in: 480ms;   /* cubic-bezier(.2,.8,.2,1), reveal bas→haut */
+  --t-bubble-out: 200ms;  /* fade simple avant départ caméra (1200 ms) */
+  --t-preload-out: 320ms; /* fondu du preloader — couvre la 1re frame du canvas */
+  --t-bar: 180ms;         /* opacité .4 → .75 */
+  --t-item: 140ms;
+  --t-halo: 200ms;        /* halo accent au survol / focus */
+  --t-accordion: 260ms;
+  --t-sheet-in: 320ms;    /* relais fiche ← dossier, démarré à 70 % du vol (#78) */
+  --t-sheet-out: 200ms;   /* même sortie qu'une bulle */
+  --ease-out: cubic-bezier(.2, .8, .2, 1);
+}
+
+/* ===== Scène / overlay ===== */
+.stage {
+  position: fixed; inset: 0; overflow: hidden;
+  background: #18110C center / cover no-repeat;
+  font-family: var(--font-ui); color: var(--cream);
+}
+/* La racine de l'overlay n'intercepte JAMAIS la molette. */
+.overlay-root { position: absolute; inset: 0; pointer-events: none; z-index: var(--z-bubble); }
+
+/* ===== Bulle ===== */
+.bubble {
+  position: absolute; z-index: var(--z-bubble); pointer-events: none;
+  max-width: 380px;
+  background: linear-gradient(160deg, rgba(var(--ink-glass), .72), rgba(var(--ink-glass), .6));
+  backdrop-filter: blur(22px) saturate(1.25);
+  -webkit-backdrop-filter: blur(22px) saturate(1.25);
+  border: 1px solid rgba(var(--cream-rgb), .14);
+  border-radius: var(--r-bubble);
+  padding: 16px 22px 15px;
+  box-shadow: 0 14px 44px rgba(0, 0, 0, .38);
+  animation: bubble-in var(--t-bubble-in) var(--ease-out) both;
+}
+/* La transition vit sur la règle de base, pas dans :hover — sinon le halo
+   monte en 200 ms et retombe en 0 ; DESIGN.md spécifie 200 ms des deux côtés. */
+.bubble--interactive {
+  pointer-events: auto;
+  transition: box-shadow 200ms var(--ease-out), border-color 200ms var(--ease-out);
+}
+.bubble--interactive:hover, .bubble--interactive:focus-within {
+  border-color: rgba(var(--glow-deep-rgb), .6);
+  box-shadow: 0 0 0 1.5px rgba(var(--glow-deep-rgb), .35),
+              0 0 40px 5px rgba(var(--glow-deep-rgb), .42),
+              inset 0 0 24px rgba(var(--glow-deep-rgb), .14),
+              0 14px 44px rgba(0, 0, 0, .38);
+}
+/* Variantes positionnelles — via `translate` / `rotate`, JAMAIS via `transform`.
+   L'animation `bubble-in` anime `transform` en fill-mode `both` : une animation
+   gagne contre la cascade (styles inline compris), donc un `transform` posé ici
+   serait écrasé par la valeur finale du keyframe et la variante rendrait à plat.
+   Les propriétés individuelles sont composées avec `transform`, pas remplacées. */
+/* Variante centrée (home, desk) */
+.bubble--centered { left: 50%; translate: -50% 0; }
+/* Variante inclinée (guitare) : suit le bord supérieur de l'ampli, ombre courte */
+.bubble--tilted { rotate: var(--bubble-rotate, 0deg); box-shadow: 0 12px 26px rgba(0, 0, 0, .5); }
+
+.bubble__kicker { display: flex; align-items: center; gap: 10px; margin-bottom: 7px; }
+.bubble__dot {
+  width: 7px; height: 7px; border-radius: 50%; flex: none;
+  background: var(--glow); box-shadow: 0 0 10px rgba(var(--glow-rgb), .85);
+}
+.bubble__label {
+  font-size: var(--fs-kicker); font-weight: 500; letter-spacing: .2em;
+  text-transform: uppercase; color: rgba(var(--cream-rgb), .66);
+}
+.bubble__text {
+  font-family: var(--font-voice); font-style: italic;
+  font-size: var(--fs-body); line-height: 1.5; color: #F2E9DA; text-wrap: pretty;
+}
+/* Sans titre (home) : point + phrase sur une ligne */
+.bubble__inline { display: flex; align-items: center; gap: 14px; }
+.bubble__inline .bubble__text { white-space: nowrap; }
+/* Ligne de rappel vers l'objet (optionnelle) */
+.bubble__tick { position: absolute; top: 50%; width: 44px; height: 1px; }
+.bubble__tick--right { left: 100%; background: linear-gradient(270deg, rgba(var(--cream-rgb), .55), rgba(var(--cream-rgb), 0)); }
+.bubble__tick--left  { right: 100%; background: linear-gradient(90deg,  rgba(var(--cream-rgb), .55), rgba(var(--cream-rgb), 0)); }
+
+@keyframes bubble-in {
+  from { opacity: 0; transform: translateY(10px); clip-path: inset(0 0 100% 0); }
+  to   { opacity: 1; transform: translateY(0);    clip-path: inset(-35%); }
+}
+
+/* ===== Logo =====
+   Un seul logo dans le produit : le triangle pointe en bas (2026-08-10, en
+   remplacement du losange des premières maquettes — issue #65). SVG plutôt que
+   div : le losange était un carré pivoté à 45°, une astuce qui ne fait pas un
+   triangle, et un `clip-path` rognerait la bordure ET sa lueur. La géométrie
+   vit dans le markup (`<path d="M2 2.5 H14 L8 13.5 Z">`, viewBox 0 0 16 16),
+   son habillage ici. Côté app, c'est `src/ui/Logo.tsx` qui la rend. */
+.logo { overflow: visible; } /* la lueur du drop-shadow déborde du viewBox */
+.logo path {
+  fill: none; stroke: var(--glow); stroke-width: 1.5;
+  vector-effect: non-scaling-stroke; /* même trait à 12 px qu'à 16 px */
+  stroke-linejoin: round;            /* pointes adoucies — l'équivalent du border-radius du losange */
+}
+
+/* Respiration (2,6 s) : opacité ET portée de la lueur. Sur 16 px l'opacité
+   seule ne se lit pas — mesuré pendant la session design. */
+@keyframes logo-breathe {
+  0%, 100% { opacity: .45; filter: drop-shadow(0 0 3px  rgba(var(--glow-rgb), .35)); }
+  50%      { opacity: 1;   filter: drop-shadow(0 0 10px rgba(var(--glow-rgb), .8));  }
+}
+
+/* Preloader : le logo respire pendant le chargement. */
+.preload__logo { width: 16px; height: 16px; animation: logo-breathe 2.6s ease-in-out infinite; }
+
+/* ===== Barre de menu ===== */
+.menu {
+  position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+  z-index: var(--z-bar); pointer-events: auto;
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  width: 52px; padding: 14px 0 12px;
+  background: linear-gradient(180deg, rgba(var(--ink-glass), .6), rgba(var(--ink-glass), .5));
+  backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(var(--cream-rgb), .12);
+  border-radius: var(--r-bar);
+  opacity: .4; transition: opacity var(--t-bar) var(--ease-out);
+}
+.menu:hover, .menu:focus-within { opacity: .75; }
+/* Statique : le menu est du mobilier, il ne respire pas. */
+.menu__logo { width: 12px; height: 12px; margin-bottom: 8px; filter: drop-shadow(0 0 10px rgba(var(--glow-rgb), .5)); }
+.menu__rule { width: 22px; height: 1px; background: rgba(var(--cream-rgb), .14); }
+/* Les deux filets n'ont pas le même voisinage : le premier sépare le logo des
+   sections, le second les sections des liens externes. */
+.menu__rule--head { margin-bottom: 6px; }
+.menu__rule--mid  { margin: 6px 0; }
+/* Les maquettes en font des <a>, l'app des <button> (ce sont des actions, pas
+   des liens) — d'où le reset : un bouton arrive avec un fond gris système, une
+   bordure biseautée, et surtout N'HÉRITE PAS de font-family. Sans ces quatre
+   lignes, la barre rend trois boutons Arial gris sur du verre fumé. */
+.menu__link {
+  appearance: none; background: none; border: 0; font-family: inherit;
+  display: flex; flex-direction: column; align-items: center; gap: 7px;
+  width: 36px; padding: 10px 0; border-radius: var(--r-item);
+  font-size: var(--fs-kicker); font-weight: 500; letter-spacing: .18em;
+  text-transform: uppercase; color: rgba(var(--cream-rgb), .72);
+  text-decoration: none; cursor: pointer; transition: background var(--t-item), color var(--t-item);
+}
+.menu__link span { writing-mode: vertical-rl; transform: rotate(180deg); } /* tête penchée à gauche */
+.menu__link:hover, .menu__link:focus-visible { background: rgba(var(--cream-rgb), .09); color: var(--cream); }
+.menu__link--active { color: var(--cream); background: rgba(var(--cream-rgb), .09); }
+.menu__link--active::before {
+  content: ''; width: 4.5px; height: 4.5px; border-radius: 50%;
+  background: var(--glow); box-shadow: 0 0 6px rgba(var(--glow-rgb), .8);
+}
+.menu__social {
+  appearance: none; background: none; border: 0; font-family: inherit;
+  display: flex; align-items: center; justify-content: center;
+  width: 36px; height: 30px; border-radius: 15px;
+  font-size: var(--fs-kicker); font-weight: 600; letter-spacing: .04em;
+  color: rgba(var(--cream-rgb), .72); text-decoration: none;
+}
+.menu__social:hover, .menu__social:focus-visible { background: rgba(var(--cream-rgb), .09); color: var(--cream); }
+.menu__lang { display: flex; flex-direction: column; align-items: center; gap: 3px; margin-top: 10px; font-size: 10px; font-weight: 600; letter-spacing: .08em; }
+.menu__lang-on  { color: var(--glow); }
+.menu__lang-off { color: rgba(var(--cream-rgb), .45); cursor: pointer; }
+/* `:not([aria-disabled])` : tant que le bilingue n'existe pas (#33), EN est
+   rendu inerte — il ne doit pas s'allumer au survol comme s'il attendait un clic. */
+.menu__lang-off:not([aria-disabled='true']):hover { color: var(--cream); }
+.menu__lang-off[aria-disabled='true'] { cursor: default; }
+.menu__lang-rule { width: 14px; height: 1px; background: rgba(var(--cream-rgb), .2); }
+
+/* ===== Pré-loader (écran 0b) =====
+   L'anatomie vit ici plutôt que dans le `<style>` de la maquette : l'app la
+   recrée telle quelle (issue #25), et deux copies d'un même composant finissent
+   toujours par diverger. */
+.preload {
+  position: absolute; inset: 0; z-index: var(--z-preload);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 44px;
+  background: radial-gradient(1100px 750px at 50% 115%, #22160D, var(--ink) 70%);
+  transition: opacity var(--t-preload-out) var(--ease-out);
+}
+/* Sortie : la scène est prête, le fondu couvre sa première frame. */
+.preload--out { opacity: 0; }
+.preload__bar { position: relative; width: 340px; height: 2px; border-radius: 1px; background: rgba(var(--cream-rgb), .14); }
+.preload__fill {
+  position: absolute; left: 0; top: 0; bottom: 0; border-radius: 1px;
+  background: linear-gradient(90deg, rgba(var(--glow-rgb), .35), var(--glow));
+  box-shadow: 0 0 12px rgba(var(--glow-rgb), .7);
+  transition: width 300ms var(--ease-out);
+}
+/* Le point de tête vit DANS le fil : il suit sa largeur sans dupliquer le
+   pourcentage dans une seconde propriété à tenir synchronisée. */
+.preload__head {
+  position: absolute; left: 100%; top: 50%; transform: translate(-50%, -50%);
+  width: 5px; height: 5px; border-radius: 50%;
+  background: var(--glow); box-shadow: 0 0 10px rgba(var(--glow-rgb), .9);
+}
+.preload__row { display: flex; justify-content: space-between; align-items: baseline; width: 340px; margin-top: 14px; }
+.preload__copy { font-family: var(--font-voice); font-style: italic; font-size: 15px; color: rgba(var(--cream-rgb), .85); }
+.preload__pct { font-family: ui-monospace, monospace; font-size: 11px; color: rgba(var(--cream-rgb), .5); }
+
+/* Sans `Content-Length`, aucun pourcentage n'est vrai : la barre fait la
+   navette et le chiffre disparaît, plutôt que d'afficher un nombre inventé. */
+.preload__bar--unknown .preload__fill { width: 25%; animation: preload-shuttle 1.4s var(--ease-out) infinite alternate; }
+.preload__bar--unknown .preload__head { display: none; }
+/* 300 % = (100 - 25) / 25 : la navette s'arrête pile au bord droit de la piste.
+   Pas d'`overflow: hidden` sur la piste — il rognerait aussi la lueur du fil
+   dans le cas normal. */
+@keyframes preload-shuttle { from { transform: translateX(0); } to { transform: translateX(300%); } }
+
+/* ===== Fiche projet (écrans 03b / 03c) =====
+   La fiche est une BULLE À L'ÉCHELLE DE L'ÉCRAN : même anatomie en trois temps
+   (kicker à point accent · titre · une phrase en italique), même matériau, même
+   accent. Ce qui change est l'échelle, parce que la scène a disparu du cadre —
+   le dossier la remplit, et c'est LUI que le verre laisse transparaître. Un
+   panneau opaque effacerait ce qu'on vient de mettre 850 ms à amener.
+
+   La classe `panel` qui l'accompagne dans l'app n'est pas décorative :
+   `CameraRig` ignore toute molette visant `.panel`. Sans elle, le tour
+   continuerait de tourner sous la fiche. */
+.sheet {
+  position: absolute; inset: 0; z-index: var(--z-panel);
+  background: rgba(var(--ink-glass), .74);
+  backdrop-filter: blur(26px) saturate(.9);
+  display: flex; align-items: center; justify-content: center;
+  pointer-events: auto;
+  /* Le relais démarre à 70 % du vol (≈ 595 ms sur 850) : la fiche est opaque
+     ~70 ms après l'arrivée du dossier, jamais avant qu'il remplisse le cadre. */
+  animation: sheet-in var(--t-sheet-in) var(--ease-out) 595ms both;
+}
+/* Le carton du dossier reste perceptible : un dégradé crème très bas évite que
+   le verre lise comme un aplat mort. */
+.sheet::before {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background: radial-gradient(120% 90% at 50% 42%, rgba(var(--cream-rgb), .07), transparent 62%);
+}
+.sheet--out { animation: sheet-out var(--t-sheet-out) linear both; }
+
+.sheet__inner {
+  position: relative; width: min(1040px, 84%);
+  display: grid; grid-template-columns: 300px 1fr; gap: var(--s-7); align-items: stretch;
+}
+
+/* Couverture — PORTRAIT et pleine hauteur : c'est une page dans un dossier, pas
+   une vignette. Alignée sur la colonne de texte, elle tient la composition par
+   la gauche au lieu de flotter en haut. */
+.sheet__cover {
+  min-height: 380px; border: 1px dashed rgba(var(--cream-rgb), .3); border-radius: var(--r-bubble);
+  background: repeating-linear-gradient(45deg, rgba(var(--cream-rgb), .05) 0 8px, transparent 8px 16px);
+  display: flex; align-items: center; justify-content: center;
+  font-family: ui-monospace, monospace; font-size: 11px; color: rgba(var(--cream-rgb), .5);
+  object-fit: cover;
+}
+
+.sheet__kicker { display: flex; align-items: center; gap: 9px; margin-bottom: 14px; }
+.sheet__dot {
+  width: 7px; height: 7px; border-radius: 50%; flex: none;
+  background: var(--glow); box-shadow: 0 0 10px rgba(var(--glow-rgb), .85);
+}
+.sheet__label {
+  font-family: var(--font-ui); font-size: var(--fs-kicker); font-weight: 500;
+  letter-spacing: .2em; text-transform: uppercase; color: rgba(var(--cream-rgb), .66);
+}
+
+.sheet__title {
+  font-family: var(--font-ui); font-size: var(--fs-display); font-weight: 500;
+  letter-spacing: -.015em; line-height: 1.05; color: var(--cream); margin: 0 0 14px;
+}
+/* La voix de la pièce, exactement comme dans une bulle — une seule phrase. */
+.sheet__tagline {
+  font-family: var(--font-voice); font-style: italic; font-size: 22px; line-height: 1.45;
+  color: #F2E9DA; margin: 0 0 26px; text-wrap: pretty; max-width: 46ch;
+}
+
+.sheet__meta {
+  display: flex; gap: var(--s-6); padding: 14px 0 18px; margin-bottom: 20px;
+  border-top: 1px solid rgba(var(--cream-rgb), .12);
+  border-bottom: 1px solid rgba(var(--cream-rgb), .12);
+}
+.sheet__meta-item { display: flex; flex-direction: column; gap: var(--s-1); }
+.sheet__meta-key {
+  font-family: var(--font-ui); font-size: 10px; font-weight: 500; letter-spacing: .2em;
+  text-transform: uppercase; color: rgba(var(--cream-rgb), .5);
+}
+.sheet__meta-value { font-size: 13.5px; color: var(--cream); }
+.sheet__meta-value--mono { font-family: ui-monospace, monospace; font-size: 12.5px; }
+
+.sheet__stack { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 22px; padding: 0; list-style: none; }
+.sheet__chip {
+  font-family: ui-monospace, monospace; font-size: 11.5px; color: rgba(var(--cream-rgb), .8);
+  background: rgba(var(--cream-rgb), .07); border: 1px solid rgba(var(--cream-rgb), .12);
+  border-radius: 6px; padding: 4px 9px;
+}
+
+.sheet__points { list-style: none; margin: 0 0 26px; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.sheet__points li {
+  position: relative; padding-left: 18px; font-size: 13.5px; line-height: 1.5;
+  color: rgba(var(--cream-rgb), .78);
+}
+/* Le point accent du kicker, repris en puce : un seul signe dans tout le système. */
+.sheet__points li::before {
+  content: ''; position: absolute; left: 0; top: 8px; width: 5px; height: 5px;
+  border-radius: 50%; background: rgba(var(--glow-rgb), .75);
+}
+
+.sheet__links { display: flex; gap: 10px; }
+.sheet__link {
+  font-family: var(--font-ui); font-size: 12px; font-weight: 500; letter-spacing: .04em;
+  color: var(--cream); text-decoration: none;
+  background: rgba(var(--cream-rgb), .07); border: 1px solid rgba(var(--cream-rgb), .14);
+  border-radius: 8px; padding: 9px 16px;
+  transition: background var(--t-item), border-color var(--t-item), box-shadow var(--t-halo);
+}
+.sheet__link:hover, .sheet__link:focus-visible {
+  background: rgba(var(--cream-rgb), .11); border-color: rgba(var(--glow-deep-rgb), .6);
+  box-shadow: 0 0 0 1.5px rgba(var(--glow-deep-rgb), .35), 0 0 40px 5px rgba(var(--glow-deep-rgb), .42);
+  outline: none;
+}
+
+/* La fiche couvre la barre de menu (panneaux 300 > barre 200) : elle est modale
+   par construction, donc sa sortie doit être la chose la plus évidente après le
+   titre. Deux sorties, la souris et le clavier, jamais une seule. */
+.sheet__close { position: absolute; top: 28px; right: 28px; display: flex; align-items: center; gap: 10px; }
+.sheet__key {
+  font-family: ui-monospace, monospace; font-size: 10.5px; color: rgba(var(--cream-rgb), .5);
+  border: 1px solid rgba(var(--cream-rgb), .18); border-radius: 5px; padding: 3px 7px;
+}
+.sheet__close-btn {
+  appearance: none; background: rgba(var(--cream-rgb), .07); border: 1px solid rgba(var(--cream-rgb), .14);
+  border-radius: 50%; width: 36px; height: 36px; color: var(--cream);
+  font-family: inherit; font-size: 15px; line-height: 1; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: background var(--t-item), border-color var(--t-item);
+}
+.sheet__close-btn:hover, .sheet__close-btn:focus-visible {
+  background: rgba(var(--cream-rgb), .11); border-color: rgba(var(--glow-deep-rgb), .6); outline: none;
+}
+
+@keyframes sheet-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes sheet-out { from { opacity: 1; } to { opacity: 0; } }
+
+/* ===== Mouvement réduit =====
+   Le critère est l'autonomie, pas le déplacement : ce qui part tout seul ou
+   tourne en boucle est neutralisé, ce que l'utilisateur déclenche lui-même est
+   conservé. Un halo qui s'allume au survol répond à un geste et ne surprend
+   personne ; la respiration du logo tourne sans fin sans qu'on l'ait demandée.
+
+   Le déplacement caméra de 1,2 s n'est pas du CSS : sous cette préférence,
+   CameraRig doit couper au stop suivant au lieu de l'interpoler (STEP_DURATION
+   à 0). Sans cela, le seul mouvement qui compte vraiment reste entier. */
+@media (prefers-reduced-motion: reduce) {
+  /* bulle : plus de reveal par clip ni de translation, un simple fondu */
+  .bubble { animation: bubble-in-reduced var(--t-bubble-out) linear both; }
+  /* `!important` assumé sur les neutralisations : une règle d'accessibilité doit
+     gagner contre toute déclaration locale. Sans lui, le `<style>` d'une page
+     chargé après ce fichier l'emporte à spécificité égale — mesuré sur le
+     preloader, dont la respiration continuait de tourner. */
+  /* respiration du logo (boucle infinie) ; la barre continue de progresser,
+     c'est de l'information, pas de la décoration */
+  /* la lueur est figée explicitement : la respiration anime aussi le `filter`,
+     et le simple fait de couper l'animation la ramènerait à `none`. */
+  .preload__logo {
+    animation: none !important; opacity: 1 !important;
+    filter: drop-shadow(0 0 6px rgba(var(--glow-rgb), .55)) !important;
+  }
+  /* la navette de la barre indéterminée est une boucle autonome, elle aussi */
+  .preload__bar--unknown .preload__fill { animation: none !important; width: 100%; opacity: .35; }
+  /* reveal typo mot à mot — pas encore dans les maquettes, à honorer côté app */
+  .bubble__text > * { animation: none !important; }
+  /* fiche : le relais ne se déclenche plus au milieu du vol, puisque le vol est
+     coupé côté app — elle paraît d'un bloc, sans délai. */
+  .sheet { animation: sheet-in var(--t-sheet-out) linear both !important; }
+}
+@keyframes bubble-in-reduced {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}

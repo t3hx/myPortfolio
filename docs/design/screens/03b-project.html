@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>La fiche projet — Portfolio 3D (référence design)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600&family=Newsreader:ital,opsz,wght@0,6..72,400;1,6..72,400;1,6..72,500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../tokens.css">
+<style>
+/* Rien ici : l'anatomie de la fiche vit dans `tokens.css`, comme celle de la
+   bulle et de la barre. L'app monte exactement le même balisage, avec en plus
+   la classe `panel` qui fait ignorer sa molette par CameraRig. Le seul écart de
+   cette page est le délai d'entrée : ici il n'y a pas de vol à attendre. */
+.sheet { animation-delay: 0ms; }
+</style>
+</head>
+<body>
+<!-- Fond : la capture réelle de fin de vol (docs/renders/spikes/), pas un rendu
+     de référence — c'est littéralement ce que le panneau recouvre. -->
+<main class="stage" style="background-image:url(../../renders/spikes/cabinet-folder-flight.png)">
+  <section class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title">
+    <div class="sheet__close">
+      <span class="sheet__key">Échap</span>
+      <button class="sheet__close-btn" type="button" aria-label="Fermer la fiche">&times;</button>
+    </div>
+
+    <div class="sheet__inner">
+      <div class="sheet__cover">illustration</div>
+
+      <div>
+        <header class="sheet__kicker">
+          <span class="sheet__dot"></span>
+          <span class="sheet__label">Projet</span>
+        </header>
+
+        <h1 class="sheet__title" id="sheet-title">Ce portfolio</h1>
+        <p class="sheet__tagline">Une pièce modélisée sous Blender, parcourue au défilement.</p>
+
+        <div class="sheet__meta">
+          <div class="sheet__meta-item">
+            <span class="sheet__meta-key">Année</span>
+            <span class="sheet__meta-value sheet__meta-value--mono">2026</span>
+          </div>
+          <div class="sheet__meta-item">
+            <span class="sheet__meta-key">Rôle</span>
+            <span class="sheet__meta-value">Conception, modélisation et développement</span>
+          </div>
+        </div>
+
+        <ul class="sheet__stack">
+          <li class="sheet__chip">React</li>
+          <li class="sheet__chip">react-three-fiber</li>
+          <li class="sheet__chip">Blender</li>
+          <li class="sheet__chip">GSAP</li>
+        </ul>
+
+        <ul class="sheet__points">
+          <li>Rendu entièrement pré-cuit : aucune lumière au runtime, tout est dans les textures.</li>
+          <li>La caméra suit onze cadrages composés dans Blender, jamais réécrits en code.</li>
+        </ul>
+
+        <div class="sheet__links">
+          <a class="sheet__link" href="#">Code</a>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+</body>
+</html>

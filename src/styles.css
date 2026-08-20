@@ -1,0 +1,452 @@
+/* Spike-grade styling (HUD, panel). La bulle et la pré-sélection portent le
+   vrai design system — tokens et composants dans docs/design/tokens.css,
+   importé AVANT ce fichier (voir main.tsx). */
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: #04050c;
+  font-family: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', monospace;
+}
+
+.stage {
+  position: fixed;
+  inset: 0;
+}
+
+/* --- HUD -------------------------------------------------------------------------- */
+/* Root swallows no events; interactive islands re-enable them. Wheel anywhere else
+   falls through to drei's hidden scroller (risk point #2, "suspenders" half). */
+.hud {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 200;
+  color: rgba(190, 215, 255, 0.85);
+}
+
+.status {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  letter-spacing: 0.06em;
+}
+
+.phase {
+  padding: 3px 8px;
+  border-radius: 5px;
+  border: 1px solid rgba(120, 200, 255, 0.35);
+  background: rgba(6, 9, 20, 0.6);
+  font-weight: 700;
+}
+
+.phase-touring {
+  color: #8be28b;
+}
+.phase-parked {
+  color: #6fd0ff;
+}
+.phase-panel {
+  color: #ffce6b;
+}
+.phase-telescope {
+  color: #d99bff;
+}
+
+/* --- Stop rail -------------------------------------------------------------------- */
+.rail {
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  pointer-events: auto;
+}
+
+.rail button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-direction: row-reverse;
+  background: none;
+  border: none;
+  padding: 3px;
+  cursor: pointer;
+  color: rgba(190, 215, 255, 0.55);
+  font: inherit;
+  font-size: 11px;
+}
+
+.rail .dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  border: 1px solid rgba(120, 200, 255, 0.5);
+  background: transparent;
+  transition:
+    background 0.2s,
+    transform 0.2s;
+}
+
+.rail button.active .dot {
+  background: #6fd0ff;
+  transform: scale(1.25);
+}
+
+.rail .rail-label {
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.rail button:hover .rail-label,
+.rail button.active .rail-label {
+  opacity: 1;
+}
+
+/* --- Actions & hint --------------------------------------------------------------- */
+.actions {
+  position: absolute;
+  bottom: 46px;
+  left: 16px;
+  display: flex;
+  gap: 8px;
+  pointer-events: auto;
+}
+
+.actions button,
+.hud-panel header button {
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(120, 200, 255, 0.35);
+  background: rgba(6, 9, 20, 0.7);
+  color: #eaf4ff;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.actions button:hover {
+  border-color: #6fd0ff;
+}
+
+.hint {
+  position: absolute;
+  bottom: 14px;
+  left: 16px;
+  margin: 0;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: rgba(190, 215, 255, 0.45);
+}
+
+/* --- Panneaux ---------------------------------------------------------------------- */
+/* `.panel` est un MARQUEUR DE COMPORTEMENT, pas une apparence : `CameraRig`
+   ignore toute molette dont la cible est dedans. Il ne doit donc porter AUCUN
+   style, sinon tout panneau qui le réclame pour la molette hérite d'une
+   géométrie qui n'est pas la sienne — mesuré : la fiche projet (#83) sortait à
+   420 px de large, collée à droite, avec le fond bleu du HUD.
+   L'apparence du panneau de démonstration du HUD vit sous `.hud-panel`. */
+.hud-panel {
+  position: absolute;
+  top: 0;
+  right: 0;
+  height: 100%;
+  width: min(420px, 90vw);
+  display: flex;
+  flex-direction: column;
+  pointer-events: auto;
+  z-index: 300;
+  background: rgba(10, 14, 28, 0.92);
+  border-left: 3px solid #eaf4ff;
+  backdrop-filter: blur(8px);
+}
+
+.hud-panel header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border-bottom: 1px solid rgba(120, 200, 255, 0.25);
+}
+
+.hud-panel h2 {
+  margin: 0;
+  font-size: 14px;
+  letter-spacing: 0.05em;
+}
+
+.hud-panel-body {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 14px 16px;
+  font-size: 12.5px;
+  line-height: 1.7;
+  color: rgba(210, 228, 255, 0.8);
+}
+
+.hud-panel-end {
+  text-align: center;
+  color: #6fd0ff;
+}
+
+/* Stable portal layer for world-anchored bubbles — sits between the canvas (0)
+   and the HUD (200) so panels/nav always paint above bubbles. */
+.bubble-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 100;
+  overflow: hidden;
+}
+
+/* --- Bulle (issue #47) — anatomie et tokens : docs/design/tokens.css --------------- */
+/* Dans la couche projetée, l'ancre drei (un div 0×0 dont le translate3d est
+   recalculé chaque frame) fait tout le positionnement : la bulle redevient un
+   bloc en flux pour que `center` la centre réellement sur le point projeté —
+   en `position: absolute` (la règle des maquettes), le conteneur mesurerait
+   0×0 et le translate(-50%,-50%) du centrage serait sans effet. En maquette,
+   .bubble reste absolue dans la page ; la règle ne vit donc qu'ici. */
+.bubble-layer .bubble {
+  position: relative;
+  width: max-content;
+  /* Les largeurs du design (max-width 380, table de placement de #48) sont
+     mesurées en content-box — les maquettes ne posent aucun reset. Sous le
+     border-box global de l'app elles rétréciraient de 46 px (padding 22×2 +
+     bord 1×2). Voir DESIGN.md, notes d'implémentation. */
+  box-sizing: content-box;
+}
+
+/* Les maquettes posent ce reset en style inline sur chaque <p>. */
+.bubble-layer .bubble__text {
+  display: block;
+  margin: 0;
+}
+
+/* Sortie : fondu simple avant le départ caméra (budget DESIGN.md : 200 ms,
+   la caméra part en 1200 ms). Déclarée après tokens.css : à spécificité
+   égale, elle bat `bubble-in` — y compris la variante mouvement réduit. */
+.bubble--out {
+  animation: bubble-out var(--t-bubble-out) linear both;
+}
+
+@keyframes bubble-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+/* Les tokens (importés avant ce fichier) posent Space Grotesk sur .stage ; le
+   HUD diagnostic garde sa mono de spike tant qu'il n'est pas redessiné. */
+.hud {
+  font-family: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', monospace;
+}
+
+/* --- Écran 0a : pré-sélection 3D / classique (issue #24) --------------------------- */
+/* Porté depuis docs/design/screens/0a-preselection.html — la maquette de référence.
+   Tokens et composants .bubble__* : docs/design/tokens.css. */
+.presel {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 40px;
+  padding: 24px;
+  pointer-events: auto;
+  background: radial-gradient(1100px 750px at 50% 115%, #26190f, var(--ink) 70%);
+}
+
+.presel__head {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  text-align: center;
+}
+
+/* La forme, son trait et la respiration vivent dans `.logo` / `logo-breathe`
+   (tokens.css, issue #65) : ici, seulement ce qui est propre à cet écran. */
+.presel__logo {
+  width: 16px;
+  height: 16px;
+  animation: logo-breathe 2.6s ease-in-out infinite;
+}
+
+/* Boucle autonome : neutralisée en mouvement réduit (même règle que le logo
+   du preloader dans tokens.css — la lueur est figée à la main parce que la
+   respiration anime aussi le `filter`). */
+@media (prefers-reduced-motion: reduce) {
+  .presel__logo {
+    animation: none !important;
+    opacity: 1;
+    filter: drop-shadow(0 0 6px rgba(var(--glow-rgb), 0.55));
+  }
+}
+
+.presel__eyebrow {
+  margin: 0;
+  font-size: 11px;
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+  color: rgba(var(--cream-rgb), 0.5);
+}
+
+.presel__title {
+  margin: 0;
+  font-family: var(--font-voice);
+  font-style: italic;
+  font-size: 30px;
+  font-weight: 400;
+  color: #f2e9da;
+}
+
+.presel__cards {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 24px;
+}
+
+.presel-card {
+  width: 340px;
+  max-width: 100%;
+  text-align: left;
+  background: linear-gradient(160deg, rgba(var(--ink-glass), 0.66), rgba(var(--ink-glass), 0.54));
+  border: 1px solid rgba(var(--cream-rgb), 0.14);
+  border-radius: var(--r-bubble);
+  padding: 26px 28px 22px;
+  cursor: pointer;
+  box-shadow: 0 14px 44px rgba(0, 0, 0, 0.38);
+  font-family: var(--font-ui);
+  color: var(--cream);
+  transition:
+    border-color 200ms var(--ease-out),
+    box-shadow 200ms var(--ease-out);
+}
+
+/* Le halo EST l'indicateur de focus (même style que le survol) : l'anneau
+   natif du navigateur ferait double emploi par-dessus. */
+.presel-card:focus-visible {
+  outline: none;
+}
+
+/* Aucun halo au repos : il s'allume sur la carte survolée (ou focusée) et
+   respire au même rythme que le logo du preloader (2,6 s ease-in-out).
+   Au relâchement, l'animation s'arrête et la transition de la règle de base
+   ramène l'ombre en 200 ms. */
+.presel-card:hover,
+.presel-card:focus-visible {
+  border-color: rgba(var(--glow-deep-rgb), 0.55);
+  animation: presel-halo 2.6s ease-in-out infinite;
+}
+
+@keyframes presel-halo {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 1.5px rgba(var(--glow-deep-rgb), 0.2),
+      0 0 22px 2px rgba(var(--glow-deep-rgb), 0.2),
+      0 14px 44px rgba(0, 0, 0, 0.38);
+  }
+  50% {
+    box-shadow:
+      0 0 0 1.5px rgba(var(--glow-deep-rgb), 0.34),
+      0 0 38px 4px rgba(var(--glow-deep-rgb), 0.38),
+      0 14px 44px rgba(0, 0, 0, 0.38);
+  }
+}
+
+/* Mouvement réduit : la boucle est neutralisée (critère d'autonomie de
+   tokens.css), le halo reste — statique — car il répond à un geste. */
+@media (prefers-reduced-motion: reduce) {
+  .presel-card:hover,
+  .presel-card:focus-visible {
+    animation: none;
+    box-shadow:
+      0 0 0 1.5px rgba(var(--glow-deep-rgb), 0.3),
+      0 0 38px 4px rgba(var(--glow-deep-rgb), 0.34),
+      0 14px 44px rgba(0, 0, 0, 0.38);
+  }
+}
+
+.presel-card .bubble__kicker {
+  margin-bottom: 10px;
+}
+
+.presel-card .bubble__text {
+  margin: 0 0 16px;
+  font-size: 17px;
+}
+
+.presel-card__label--lit {
+  color: rgba(var(--cream-rgb), 0.8);
+}
+
+.presel-card__dot--muted {
+  background: rgba(var(--cream-rgb), 0.45);
+  box-shadow: none;
+}
+
+.presel-card__meta,
+.presel__note {
+  font-family: ui-monospace, monospace;
+  font-size: 11px;
+  color: rgba(var(--cream-rgb), 0.5);
+}
+
+.presel__note {
+  margin: 0;
+  color: rgba(var(--cream-rgb), 0.4);
+  text-align: center;
+}
+
+/* --- Version classique (échafaudage — la vraie page 2D est une autre issue) -------- */
+.classic .classic__body {
+  max-width: 420px;
+  margin: 0;
+  text-align: center;
+  font-family: var(--font-voice);
+  font-style: italic;
+  font-size: 17px;
+  line-height: 1.6;
+  color: rgba(var(--cream-rgb), 0.75);
+}
+
+.classic__switch {
+  padding: 10px 18px;
+  background: none;
+  border: 1px solid rgba(var(--cream-rgb), 0.25);
+  border-radius: var(--r-item);
+  font-family: var(--font-ui);
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: rgba(var(--cream-rgb), 0.72);
+  cursor: pointer;
+  transition:
+    border-color 200ms var(--ease-out),
+    color 200ms var(--ease-out);
+}
+
+.classic__switch:hover,
+.classic__switch:focus-visible {
+  border-color: rgba(var(--glow-deep-rgb), 0.55);
+  color: var(--cream);
+}

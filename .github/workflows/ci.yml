@@ -1,0 +1,66 @@
+# CI — sur chaque PR, et sur chaque poussée du tronc `dev`.
+#
+# CE FICHIER EST PRÉVU POUR ÊTRE COPIÉ TEL QUEL d'un projet à l'autre
+# (myPortfolio, owlog-app, odysong-app). Il tient grâce à un contrat simple :
+#
+#   le workflow dit CE QUI tourne, le package.json dit COMMENT.
+#
+# Chaque étape passe par `pnpm run --if-present <script>` : un script absent
+# n'est pas une erreur, l'étape réussit en silence. Un projet sans linter ni
+# tests (myPortfolio aujourd'hui) et un monorepo qui fait `pnpm -r lint` et des
+# tests d'intégration Postgres (owlog-app) partagent donc le même fichier, sans
+# la moindre condition ici.
+#
+# Corollaire à respecter : toute particularité d'un projet vit dans SES
+# scripts, jamais dans ce fichier. Un garde-fou sur des tests sautés, une base
+# jetable à démarrer, un ordre de build : tout cela se met dans le script
+# `test` ou `build` du dépôt concerné.
+#
+# `main` est délibérément absent des déclencheurs `push` : le workflow de
+# déploiement appelle cette CI via `workflow_call`, et l'ajouter ici la ferait
+# tourner deux fois à chaque fusion.
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [dev]
+  workflow_call:
+
+# Une nouvelle poussée sur la même référence annule le run précédent encore en vol.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+
+      # pnpm d'abord : setup-node lit le champ `packageManager` du package.json,
+      # mais son cache a besoin du binaire déjà présent.
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Installer (lockfile gelé)
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm run --if-present lint
+
+      # Étape distincte du build : `vite build` ne fait que transpiler, il ne
+      # vérifie pas les types. Les projets dont le `build` typa déjà (owlog)
+      # n'ont simplement pas de script `type-check`, et l'étape se saute.
+      - name: Typage
+        run: pnpm run --if-present type-check
+
+      - name: Build de production
+        run: pnpm run --if-present build
+
+      - name: Tests
+        run: pnpm run --if-present test

@@ -1,7 +1,25 @@
 {
-  "files": [],
-  "references": [
-    { "path": "./tsconfig.node.json" },
-    { "path": "./tsconfig.app.json" }
-  ]
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "jsx": "react-jsx",
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "skipLibCheck": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "allowImportingTsExtensions": true,
+    // `node` est requis depuis que les fichiers de configuration sont typés :
+    // ils importent `node:url`. Le poste de dev le résolvait par remontée de
+    // dépendance ; l'installation stricte de pnpm en CI, non.
+    "types": ["vite/client", "node"],
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  },
+  "include": ["src", "tests", "vite.config.ts", "vitest.config.ts"]
 }

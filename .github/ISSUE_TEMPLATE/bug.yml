@@ -1,0 +1,35 @@
+name: Bug
+description: Quelque chose ne fonctionne pas comme prévu
+title: 'myPortfolio-TK#/ '
+labels: ['type:bug']
+body:
+  # Bloc d'affichage : n'apparaît pas dans le corps de l'issue créée.
+  - type: markdown
+    attributes:
+      value: |
+        **Après création : complète le `#` du titre avec le numéro attribué**
+        (`myPortfolio-TK#42/ …`), puis renseigne `Priority` et `Size` dans le
+        Project — poser le label ne remplit pas ces champs.
+  - type: textarea
+    id: symptom
+    attributes:
+      label: Symptôme
+      description: Ce que tu observes, pas ce que tu supposes de la cause.
+    validations: { required: true }
+  - type: textarea
+    id: repro
+    attributes:
+      label: Reproduction
+      placeholder: |
+        1. Ouvrir …
+        2. Faire …
+        3. Observer …
+  - type: textarea
+    id: expected
+    attributes:
+      label: Comportement attendu
+  - type: textarea
+    id: context
+    attributes:
+      label: Contexte
+      description: Navigateur, taille d'écran, URL utilisée (?stop=, ?outline=…), capture si utile.

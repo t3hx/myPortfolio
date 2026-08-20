@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pré-loader — Portfolio 3D (référence design)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600&family=Newsreader:ital,opsz,wght@0,6..72,400;1,6..72,400;1,6..72,500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../tokens.css">
+<style>
+/* L'anatomie du preloader vit dans tokens.css (issue #25) : cette maquette ne
+   fixe plus que l'avancement figé de la capture. */
+.preload__fill { width:62%; }
+</style>
+</head>
+<body>
+<main class="stage">
+  <div class="preload" role="status" aria-label="Chargement">
+    <svg class="logo preload__logo" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 2.5 H14 L8 13.5 Z"/></svg>
+    <div>
+      <div class="preload__bar"><div class="preload__fill"><div class="preload__head"></div></div></div>
+      <div class="preload__row"><span class="preload__copy">On allume les lampes…</span><span class="preload__pct">62 %</span></div>
+    </div>
+  </div>
+</main>
+</body>
+</html>

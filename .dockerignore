@@ -1,0 +1,29 @@
+# Ce qui n'a rien à faire dans le contexte de build (issue #16).
+#
+# `docs/` NE PEUT PAS être exclu en bloc, et c'est le piège : `main.tsx` importe
+# `../docs/design/tokens.css`. Le design system est une ENTRÉE DE BUILD, pas de
+# la documentation — l'exclure fait échouer `vite build` sur une résolution de
+# module, ce que le build a montré du premier coup.
+#
+# On écarte donc le poids, pas le dossier : 78 Mo de rendus, 67 Mo d'assets de
+# maquette et l'export Blender de travail, dont rien ne finit dans l'image.
+
+node_modules
+dist
+.git
+.github
+tests
+coverage
+
+docs/renders
+docs/design/assets
+docs/*.glb
+docs/**/*.png
+docs/**/*.jpg
+
+*.md
+!README.md
+
+.env
+.env.*
+.DS_Store
