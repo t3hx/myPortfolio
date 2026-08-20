@@ -136,7 +136,7 @@ export const CV_JOBS_EMPTY =
   'Le parcours arrive. En attendant, la version papier dort dans la commode.'
 
 export const CV: Cv = {
-  identity: { name: 'Thibault Vasseur', alt: 'Photo de Thibault' },
+  identity: { name: 'Thibault Dubois', alt: 'Photo de Thibault' },
   traitsTitle: 'Savoir-être',
   traits: [
     { name: 'Curiosité' },
