@@ -202,7 +202,12 @@
    zéro sont ce qui l'évite. */
 .menu__lang button {
   appearance: none; background: none; border: 0; padding: 0;
-  font: inherit; letter-spacing: inherit; color: inherit; cursor: pointer;
+  font: inherit; letter-spacing: inherit; cursor: pointer;
+  /* SURTOUT PAS `color: inherit` ici : ce sélecteur est plus spécifique que
+     `.menu__lang-on` (0,1,1 contre 0,1,0), il écraserait donc l'accent et les
+     deux côtés sortiraient de la même couleur — plus aucun moyen de voir la
+     langue active. Les deux règles ci-dessous posent chacune la leur, ce qui
+     neutralise le `buttontext` du navigateur sans rien masquer. */
 }
 .menu__lang-on  { color: var(--glow); }
 .menu__lang-off { color: rgba(var(--cream-rgb), .45); cursor: pointer; }
