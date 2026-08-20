@@ -52,7 +52,14 @@ describe('resolveExperience', () => {
   })
 
   it("court-circuite l'écran pour chaque paramètre d'outillage", () => {
-    for (const search of ['?stop=Home', '?debug', '?debug-fly', '?outline=hull', '?lw=2']) {
+    for (const search of [
+      '?stop=Home',
+      '?debug',
+      '?debug-fly',
+      '?outline=hull',
+      '?lw=2',
+      '?capture',
+    ]) {
       // même un choix classique mémorisé ne bloque pas l'outillage : la boucle
       // de comparaison doit rester déterministe sur n'importe quel navigateur
       expect(

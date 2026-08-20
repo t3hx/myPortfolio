@@ -1,0 +1,68 @@
+# Comparaison de renders — chaque arrêt du tour contre son rendu Blender (#46).
+#
+# CE FICHIER N'EST PAS COPIABLE d'un projet à l'autre, et c'est voulu. `ci.yml`
+# l'est, lui, à l'octet près : il dit CE QUI tourne, le `package.json` dit
+# COMMENT, et toute particularité d'un dépôt vit ailleurs. Une scène 3D à
+# comparer à des rendus Blender est exactement une particularité de ce dépôt-ci.
+#
+# Le job est séparé pour une seconde raison : il télécharge un navigateur et
+# rasterise onze scènes de 3 Mo en logiciel. Le mettre dans `ci.yml` ferait
+# payer ça à chaque lint de chaque dépôt.
+name: render-diff
+
+on:
+  pull_request:
+  push:
+    branches: [dev]
+
+concurrency:
+  group: render-diff-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  compare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Installer (lockfile gelé)
+        run: pnpm install --frozen-lockfile
+
+      # Le binaire pèse ~95 Mo. La clé porte l'empreinte du lockfile : monter
+      # `@playwright/test` invalide le cache toute seule, et la version exacte
+      # n'a pas à être extraite à la main pour ça.
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+
+      # Un seul navigateur (#44). `--with-deps` installe les bibliothèques
+      # système que le runner n'a pas ; il faut le relancer même sur un cache
+      # chaud, car ces paquets-là ne sont pas dans le cache.
+      - name: Installer Chromium
+        run: pnpm exec playwright install --with-deps chromium
+
+      # Aucun runner GitHub n'a de GPU : c'est SwiftShader qui rasterise, via
+      # les drapeaux de `playwright.config.ts`. Sans eux, pas de contexte WebGL
+      # et onze images noires — qui échoueraient, au moins bruyamment.
+      - name: Comparer les arrêts aux références
+        run: pnpm test:e2e
+
+      # Les captures ET les images de différence, même quand ça passe : un
+      # rapport qui ne montre l'image qu'en cas d'échec ne permet pas de voir
+      # une dérive s'installer sous le seuil.
+      - name: Publier les captures et les différences
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: render-diff
+          path: docs/renders/actual/
+          retention-days: 14
+          if-no-files-found: error

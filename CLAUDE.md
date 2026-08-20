@@ -11,13 +11,20 @@ Package manager is **pnpm** (see `pnpm-lock.yaml`).
 - `pnpm type-check` — `tsc --noEmit`.
 - `pnpm preview` — serve the production build locally.
 - `pnpm test` — Vitest, single run. `pnpm test:watch` for the loop.
+- `pnpm test:e2e` — Playwright: the render-comparison loop (11 stops vs `docs/renders/refs/`). **Distinct from `test` on purpose** — Vitest's `include` only takes `tests/**/*.test.ts`, the Playwright specs are `.spec.ts` under `tests/e2e/`. Needs `pnpm exec playwright install chromium` once.
 
 `tsconfig.json` includes `tests` and both config files, so `type-check` covers them too — it did not before, and a green type-check said nothing about the tests.
 
 - `pnpm lint` — ESLint **and** `prettier --check`. This is the script CI calls (`pnpm run --if-present lint`), so both must pass.
 - `pnpm format` — `prettier --write` then `eslint --fix`.
 
-Playwright and the render-comparison loop are issue #22.
+The render-comparison loop shipped with #44/#45/#46 — see **`docs/renders/README.md`**, which holds the measured tolerance and the two known deviations. Three things about it are load-bearing:
+
+- **It reads the WebGL drawing buffer** (`canvas.toDataURL()`), it does not screenshot the page. The references are bare Blender renders; a page capture would carry the bubble, the menu bar and the CV, and the measured drift would be dominated by DOM nobody meant to compare — every new 2D element skewing it a little further, in silence. It also sidesteps Playwright's stability wait, which R3F's endless `rAF` loop never satisfies (that is the 5 s timeout noted on 2026-08-09).
+- **`?capture` exists only to turn on `preserveDrawingBuffer`.** Without it the image is black; permanently on, it costs a buffer copy per frame.
+- **Both environments rasterise with SwiftShader** (`--enable-unsafe-swiftshader --use-gl=angle --use-angle=swiftshader`). No GitHub runner has a GPU, and a tolerance measured locally would mean nothing if CI antialiased differently.
+
+CI runs it in its own workflow, `.github/workflows/render-diff.yml`: `ci.yml` is copied byte-for-byte across the three repos and must not learn about a 3D scene.
 
 ### Two TypeScripts, on purpose (issue #21)
 
@@ -167,6 +174,7 @@ The active item is an exact stop match, and it lights up on _departure_, not arr
 - `?stop=<label>` — deterministic camera snap (render-comparison loop + shareable links)
 - `?outline=`, `?lw=` — ink A/B and width
 - `?debug` — the diagnostic HUD (phase banner, stop rail, panel/telescope buttons); `?debug-fly` — fly mode, not yet ported to R3F
+- `?capture` — `preserveDrawingBuffer` for the render-comparison loop; nothing else (#45)
 - `?choose` — clears the stored 3D/classic choice and reopens the preselection screen
 
 ## Conventions

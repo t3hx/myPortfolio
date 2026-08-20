@@ -2,7 +2,7 @@ import { Canvas } from '@react-three/fiber'
 import { Suspense, useRef } from 'react'
 import { CLEAR_COLOR, OUTPUT_COLOR_SPACE, TONE_MAPPING } from '@/config/renderPipeline'
 import { Experience } from '@/scene/Experience'
-import { viewMode } from '@/lib/viewMode'
+import { captureMode, viewMode } from '@/lib/viewMode'
 import { Hud } from '@/ui/Hud'
 import { Menu } from '@/ui/Menu'
 import { ProjectSheet } from '@/ui/ProjectSheet'
@@ -32,6 +32,10 @@ export default function App3D() {
     <div className="stage">
       <Canvas
         camera={{ near: 0.05, far: 1000 }}
+        // `?capture` seulement (#45) : sans `preserveDrawingBuffer`, le
+        // `toDataURL()` de la boucle de comparaison rend du noir, et l'allumer
+        // en permanence coûterait une copie de tampon à chaque image.
+        gl={{ preserveDrawingBuffer: captureMode }}
         onCreated={({ gl }) => {
           gl.toneMapping = TONE_MAPPING
           gl.outputColorSpace = OUTPUT_COLOR_SPACE
