@@ -218,3 +218,54 @@ describe('la pastille de désignation', () => {
     expect(reduced).not.toContain('.ping__dot')
   })
 })
+
+describe("l'échange des deux lunes", () => {
+  const room = readFileSync('src/scene/RoomModel.tsx', 'utf8')
+  const rig = readFileSync('src/scene/CameraRig.tsx', 'utf8')
+  const state = readFileSync('src/state/interaction.ts', 'utf8')
+
+  it('se produit là où personne ne peut le voir, aux DEUX bouts', () => {
+    // C'est le moment qui compte, pas la condition, et il diffère à l'aller et
+    // au retour. Piloté par la phase, l'échange se voyait des deux côtés : en
+    // pleine fenêtre au clic, et en plein cadre à la sortie.
+    expect(room).toContain('state.moonDetailed')
+    expect(room).not.toContain("state.phase === 'telescope'")
+  })
+
+  it("s'allume dans le noir, derrière l'oculaire", () => {
+    // `settleTelescope` tombe à la fin du temps d'approche : on regarde
+    // l'intérieur du tube, il n'y a rien à regarder pendant l'échange.
+    const settle = state.slice(
+      state.lastIndexOf('settleTelescope: ()'),
+      state.lastIndexOf('showDetailedMoon: ('),
+    )
+    expect(settle).toContain('moonDetailed: true')
+  })
+
+  it("s'éteint à la FIN du retour, pas à la touche `Échap`", () => {
+    // À l'instant de la sortie la lune remplit encore l'écran ; à la fin du
+    // vol, elle est redevenue un petit disque dans la fenêtre.
+    expect(rig).toContain('showDetailedMoon(false)')
+    expect(rig.lastIndexOf('showDetailedMoon(false)')).toBeGreaterThan(
+      rig.lastIndexOf('returning.current = false'),
+    )
+  })
+})
+
+describe('le rappel de sortie', () => {
+  it('dit quelle touche, parce que rien d’autre ne le dit', () => {
+    // `Échap` est la SEULE issue de cette vue — un clic ailleurs ne fait rien —
+    // et personne ne devine une touche qu'on ne lui montre pas.
+    expect(component).toContain('scope__exit')
+    expect(component).toContain('UI.sheet.escape')
+    expect(component).toContain('UI.telescope.exit')
+    expect(tokens).toContain('.scope__exit')
+  })
+
+  it('vit DANS le cache, pour partir avec lui', () => {
+    // Posé à côté, il faudrait synchroniser deux animations de sortie.
+    const exit = component.indexOf('scope__exit')
+    expect(exit).toBeGreaterThan(component.indexOf("className={visible ? 'scope'"))
+    expect(exit).toBeLessThan(component.lastIndexOf('</div>'))
+  })
+})

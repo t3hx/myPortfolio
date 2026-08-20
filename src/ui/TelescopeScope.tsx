@@ -1,5 +1,8 @@
 import { useEffect, useState } from 'react'
+import { UI } from '@/content/ui'
+import { t } from '@/lib/locale'
 import { useInteraction } from '@/state/interaction'
+import { useLocale } from '@/state/locale'
 
 /**
  * La visée du télescope (issue #106).
@@ -30,6 +33,7 @@ export function TelescopeScope() {
   // de suite montrait le cache posé sur une pièce encore en mouvement — on
   // regardait dans un télescope avant d'y être arrivé.
   const visible = useInteraction((s) => s.telescopeSettled)
+  const locale = useLocale((s) => s.locale)
 
   // Démontage différé, comme la bulle, la fiche et le CV : `visible` à false
   // lance le fondu, le démontage suit. Démonter tout de suite emporterait la
@@ -57,6 +61,15 @@ export function TelescopeScope() {
         <span className="scope__tick scope__tick--w" />
         <span className="scope__tick scope__tick--e" />
       </div>
+
+      {/* Le rappel de sortie. `Échap` est la SEULE issue de cette vue — un clic
+          ailleurs ne fait rien — et personne ne devine une touche qu'on ne lui
+          montre pas. Il reprend la touche capée de la fiche projet, qui dit
+          déjà exactement la même chose ailleurs. */}
+      <p className="scope__exit">
+        <span className="sheet__key">{t(UI.sheet.escape, locale)}</span>
+        {t(UI.telescope.exit, locale)}
+      </p>
     </div>
   )
 }

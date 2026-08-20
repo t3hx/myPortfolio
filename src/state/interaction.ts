@@ -55,6 +55,18 @@ interface InteractionState {
    * du graphe, un drapeau pour le reste.
    */
   telescopeHovered: boolean
+  /**
+   * La lune détaillée est-elle affichée ?
+   *
+   * **Séparée de la phase, et pour la même raison des deux côtés : un échange
+   * de texture ne doit se produire que là où personne ne peut le voir.**
+   * Elle s'allume à `settleTelescope`, quand l'écran est noir parce qu'on
+   * regarde l'intérieur du tube ; elle s'éteint à la FIN du retour, quand la
+   * lune est redevenue un petit disque dans la fenêtre. Piloté par la phase,
+   * l'échange se voyait aux deux bouts — en pleine fenêtre au clic, et en plein
+   * cadre à la sortie.
+   */
+  moonDetailed: boolean
   /** HUD → CameraRig bridge: request a snap to this stop index. */
   pendingStopRequest: number | null
   /** Le tiroir de la commode — voir `CabinetState`. */
@@ -76,6 +88,8 @@ interface InteractionState {
   /** Appelé par `CameraRig` à la fin de l'excursion, jamais au clic. */
   settleTelescope: () => void
   hoverTelescope: (hovered: boolean) => void
+  /** Appelé par `CameraRig` à la fin du retour, jamais à la touche `Échap`. */
+  showDetailedMoon: (shown: boolean) => void
   exitTelescope: () => void
 }
 
@@ -85,6 +99,7 @@ export const useInteraction = create<InteractionState>((set, get) => ({
   ready: false,
   telescopeSettled: false,
   telescopeHovered: false,
+  moonDetailed: false,
   pendingStopRequest: null,
   cabinet: 'closed',
   selectedProject: null,
@@ -128,7 +143,12 @@ export const useInteraction = create<InteractionState>((set, get) => ({
     }
   },
   settleTelescope: () => {
-    if (get().phase === 'telescope') set({ telescopeSettled: true })
+    // L'écran est noir ici : c'est le seul instant de la séquence où l'échange
+    // de lune est invisible par construction.
+    if (get().phase === 'telescope') set({ telescopeSettled: true, moonDetailed: true })
+  },
+  showDetailedMoon: (moonDetailed) => {
+    if (get().moonDetailed !== moonDetailed) set({ moonDetailed })
   },
   hoverTelescope: (telescopeHovered) => {
     if (get().telescopeHovered !== telescopeHovered) set({ telescopeHovered })

@@ -780,6 +780,18 @@
 .scope__tick--e { width: 14px; height: 1px; margin: -0.5px 0 0 -7px;
   transform: translateX(calc(var(--scope-moon) * 1.17 - 7px)); }
 
+/* Le rappel de sortie, en haut à gauche. Il est DANS le cache et non à côté :
+   il doit donc apparaître, s'effacer et se mettre à l'échelle avec lui, sans
+   qu'on ait à synchroniser deux animations.
+   Sa place est le coin, jamais le centre — le centre est ce qu'on est venu
+   regarder. */
+.scope__exit {
+  position: absolute; top: 30px; left: 34px; margin: 0;
+  display: flex; align-items: center; gap: 9px;
+  font-size: var(--fs-meta); letter-spacing: .04em;
+  color: rgba(var(--cream-rgb), .55);
+}
+
 /* Déclaré APRÈS `.scope` : à spécificité égale, le dernier gagne, et la sortie
    l'emporte sur l'entrée. Même règle que `.cv--out` et `.sheet--out`. */
 .scope--out { animation: scope-out var(--t-scope-out) linear both; }

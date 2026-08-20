@@ -302,6 +302,11 @@ export function CameraRig({ stops }: CameraRigProps) {
           },
           onComplete: () => {
             returning.current = false
+            // La lune redevient stylisée ICI, et pas à la touche `Échap` : à
+            // l'instant de la sortie elle remplit encore l'écran, et l'échange
+            // s'y verrait autant qu'au clic. À la fin du retour, elle est
+            // redevenue un petit disque dans la fenêtre.
+            useInteraction.getState().showDetailedMoon(false)
           },
         })
       }

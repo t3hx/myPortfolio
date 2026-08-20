@@ -210,11 +210,20 @@ export function RoomModel({ onReady }: RoomModelProps) {
     onReady(orderedStops(extractStops(scene)), scene)
   }, [scene, onReady])
 
-  // TELESCOPE phase drives the low-def ↔ high-def moon swap.
+  // L'échange lune stylisée ↔ lune détaillée est piloté par `moonDetailed`, et
+  // NON par la phase.
+  //
+  // C'est le MOMENT qui compte, pas la condition, et il diffère aux deux bouts.
+  // À l'aller, `moonDetailed` s'allume quand la caméra est derrière l'oculaire
+  // et que l'écran est noir — on regarde l'intérieur du tube, il n'y a rien à
+  // regarder pendant l'échange. Au retour, il s'éteint à la FIN du vol, quand
+  // la lune est redevenue un petit disque dans la fenêtre. Piloté par la phase,
+  // l'échange se voyait des deux côtés : en pleine fenêtre au clic, et en plein
+  // cadre à la sortie.
   useEffect(() => {
     const unsub = useInteraction.subscribe((state, prev) => {
-      if (state.phase === prev.phase) return
-      const inTelescope = state.phase === 'telescope'
+      if (state.moonDetailed === prev.moonDetailed) return
+      const inTelescope = state.moonDetailed
       const low = scene.getObjectByName(MOON_LOWDEF_NAME)
       if (low) low.visible = !inTelescope
       for (const name of MOON_DETAILED_NAMES) {
