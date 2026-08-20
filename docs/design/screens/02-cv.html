@@ -16,7 +16,7 @@
 </style>
 </head>
 <body>
-<main class="stage" style="background-image:url(../../renders/refs/cv.png)">
+<main class="stage" style="background-image:url(../../renders/refs/vertical_monitor.png)">
   <div class="overlay-root">
     <article class="bubble" style="left:1.6%; top:20%; max-width:260px;">
       <span class="bubble__tick bubble__tick--right" aria-hidden="true"></span>
@@ -28,9 +28,10 @@
          rend un <img> EN COULEUR — une marque monochrome ne ressemble pas à la
          marque. L'asymétrie est voulue.
 
-         Le bloc est CENTRÉ tant qu'il rentre et ancré en haut dès qu'il
-         déborde (`justify-content: safe center`) : six sections font ~910 px,
-         ce qui tient sur un écran plein et pas dans un cadre de 720. Cette page
+         Le bloc est ANCRÉ EN HAUT sous une entretoise incompressible, et il
+         ne pousse que vers le bas : centré, il remontait de 40 px à chaque
+         ouverture d'accordéon. Sept blocs font ~910 px, ce qui tient sur un
+         écran plein et pas dans un cadre de 720 — il défile alors. Cette page
          se comporte donc comme l'app. -->
     <section class="cv" aria-label="Curriculum vitae">
       <!-- Dans l'app, TOUS les titres se déchiffrent à l'arrivée, en cascade du
@@ -39,7 +40,7 @@
            maquette en montre l'état final. La chasse fixe du nom n'est pas
            décorative : elle l'empêche de gigoter pendant que les glyphes se
            tirent au sort. -->
-      <h1 class="cv__name">Thibault Vasseur</h1>
+      <h1 class="cv__name">Thibault Dubois</h1>
       <div class="cv__row">
         <div class="cv__photo">photo</div>
         <div class="cv__card cv__card--traits">
