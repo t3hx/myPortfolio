@@ -12,8 +12,16 @@ node_modules/.tmp
 .env.*
 !.env.example
 
-# Large source assets you may not want in git (uncomment if needed)
-public/models/*.glb
+# Le modèle EST suivi par git (#16). Il l'a été gitignoré, et ça bloquait tout
+# le déploiement : un `checkout` de CI n'avait pas la scène, l'image partait
+# avec une 3D vide, et rien n'échouait pour le dire. Surtout, le modèle et le
+# code qui le lit doivent être versionnés ENSEMBLE — un arrêt ajouté dans
+# CAMERA_STOPS exige l'export qui le contient. Le ranger ailleurs, ce serait
+# deux sources de vérité pour une seule chose. 2,8 Mo qui bougent trois fois
+# par an, c'est le bon prix.
+#
+# Les exports de travail, eux, restent dehors :
+docs/*.glb
 
 # Throwaway WebGL captures from the render-comparison loop
 docs/renders/actual/
