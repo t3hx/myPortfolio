@@ -26,11 +26,15 @@ export default defineConfig({
 
   use: {
     baseURL: 'http://localhost:4173',
-    // Le cadre des références de `docs/renders/refs/` — 1280×720, et le tour
-    // ajuste son champ HORIZONTALEMENT (src/lib/stops.ts) : changer ce ratio
-    // change le cadrage, donc l'image. `deviceScaleFactor` explicite, sinon un
-    // écran Retina rendrait du 2560×1440 et la comparaison n'aurait plus lieu.
-    viewport: { width: 1280, height: 720 },
+    // Le cadre des références de `docs/renders/refs/` — 1920×1080 depuis leur
+    // re-rendu du 2026-08-20 (#99). C'est le RATIO qui décide du cadrage, le
+    // tour ajustant son champ HORIZONTALEMENT (`src/lib/stops.ts`) : rester en
+    // 16:9 conserve l'image, changer de ratio la changerait. La définition,
+    // elle, doit être exactement celle des références — sans quoi la
+    // comparaison échoue sur les dimensions au lieu de comparer.
+    // `deviceScaleFactor` explicite, sinon un écran Retina rendrait du
+    // 3840×2160 et il n'y aurait plus de comparaison du tout.
+    viewport: { width: 1920, height: 1080 },
     deviceScaleFactor: 1,
     launchOptions: {
       // Aucun runner GitHub n'a de GPU : sans ces drapeaux, pas de contexte

@@ -2,16 +2,27 @@
 
 Two directories:
 
-- **`refs/`** — Ground truth. Blender EEVEE renders, one per camera stop, named after the friendly label in `src/config/cameraStops.ts` (e.g. `desk.png`, `cv.png`). 1280×720. **Committed.** Do not edit.
+- **`refs/`** — Ground truth. Blender EEVEE renders, one per camera stop, **1920×1080**. **Committed.** Do not edit.
+
+  La plupart portent le `label` de l'arrêt en minuscules (`desk.png`,
+  `cabinet.png`). **Trois font exception** et sont déclarées dans `REF_FILE`
+  (`tests/e2e/renderComparison.ts`) : `vertical_monitor.png` pour l'arrêt `CV`
+  (nommé d'après le nœud caméra `CameraStop_MonitorVertical`), `guitare.png`
+  pour `Guitar`, `poster.png` pour `Posters`. Les deux noms n'ont pas le même
+  propriétaire — le `label` est la clé de `?stop=`, donc des liens profonds ;
+  le nom de fichier suit l'export Blender. Déclarer la correspondance coûte une
+  ligne ; renommer d'un côté ou de l'autre casse forcément quelque chose.
+
 - **`actual/`** — Playwright captures from the live WebGL view. Used for side-by-side comparison. **Gitignored** — captures are throwaway.
 
 `overview.png` sits beside them: a whole-room render that is **not** a camera stop. It exists to make the space legible; the comparison loop ignores it.
 
 ## Available reference stops
 
-All 11, re-rendered from the **v13** export on 2026-08-10:
+Les 11, re-rendues le 2026-08-20 en 1920 × 1080 :
 
-`home`, `cv`, `desk`, `scoreboard`, `bookshelf`, `cabinet`, `cat`, `guitar`, `posters`, `telescope`, `moon`.
+`home`, `vertical_monitor`, `desk`, `scoreboard`, `bookshelf`, `cabinet`,
+`cat`, `guitare`, `poster`, `telescope`, `moon`.
 
 Re-render every reference whenever the Blender cameras move. Four framings changed between v12 and v13 (bookshelf, cv, scoreboard, home), which silently invalidated the previous set — a stale reference makes the comparison loop report drift that isn't there, or hide drift that is.
 
@@ -53,32 +64,35 @@ Les deux environnements rasterisent avec **SwiftShader**
 comme sur GitHub — aucun runner n'a de GPU, et une tolérance mesurée ici n'aurait
 aucun sens si la CI crénelait autrement.
 
-### La tolérance, mesurée le 2026-08-20
+### La tolérance, re-mesurée le 2026-08-20 (références 1920 × 1080)
 
-| Arrêt      | Écart mesuré | Verdict                         |
-| ---------- | -----------: | ------------------------------- |
-| home       |      0,000 % | identique au bit près           |
-| cv         |      0,125 % | anticrénelage                   |
-| scoreboard |      0,140 % | anticrénelage                   |
-| cat        |      0,183 % | anticrénelage                   |
-| posters    |      0,218 % | anticrénelage                   |
-| bookshelf  |      0,912 % | anticrénelage (feuillage)       |
-| telescope  |      1,364 % | anticrénelage                   |
-| desk       |      1,808 % | anticrénelage (câbles, clavier) |
-| guitar     |      1,952 % | anticrénelage (cordes, frettes) |
-| cabinet    |      5,790 % | **écart connu** — tiroir ouvert |
-| moon       |     39,973 % | **écart connu** — mauvaise lune |
+| Arrêt            | Écart mesuré | Verdict                         |
+| ---------------- | -----------: | ------------------------------- |
+| home             |      0,000 % | identique au bit près           |
+| poster           |      0,155 % | anticrénelage                   |
+| scoreboard       |      0,161 % | anticrénelage                   |
+| vertical_monitor |      0,164 % | anticrénelage                   |
+| cat              |      0,203 % | anticrénelage                   |
+| bookshelf        |      1,008 % | anticrénelage (feuillage)       |
+| telescope        |      1,335 % | anticrénelage                   |
+| desk             |      1,503 % | anticrénelage (câbles, clavier) |
+| guitare          |      1,939 % | anticrénelage (cordes, frettes) |
+| cabinet          |      5,417 % | **écart suivi** — tiroir ouvert |
+| moon             |     39,467 % | **non vérifié** — mauvaise lune |
 
 **Plafond global : 2,5 %** (`MAX_DIFF_RATIO`). Le pire arrêt conforme est la
-guitare à 1,952 % ; la marge couvre une machine dont le rasteriseur crénelle un
+guitare à 1,939 % ; la marge couvre une machine dont le rasteriseur crénelle un
 cheveu autrement. Un seuil choisi a priori rend la CI rouge dès le premier jour,
 et une CI rouge dès le premier jour se débranche.
 
+**Monter en définition a RAPPROCHÉ les mesures** — bureau 1,808 → 1,503 %,
+posters 0,218 → 0,155 % : l'écart vit sur les silhouettes, dont le poids relatif
+baisse quand la définition monte. Le plafond garde donc plus de marge qu'avant.
+
 Ces chiffres sont **reproductibles au chiffre près** : trois exécutions
-consécutives ont rendu exactement les onze mêmes taux. SwiftShader rasterise de
-façon déterministe, et le signal d'arrivée (démontage du préchargeur, puis deux
-`rAF`) ne laisse pas passer d'image à moitié construite. C'est ce qui autorise
-une marge aussi mince — et ce qu'il faudra revérifier avant de la resserrer.
+consécutives rendaient exactement les mêmes taux en 1280 × 720. SwiftShader
+rasterise de façon déterministe, et le signal d'arrivée (démontage du
+préchargeur, puis deux `rAF`) ne laisse pas passer d'image à moitié construite.
 
 Tout l'écart résiduel est **sur les silhouettes et les géométries fines** —
 cordes, frettes, feuilles, câbles. Sur les aplats, EEVEE et WebGL sont
@@ -126,7 +140,7 @@ d'échec ne permet pas de voir une dérive s'installer sous le seuil.
 1. `pnpm dev`
 2. Ouvrir `localhost:5173/?stop=<label>` — un saut déterministe vers cet arrêt,
    c'est ce qui rend les captures reproductibles.
-3. Capturer en 1280×720 dans `actual/<stop>.png`.
+3. Capturer en **1920×1080** dans `actual/<fichier>.png` — le nom du fichier, pas toujours celui de l'arrêt : voir `REF_FILE`.
 4. Comparer à `refs/<stop>.png`.
 
 **If the colors are wrong, the bake is wrong.** Le runtime est non éclairé par
