@@ -139,43 +139,31 @@ bouton, et le nom existe aussi dans la fiche accessible).
 
 - **0a Pré-sélection** : fond radial braise→encre, logo (triangle pointe en bas depuis le 2026-08-10, respirant en 2,6 s — propagé au menu et au preloader avec #65 : le losange n'existe plus nulle part), question en Newsreader italique 30, deux cartes verre 340 px — aucun halo au repos : la carte survolée ou focusée l'allume et il respire en boucle au rythme du logo du preloader (2,6 s ease-in-out). Note mono : choix mémorisé.
 - **0b Pré-loader** : logo triangle en respiration 2,6 s (opacité **et** portée de la lueur, comme sur 0a — sur 16 px l'opacité seule ne se lit pas), barre 340×2 px (piste crème .14, fil dégradé→accent, point de tête lumineux), microcopie Newsreader (« On allume les lampes… ») + pourcentage mono.
-- **02 CV** : contenu « affiché par l'écran » — photo (placeholder hachuré) + carte langues/permis, puis cartouches poste—entreprise—période en **accordéon au survol** (260 ms, max-height) révélant les missions à puces.
+- **02 CV** : contenu « affiché par l'écran », sept blocs empilés dans le moniteur vertical (élargi le 2026-08-20, à la demande de l'auteur) —
+  1. le **nom**, en haut de tout, en chasse fixe et **déchiffré à l'arrivée** (1600 ms, `--t-decrypt`), suivi d'un **caret de bloc** qui ne vit que pendant le déchiffrement — c'est lui qui fait lire « console » plutôt que « titre animé ». Les caractères se figent de gauche à droite, les espaces ne sont jamais brouillés : ce sont eux qui gardent la silhouette du nom. La chasse fixe n'est pas décorative — en proportionnelle, chaque glyphe tiré au sort change la largeur du mot et le nom gigote ;
+  2. une rangée **photo · savoir-être · langues & permis**, la photo (148 × 180, placeholder hachuré) en donnant la hauteur ;
+  3. la réglette **savoir-faire** ;
+  4. **« Le cap »**, la vision — section à part entière, titre au même rang qu'Expériences et Formations, placée AVANT le parcours : l'intention se lit d'abord, les expériences la justifient ensuite. Seul bloc écrit dans la police de la _voix_ (Newsreader italique, celle des bulles), parce que c'est la seule ligne qui parle à la première personne ;
+  5. **Expériences** : cartouches poste—entreprise—période en **accordéon au survol** (260 ms), quatre missions minimum chacune ;
+  6. **Formations** : mêmes cartouches, **sans accordéon** — un diplôme n'a pas de missions à dérouler, et `--static` retire donc aussi la réaction au survol : un fond qui s'éclaircit sur quelque chose qui n'ouvre rien est une promesse non tenue.
 
-## Budgets de motion
+  Les deux réglettes partagent **une seule anatomie** : une marque carrée, un nom dessous. Sans SVG fourni, la marque est l'**initiale du nom** en crème monochrome — le glyphe neutre en attendant les vraies icônes, jamais un état d'erreur (aucun `onError`). Avec un SVG, elle est rendue en `<img>` donc **en couleur** : une marque monochrome ne ressemble pas à la marque, et l'asymétrie est voulue.
 
-| Mouvement | Durée | Détail |
-|---|---|---|
-| bulle in | 480 ms | cubic-bezier(.2,.8,.2,1), reveal bas→haut (clip) ; clip final inset(−35 %) pour ne pas rogner les variantes transformées |
-| reveal typo | +40 ms/mot | translateY 10→0 |
-| bulle out | 200 ms | fade simple, avant le départ caméra (1 200 ms, fourni) |
-| barre repos→survol | 180 ms | opacité .4→.75 |
-| item / halo | 140 / 200 ms | |
-| accordéon CV | 260 ms | max-height |
-| **fiche : relais depuis le dossier** (`--t-sheet-in`) | **320 ms** | fondu d'opacité, **démarré à 70 % du vol** (≈ 600 ms sur 850) — la fiche est opaque ~70 ms après l'arrivée du dossier, jamais avant |
-| **fiche : entrée du contenu** | **+40 ms par bloc** | translateY 10→0, même budget que le reveal typo des bulles |
-| **fiche out** (`--t-sheet-out`) | **200 ms** | fondu simple, comme une bulle — puis le dossier repart (850 ms, fourni) |
+  **Tous les titres se déchiffrent en cascade** (420 ms, `--t-cascade`, décalés de 60 ms du haut vers le bas) — titres de carte, titres de section et intitulés de cartouches. Une **seule horloge** pilote l'ensemble : quinze titres avec chacun sa boucle `rAF` et son état, ce serait quinze rendus React par image à côté d'une scène 3D. Le tirage des glyphes est **déterministe**, dérivé de l'image et de la position, parce que le composant est rendu pendant la phase de rendu de React. Étant autonome, la cascade est **coupée** — pas raccourcie — sous `prefers-reduced-motion`.
 
-Deux états de bulle seulement (présente/absente) — aucune opacité indexée sur un pourcentage de scroll.
+  **Les titres de section portent l'accent froid**, les titres de carte restent crème sourd : c'est la couleur qui porte la hiérarchie, sans ajouter ni corps ni graisse.
 
-### `prefers-reduced-motion`
+  **Le survol d'une cartouche déclenche un balayage** (700 ms, `--t-sweep`) : un liseré froid la traverse une fois. Il n'annonce pas une ouverture — les formations l'ont aussi, elles qui ne s'ouvrent pas — il accuse réception du pointeur. Déclenché par un geste, il est donc **conservé** sous mouvement réduit.
 
-La session design n'avait pas tranché la variante réduite ; elle est posée ici, implémentée dans `tokens.css`. **Le critère est l'autonomie, pas le déplacement :** ce qui part tout seul ou tourne en boucle est neutralisé, ce que l'utilisateur déclenche lui-même est conservé. Un halo qui s'allume au survol répond à un geste et ne surprend personne ; la respiration du logo tourne sans fin sans qu'on l'ait demandée.
+  **Le haut du CV ne bouge jamais.** Il n'est donc **pas centré** : centré, tout ce qui le fait grandir le fait remonter — c'est de l'arithmétique, la moitié de ce qu'un accordéon ajoute est reprise en haut, et aucune réserve ne corrige ça exactement puisque les quatre accordéons n'ont pas la même hauteur (78 à 91 px). Il est ancré en haut, sous une **entretoise incompressible** (`.cv::before`, `flex: 0 0 auto`, `min(13vh, 220px)`) qui lui donne l'air centré au repos. Le mot qui compte est *incompressible* : une entretoise en `0 1 auto` tient tant que rien ne déborde puis cède — mesuré, 9 px rendus au premier accordéon à 1512 × 945, où le CV déborde déjà au repos, et une seconde entretoise en bas n'y change rien puisqu'à cette taille elle est déjà à zéro. **Mesuré après : 0 px sur les huit cartouches, à 1795 × 1300, 1512 × 945 et 1280 × 720.** Le prix est une entretoise qui reste en place quand ça défile : on défile un peu plus longtemps, mais rien ne saute sous le curseur.
 
-| Mouvement | Sous mouvement réduit |
-|---|---|
-| bulle in (480 ms, clip + translation) | fondu d'opacité seul, 200 ms |
-| reveal typo mot à mot | supprimé — la phrase paraît d'un bloc |
-| respiration du logo (boucle 2,6 s) | supprimée ; la barre continue de progresser, c'est de l'information |
-| barre .4→.75, halo, cartouche d'item, accordéon CV | **conservés** — déclenchés par l'utilisateur |
-| fiche : relais 320 ms + entrée par blocs | fondu d'opacité seul, 200 ms ; les blocs paraissent d'un coup |
-| **vol du dossier 850 ms** | **coupe** : la fiche s'ouvre sur place, sans excursion |
-| **déplacement caméra 1,2 s** | **coupe au stop suivant** (`STEP_DURATION` à 0 dans `CameraRig`) |
+  Corollaire : **plus aucune règle de mise en page ne dépend d'un survol.** La tentative précédente réglait une marge via `:has(.job:hover)`, qui se déclenchait aussi sur les **formations** — survoler un diplôme, qui n'ouvre rien, déplaçait tout le CV.
 
-La dernière ligne est la seule qui compte vraiment : elle ne vit pas dans le CSS, et sans elle le seul mouvement d'ampleur de l'expérience reste entier.
+  **Le projet est pensé plein écran d'abord** (décision de l'auteur, 2026-08-20) : sur un écran plein, les six sections (~910 px fermé, ~990 accordéon ouvert) tiennent et se **centrent**. Dans un cadre de 720, elles ne tiennent pas — et le mobile reste une question ouverte, non traitée ici. Trois règles en découlent, toutes vérifiées par `tests/cv.test.ts` :
 
-## Notes d'implémentation (vérifiées au navigateur, 2026-08-10)
-
-Quatre points où recréer « au pixel » dérive silencieusement si on ne les connaît pas :
+  - `justify-content: **safe center**`, jamais `center` seul : centré tant que ça rentre, ancré en haut dès que ça déborde. Un `center` seul déborderait des **deux** côtés, et un conteneur ne défile jamais vers le négatif — la moitié haute du CV deviendrait inatteignable. Un navigateur qui ignore le mot-clé `safe` jette la déclaration et retombe sur `flex-start`, c'est-à-dire au bon endroit. Contrepartie assumée : quand il y a la place de centrer, ouvrir un accordéon décale le bloc de 40 px ;
+  - il porte `pointer-events: auto` : un élément transparent au pointage ne reçoit pas la molette, elle irait au canevas ;
+  - il ne porte **pas** la classe `panel`. `panel` ferait ignorer au tour _toute_ molette passant ici, et on ne pourrait plus quitter l'arrêt en défilant. C'est `CvScreen` qui arbitre cran par cran : il prend la molette tant qu'il lui reste de la course dans ce sens, et la rend au tour en butée. L'écouteur est **natif**, parce que `CameraRig` l'est aussi et que React délègue ses `onWheel` à un ancêtre de `.stage`.
 
 - **Les variantes positionnelles passent par `translate` / `rotate`, jamais par `transform`.** `bubble-in` anime `transform` en fill-mode `both`, et une animation bat toute la cascade — styles inline compris. Un `transform: translateX(-50%)` posé sur `.bubble` est donc écrasé par la valeur finale du keyframe : mesuré, la bulle d'accueil sortait de 10 px hors d'un viewport 1280 (centre décalé de +325 px) et la guitare rendait à plat, rotation annulée. Les propriétés individuelles se composent avec `transform` au lieu d'être remplacées, ce qui règle le conflit sans wrapper.
 - **Les largeurs de la table de placement sont en `content-box`** — le pack ne pose aucun reset. `01-desk` à `max-width: 460` mesure 506 px de bord à bord (padding 22 × 2 + bord 1 × 2). Avec le `box-sizing: border-box` qu'un projet React pose par défaut, retrancher 46 px ou les largeurs rétrécissent d'autant.
