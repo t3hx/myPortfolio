@@ -1,0 +1,110 @@
+# Déploiement — chaque fusion sur `main` met le portfolio en ligne (issue #17).
+#
+# `main` est la branche déployée : on n'y arrive que par une PR depuis `dev`,
+# fusionnée en **merge commit** et jamais en squash, qui ferait diverger les
+# deux troncs définitivement. La fusion déclenche, sans autre intervention :
+# CI → build de l'image → poussée sur GHCR → Dokploy tire et redémarre.
+# Le build se fait ici, sur GitHub, jamais sur le VPS.
+#
+# **La CI est un job de ce workflow, pas un voisin.** `build-and-push` dépend
+# de `verify` : sur une CI rouge, rien n'est construit et rien n'est déployé.
+# `ci.yml` déclare déjà `workflow_call` et est identique au SHA près sur les
+# trois dépôts — il est appelé, jamais dupliqué.
+#
+# **`ci.yml` ne doit PAS gagner `main` dans ses déclencheurs `push`** : elle est
+# déjà appelée ici, elle tournerait deux fois par fusion.
+name: deploy
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Deux fusions rapprochées ne doivent pas déployer en parallèle : la seconde
+# attend, elle n'annule pas la première — une mise en ligne à moitié faite est
+# pire qu'une mise en ligne en retard.
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE: myportfolio
+
+jobs:
+  verify:
+    uses: ./.github/workflows/ci.yml
+
+  build-and-push:
+    needs: verify
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v5
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ env.IMAGE }}
+          # `latest` est le tag que Dokploy tire ; le tag par SHA sert de trace
+          # et permet un rollback ciblé.
+          tags: |
+            type=raw,value=latest
+            type=sha,format=long
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=${{ env.IMAGE }}
+          cache-to: type=gha,mode=max,scope=${{ env.IMAGE }}
+
+  deploy:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      # Le panneau Dokploy n'est joignable que par le tailnet : aucun port web
+      # n'est ouvert en entrée sur le VPS. Le runner s'y raccorde le temps du
+      # job. Sans cette étape, le `curl` ci-dessous n'atteindrait jamais rien.
+      - name: Connexion au tailnet
+        uses: tailscale/github-action@v4
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          tags: tag:ci
+
+      # `--fail-with-body` est le garde-fou : Dokploy qui refuse = workflow
+      # rouge, avec sa réponse dans le journal. Sans lui, `curl` sort en 0 sur
+      # un 500 et la mise en ligne échoue en silence.
+      #
+      # La santé de l'app est vérifiée PAR DOKPLOY (healthcheck du conteneur et
+      # rollback automatique), pas d'ici : une sonde depuis le runner passerait
+      # par Cloudflare, qui répond 403 aux IP de datacenter — un faux négatif
+      # qui ne dirait rien de l'app.
+      #
+      # Les secrets passent par `env:` et non par interpolation directe dans la
+      # commande : `${{ }}` colle la valeur dans la ligne de commande, où elle
+      # peut ressortir d'un `set -x` ou de la liste des processus. La variable
+      # d'environnement, elle, n'est lue que par `curl`.
+      - name: Déployer sur Dokploy
+        env:
+          DOKPLOY_URL: ${{ secrets.DOKPLOY_URL }}
+          DOKPLOY_TOKEN: ${{ secrets.DOKPLOY_TOKEN }}
+          DOKPLOY_APP_ID: ${{ secrets.DOKPLOY_APP_ID }}
+        run: |
+          curl --fail-with-body -sS -X POST \
+            "$DOKPLOY_URL/api/application.deploy" \
+            -H 'accept: application/json' \
+            -H 'Content-Type: application/json' \
+            -H "x-api-key: $DOKPLOY_TOKEN" \
+            --data "$(jq -n --arg id "$DOKPLOY_APP_ID" '{applicationId: $id}')"
