@@ -120,6 +120,18 @@ One scroll gesture = ONE fluid stroke to the next/previous stop (fullpage model)
 
 `TOURING ⇄ PARKED → PANEL_OPEN | TELESCOPE`. Each phase owns one input routing: panels capture their own wheel (the rig ignores events targeting `.panel`), TELESCOPE runs an imperative camera excursion to the moon and swaps `Outside_Moon` ↔ `Outside_Moon_Detailed` visibility (RoomModel subscription). Escape exits panel/telescope. The full interaction backlog (fans, smoke, NanoLeaf shader, cat pupils, curtains, drawers) is specced in `docs/PORTFOLIO_3D_INTERACTIONS.md`.
 
+### The cat is alive (`src/scene/CatAlive.tsx` + `src/lib/cat.ts` + `src/config/cat.ts`)
+
+Issue #37: the pupils follow the cursor, the tail sways, the eyes blink. Everything is a **transform** — no material is touched, so none of it can threaten the WYSIWYG-with-Blender rule.
+
+- **Offsets are computed in the cat's frame, never the world's.** The `.glb` graph is flat (157 nodes, all scene roots) and every cat part carries the same rotation, ~52° about Y. Offsetting along world axes would slide the pupil sideways across the eye and wave the tail in the wrong direction.
+- **The tail is translated, not rotated.** The six `Cat_TailSeg_*` are siblings, each pivoting on its own centre rather than on a joint — rotating them would pull them apart. They are displaced perpendicular to the tail, with the amplitude growing toward the tip and a per-segment phase offset, which is what makes it a wave instead of a block sliding sideways.
+- **There is no eyelid in the `.glb`**, so the blink squashes eye, pupil and highlight vertically. They share a height to within 3 mm, so squashing each about its own centre is invisible — and cheaper than building a runtime group for three objects.
+- **The eye radius is measured at runtime** from the bounding box, and the pupil travel is a _fraction_ of it. The spec proposed absolute units; a re-export that rescales the cat would make a hardcoded number wrong in silence.
+- **`prefers-reduced-motion` cuts everything, pupils included.** Keeping the gaze looked defensible under the design system's "gesture-triggered motion survives" rule, but it is the wrong side of it: an element that chases the cursor moves on every mouse movement, for any reason, which is exactly what motion-sensitive users object to. A hover that lights a halo answers an intention; a pupil that follows does not.
+
+**The render-comparison loop captures with `reducedMotion: 'reduce'`** (`playwright.config.ts`), and that is what keeps it deterministic now that the scene animates. Two reasons, the second being the real one: an autonomous animation makes the capture depend on _when_ it is taken, and the Blender references show the room **at rest** — exactly the state reduced motion produces. `tests/cat.test.ts` locks the guard as the first statement of the frame loop; moving it below the gaze re-introduced a run-to-run drift of 0.288 % then 0.255 % on the cat stop.
+
 ### Outlines (`src/scene/Outlines.tsx` + `src/config/lineArt.ts`)
 
 Runtime 2.5D ink, URL-toggled: `?outline=off|hull|edges|both` (+ `?lw=<px>` live width). `hull` = three OutlineEffect (batched inverted hull, view-dependent silhouettes — takes over rendering via a priority useFrame). `edges` = per-mesh `EdgesGeometry` rendered as screen-space fat lines (`LineSegments2`), with `LINE_OVERRIDES` per-object exclusions. Known drei/browser gotchas are commented in the code — read them before refactoring (Html portals, z-index ranges).
