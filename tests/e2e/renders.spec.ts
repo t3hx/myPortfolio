@@ -2,7 +2,13 @@ import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { expect, test } from '@playwright/test'
 import { CAMERA_STOPS } from '@/config/cameraStops'
-import { REFS_DIR, captureStop, ceilingFor, diffAgainstReference } from './renderComparison'
+import {
+  REFS_DIR,
+  captureStop,
+  ceilingFor,
+  diffAgainstReference,
+  refName,
+} from './renderComparison'
 
 /**
  * Chaque arrêt du tour comparé à son rendu Blender (#45, #46).
@@ -13,7 +19,10 @@ import { REFS_DIR, captureStop, ceilingFor, diffAgainstReference } from './rende
  * pas de test, mais donne l'impression du contraire.
  */
 for (const stop of CAMERA_STOPS) {
-  const label = stop.label.toLowerCase()
+  // Le nom du fichier de référence, qui n'est pas toujours celui de l'arrêt —
+  // voir `REF_FILE`. Il sert aussi de nom aux captures et aux diffs, pour que
+  // l'artefact se rapproche à l'œil de la référence qu'il conteste.
+  const label = refName(stop.label)
 
   test(`l'arrêt ${stop.label} rend comme sa référence Blender`, async ({ page }, testInfo) => {
     const refPath = join(REFS_DIR, `${label}.png`)

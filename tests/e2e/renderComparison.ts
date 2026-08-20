@@ -16,6 +16,35 @@ export const REFS_DIR = 'docs/renders/refs'
 export const ACTUAL_DIR = 'docs/renders/actual'
 
 /**
+ * Les arrêts dont le fichier de référence ne porte PAS leur `label`.
+ *
+ * La règle par défaut reste « la référence s'appelle comme l'arrêt », et elle
+ * couvre huit arrêts sur onze. Les trois autres ont été exportés depuis Blender
+ * sous le nom de leur nœud caméra (`CameraStop_MonitorVertical` →
+ * `vertical_monitor`) ou dans une autre langue (`guitare`, `poster`).
+ *
+ * Cette table existe parce que les deux noms n'ont pas le même propriétaire :
+ * le `label` est la clé de `?stop=`, donc des liens profonds et de la
+ * documentation — le renommer casse des URL ; le nom de fichier, lui, suit
+ * l'export Blender. Déclarer la correspondance coûte une ligne et laisse
+ * chacun libre chez soi. La renommer d'un côté ou de l'autre pour « simplifier »
+ * casserait forcément quelque chose de l'autre.
+ *
+ * `overview.png` n'est PAS un arrêt et n'a rien à faire ici — c'est un rendu de
+ * la pièce entière, que la boucle ignore (voir `docs/renders/README.md`).
+ */
+export const REF_FILE: Record<string, string> = {
+  CV: 'vertical_monitor',
+  Guitar: 'guitare',
+  Posters: 'poster',
+}
+
+/** Le fichier de référence d'un arrêt, d'après son `label`. */
+export function refName(label: string): string {
+  return REF_FILE[label] ?? label.toLowerCase()
+}
+
+/**
  * Seuil par canal de `pixelmatch`, en distance perceptuelle YIQ. 0,1 est sa
  * valeur par défaut : elle absorbe le bruit d'anticrénelage sans absorber un
  * changement de couleur. C'est le compagnon de `MAX_DIFF_RATIO`, pas un
@@ -26,12 +55,17 @@ export const PIXEL_THRESHOLD = 0.1
 /**
  * Part maximale de pixels différents avant qu'on parle de dérive.
  *
- * **Mesurée, pas devinée** (2026-08-20 — le tableau des écarts réels par arrêt
- * est dans `docs/renders/README.md`). Le pire arrêt conforme est la guitare à
- * 1,952 %, suivie du bureau à 1,808 % ; 2,5 % laisse la marge d'une machine
- * dont le rasteriseur crénelle un cheveu autrement. Un seuil choisi a priori
- * rend la CI rouge dès le premier jour, et une CI rouge dès le premier jour se
- * débranche.
+ * **Mesurée, pas devinée** (re-mesurée le 2026-08-20 sur les références
+ * 1920 × 1080 — le tableau complet est dans `docs/renders/README.md`). Le pire
+ * arrêt conforme est la guitare à 1,939 %, suivie du bureau à 1,503 % ; 2,5 %
+ * laisse la marge d'une machine dont le rasteriseur crénelle un cheveu
+ * autrement. Un seuil choisi a priori rend la CI rouge dès le premier jour, et
+ * une CI rouge dès le premier jour se débranche.
+ *
+ * Passer de 1280 × 720 à 1920 × 1080 a RAPPROCHÉ les mesures (bureau 1,808 →
+ * 1,503 %, posters 0,218 → 0,155 %) : l'écart vit sur les silhouettes, dont le
+ * poids relatif baisse quand la définition monte. Le plafond garde donc plus de
+ * marge qu'avant, et pourrait être resserré le jour où on le voudra.
  *
  * Ce qui explique l'écart résiduel — et qui ne disparaîtra jamais : EEVEE et
  * WebGL ne crénellent pas pareil. Tout le budget part dans les silhouettes et
@@ -73,7 +107,7 @@ export interface KnownDeviation {
 }
 
 export const KNOWN_DEVIATIONS: Record<string, KnownDeviation> = {
-  // Mesuré à 5,790 % le 2026-08-20. Le diff dessine littéralement le tiroir
+  // Mesuré à 5,417 % sur la référence 1920 × 1080 du 2026-08-20. Le diff dessine littéralement le tiroir
   // sorti et les dossiers étiquetés : la référence a été rendue avant que
   // l'arrivée à cet arrêt ne l'ouvre (#76) et n'y clone un dossier par projet
   // (#79). Le reste de l'image est comparé normalement, et 7 % laisse peu de
@@ -85,7 +119,7 @@ export const KNOWN_DEVIATIONS: Record<string, KnownDeviation> = {
       "la référence est antérieure au tiroir qui s'ouvre à l'arrivée (#76) et " +
       'aux dossiers étiquetés (#79) — à re-rendre depuis Blender, voir #97',
   },
-  // Mesuré à 39,973 % le 2026-08-20 : la référence montre
+  // Mesuré à 39,467 % sur la référence 1920 × 1080 : elle montre
   // `Outside_Moon_Detailed` (la lune photographique), l'app montre
   // `Outside_Moon` (la lune stylisée). L'échange de visibilité n'a lieu qu'en
   // phase TELESCOPE, alors que l'arrêt se visite aussi à la molette, à 270 mm.
