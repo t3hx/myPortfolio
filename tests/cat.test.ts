@@ -137,8 +137,15 @@ describe('le mouvement réduit', () => {
     expect(body.trimStart().startsWith('if (reduced) return')).toBe(true)
   })
 
-  it('est demandé par la boucle de comparaison', () => {
-    const config = readFileSync('playwright.config.ts', 'utf8')
-    expect(config).toContain("reducedMotion: 'reduce'")
+  it('est demandé par la boucle de comparaison, EXPLICITEMENT', () => {
+    // Il l'a d'abord été via `use: { reducedMotion: 'reduce' }` dans la
+    // configuration — et cette option n'arrivait PAS jusqu'à la page : mesuré,
+    // `matchMedia` y répondait `false` alors que `viewport`, posé juste à côté,
+    // s'appliquait. La queue du chat tournait donc pendant les captures, sous
+    // la tolérance et sans que rien ne le dise. Un appel explicite dans
+    // `captureStop` ne peut pas être avalé en silence.
+    const capture = readFileSync('tests/e2e/renderComparison.ts', 'utf8')
+    expect(capture).toContain("emulateMedia({ reducedMotion: 'reduce' })")
+    expect(capture.indexOf('emulateMedia')).toBeLessThan(capture.indexOf('page.goto'))
   })
 })

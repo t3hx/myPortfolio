@@ -162,6 +162,22 @@ export function ceilingFor(label: string): {
  * `?capture` allume `preserveDrawingBuffer` — sans lui, l'image est noire.
  */
 export async function captureStop(page: Page, label: string): Promise<Buffer> {
+  // MOUVEMENT RÉDUIT, demandé ICI et pas dans `playwright.config.ts`.
+  //
+  // C'est ce qui garde la boucle déterministe depuis que la scène s'anime : une
+  // animation autonome fait dépendre la capture de l'INSTANT où elle est prise.
+  // Et les rendus de référence montrent la pièce AU REPOS — exactement l'état
+  // que produit `prefers-reduced-motion`, puisque le design system coupe ce qui
+  // part tout seul.
+  //
+  // L'option `use: { reducedMotion: 'reduce' }` de la configuration, elle,
+  // n'arrivait PAS jusqu'à la page : mesuré, `matchMedia` y répondait `false`
+  // alors que `viewport`, posé à côté, s'appliquait bien. Deux captures
+  // consécutives du bureau différaient alors de 10 454 pixels, tous sur le
+  // boîtier du PC — les ventilateurs tournaient pendant la mesure. Un appel
+  // explicite ne peut pas être avalé en silence, et `tests/desk.test.ts` le
+  // verrouille.
+  await page.emulateMedia({ reducedMotion: 'reduce' })
   await page.goto(`/?stop=${encodeURIComponent(label)}&capture`)
 
   // Le préchargeur se DÉMONTE quand la scène est prête (#25) : sa disparition

@@ -36,16 +36,10 @@ export default defineConfig({
     // 3840×2160 et il n'y aurait plus de comparaison du tout.
     viewport: { width: 1920, height: 1080 },
     deviceScaleFactor: 1,
-    // MOUVEMENT RÉDUIT, et c'est ce qui garde la boucle déterministe à partir
-    // du moment où la scène s'anime (#37 : la queue du chat, bientôt la fumée
-    // et les ventilateurs). Deux raisons, et la seconde est la vraie :
-    //   1. une animation autonome fait dépendre la capture de l'INSTANT où
-    //      elle est prise — deux exécutions ne rendraient plus la même image ;
-    //   2. les rendus de référence montrent la pièce au REPOS. C'est
-    //      exactement l'état que `prefers-reduced-motion` produit, puisque le
-    //      design system coupe ce qui part tout seul et conserve ce qui répond
-    //      à un geste. La boucle compare donc bien ce que Blender a rendu.
-    reducedMotion: 'reduce',
+    // Le mouvement réduit N'EST PAS demandé ici : mesuré, l'option n'arrivait
+    // pas jusqu'à la page — `matchMedia` y répondait `false` alors que
+    // `viewport`, posé juste au-dessus, s'appliquait. Il est demandé
+    // explicitement dans `captureStop`, où l'on peut le vérifier.
     launchOptions: {
       // Aucun runner GitHub n'a de GPU : sans ces drapeaux, pas de contexte
       // WebGL du tout et la scène est noire. On les passe AUSSI en local pour
