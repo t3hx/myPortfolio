@@ -84,6 +84,25 @@ injecter ici, contrairement à `owlog-app` dont le front consomme un jeton
 partagé. Si un jour un formulaire de contact arrive, ce sera par Doppler →
 Dokploy, jamais par un secret d'Actions ni par une valeur cuite dans l'image.
 
+## Le VPS tire, il ne construit jamais — et c'est vérifié
+
+`build-and-push` construit sur GitHub, Dokploy **tire** l'image. L'application
+doit donc être en `Source Type: Docker`, jamais en `Github`.
+
+Ce n'est pas une consigne mais un test : après l'appel de déploiement, le
+workflow interroge `GET /api/application.one` et **échoue** si `sourceType`
+n'est pas `docker`, ou si `dockerImage` n'est pas l'image qu'il vient de
+pousser.
+
+Pourquoi ce garde-fou existe : chez `owlog-app`, l'application était configurée
+en provider `Github`. Dokploy clonait le dépôt et **construisait sur le serveur
+de production**, pendant que le workflow poussait consciencieusement des images
+sur GHCR que personne ne tirait. Trois semaines, sans que rien ne le signale —
+l'appel de déploiement répond `200` dans les deux cas. Corrigé le 2026-08-20.
+
+Le critère qui fait foi est le journal de déploiement Dokploy : on doit y lire
+`Pulling`, jamais `Building` ni `Receiving objects`.
+
 ## Ce que ce workflow ne vérifie pas, volontairement
 
 La santé de l'application est contrôlée **par Dokploy** — healthcheck du

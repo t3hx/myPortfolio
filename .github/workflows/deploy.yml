@@ -108,3 +108,42 @@ jobs:
             -H 'Content-Type: application/json' \
             -H "x-api-key: $DOKPLOY_TOKEN" \
             --data "$(jq -n --arg id "$DOKPLOY_APP_ID" '{applicationId: $id}')"
+
+      # Un `deploy.yml` vert ne prouve RIEN sur ce que fait le VPS.
+      #
+      # Chez owlog-app, trois semaines de workflows verts ont coexisté avec un
+      # `git clone` + `docker build` sur le serveur de production : Dokploy y
+      # était configuré en provider `Github`, et les images poussées sur GHCR
+      # n'étaient jamais tirées. Rien ne le signalait, puisque l'appel de
+      # déploiement répondait 200 dans les deux cas.
+      #
+      # On vérifie donc la CONFIGURATION de l'application, pas son statut
+      # d'exécution : `applicationStatus` bascule de façon asynchrone après
+      # l'appel et le tester introduirait une course, alors que `sourceType` et
+      # `dockerImage` sont stables — et sont exactement la dérive à attraper.
+      - name: Vérifier que Dokploy TIRE l'image au lieu de la construire
+        env:
+          DOKPLOY_URL: ${{ secrets.DOKPLOY_URL }}
+          DOKPLOY_TOKEN: ${{ secrets.DOKPLOY_TOKEN }}
+          DOKPLOY_APP_ID: ${{ secrets.DOKPLOY_APP_ID }}
+          EXPECTED_IMAGE: ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ env.IMAGE }}:latest
+        run: |
+          set -euo pipefail
+          app="$(curl --fail-with-body -sS \
+            "$DOKPLOY_URL/api/application.one?applicationId=$DOKPLOY_APP_ID" \
+            -H 'accept: application/json' \
+            -H "x-api-key: $DOKPLOY_TOKEN")"
+
+          source_type="$(printf '%s' "$app" | jq -r '.sourceType')"
+          image="$(printf '%s' "$app" | jq -r '.dockerImage')"
+          echo "sourceType=$source_type  dockerImage=$image"
+
+          if [ "$source_type" != "docker" ]; then
+            echo "::error::L'application est en sourceType '$source_type' et non 'docker' : le VPS CONSTRUIT au lieu de tirer. Bascule-la sur Docker dans Dokploy (onglet General, section Provider)."
+            exit 1
+          fi
+          if [ "$image" != "$EXPECTED_IMAGE" ]; then
+            echo "::error::L'application tire '$image' alors que ce workflow pousse '$EXPECTED_IMAGE'."
+            exit 1
+          fi
+          echo "✅ Dokploy est bien branché sur l'image poussée par ce workflow."
