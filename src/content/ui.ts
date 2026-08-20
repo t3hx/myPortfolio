@@ -71,6 +71,11 @@ export const UI = {
     region: { fr: 'Curriculum vitae', en: 'Résumé' } as Localized,
     photo: { fr: 'photo', en: 'photo' } as Localized,
   },
+  telescope: {
+    /** Le rappel de sortie, affiché dans la visée. Rien d'autre n'en sort :
+     *  un clic ailleurs ne fait rien, et personne ne devine `Échap` seul. */
+    exit: { fr: 'pour revenir', en: 'to go back' } as Localized,
+  },
   menu: {
     region: { fr: 'Menu', en: 'Menu' } as Localized,
     /** `title` de la bascule de langue, dans la langue vers laquelle elle mène. */

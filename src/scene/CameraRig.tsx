@@ -5,6 +5,13 @@ import { PerspectiveCamera, Quaternion, Vector3 } from 'three'
 import { applyProgress, verticalFov, type StopTransform } from '@/lib/stops'
 import { stopParamIndex } from '@/lib/viewMode'
 import { useInteraction } from '@/state/interaction'
+import {
+  TELESCOPE_APPROACH_HFOV,
+  TELESCOPE_APPROACH_S,
+  TELESCOPE_EYEPIECE_BACK,
+  TELESCOPE_FOV_PAD,
+  TELESCOPE_ZOOM_S,
+} from '@/config/telescope'
 
 /**
  * Stop-to-stop camera navigation — the interaction model chosen after user
@@ -224,16 +231,48 @@ export function CameraRig({ stops }: CameraRigProps) {
         fromPos.current.copy(camera.position)
         fromQuat.current.copy(camera.quaternion)
         const fromFov = camera.fov
+
+        // L'OCULAIRE : la pose de la lune, reculée le long de son axe de visée.
+        // Blender a déjà posé cette caméra à 58 cm du télescope, il n'y a donc
+        // rien à ajouter à la scène — seulement à reculer.
+        const eyePos = new Vector3(0, 0, 1)
+          .applyQuaternion(moon.quaternion)
+          .multiplyScalar(TELESCOPE_EYEPIECE_BACK)
+          .add(moon.position)
+        const eyeFov = verticalFov(TELESCOPE_APPROACH_HFOV, camera.aspect)
+        const zoomFov = verticalFov(moon.hfov * TELESCOPE_FOV_PAD, camera.aspect)
+
+        // DEUX TEMPS. En un seul vol, la caméra traversait l'instrument pour
+        // finir en gros plan de lune, sans que rien ne dise qu'un télescope se
+        // trouvait entre les deux. Ici on vient d'abord coller l'œil à
+        // l'oculaire — c'est là que la visée s'ouvre — puis le second temps ne
+        // fait plus que grossir, À L'INTÉRIEUR de la visée.
         const t = { v: 0 }
         excursion.current = gsap.to(t, {
           v: 1,
-          duration: 1.6,
+          duration: TELESCOPE_APPROACH_S,
           ease: 'power2.inOut',
           onUpdate: () => {
-            camera.position.lerpVectors(fromPos.current, moon.position, t.v)
+            camera.position.lerpVectors(fromPos.current, eyePos, t.v)
             camera.quaternion.copy(fromQuat.current).slerp(moon.quaternion, t.v)
-            camera.fov = fromFov + (verticalFov(moon.hfov, camera.aspect) - fromFov) * t.v
+            camera.fov = fromFov + (eyeFov - fromFov) * t.v
             camera.updateProjectionMatrix()
+          },
+          onComplete: () => {
+            // La visée s'ouvre ICI : on est derrière l'oculaire, et le
+            // grossissement qui suit se produit dans le cache circulaire.
+            useInteraction.getState().settleTelescope()
+            const z = { v: 0 }
+            excursion.current = gsap.to(z, {
+              v: 1,
+              duration: TELESCOPE_ZOOM_S,
+              ease: 'power2.inOut',
+              onUpdate: () => {
+                camera.position.lerpVectors(eyePos, moon.position, z.v)
+                camera.fov = eyeFov + (zoomFov - eyeFov) * z.v
+                camera.updateProjectionMatrix()
+              },
+            })
           },
         })
       }
@@ -263,6 +302,11 @@ export function CameraRig({ stops }: CameraRigProps) {
           },
           onComplete: () => {
             returning.current = false
+            // La lune redevient stylisée ICI, et pas à la touche `Échap` : à
+            // l'instant de la sortie elle remplit encore l'écran, et l'échange
+            // s'y verrait autant qu'au clic. À la fin du retour, elle est
+            // redevenue un petit disque dans la fenêtre.
+            useInteraction.getState().showDetailedMoon(false)
           },
         })
       }

@@ -36,6 +36,37 @@ interface InteractionState {
   stopIndex: number
   /** True once the .glb is loaded and stop transforms are extracted. */
   ready: boolean
+  /**
+   * L'excursion du télescope est ARRIVÉE — la caméra est derrière l'oculaire.
+   *
+   * Distinct de `phase === 'telescope'`, qui est vrai dès le clic : la visée
+   * ne doit s'ouvrir qu'une fois le vol terminé, sinon on voit le cache
+   * circulaire se poser sur une pièce qui défile encore, et on regarde dans un
+   * télescope avant d'y être arrivé.
+   */
+  telescopeSettled: boolean
+  /**
+   * Le télescope est survolé — la seule chose que `RoomModel` sait, et la seule
+   * dont le cerne a besoin.
+   *
+   * Il passe par l'état plutôt que par un second `<primitive>` sur le même
+   * objet : le télescope appartient au graphe que `RoomModel` monte, et le
+   * rendre une deuxième fois le DÉPARENTERAIT de la scène. Un seul propriétaire
+   * du graphe, un drapeau pour le reste.
+   */
+  telescopeHovered: boolean
+  /**
+   * La lune détaillée est-elle affichée ?
+   *
+   * **Séparée de la phase, et pour la même raison des deux côtés : un échange
+   * de texture ne doit se produire que là où personne ne peut le voir.**
+   * Elle s'allume à `settleTelescope`, quand l'écran est noir parce qu'on
+   * regarde l'intérieur du tube ; elle s'éteint à la FIN du retour, quand la
+   * lune est redevenue un petit disque dans la fenêtre. Piloté par la phase,
+   * l'échange se voyait aux deux bouts — en pleine fenêtre au clic, et en plein
+   * cadre à la sortie.
+   */
+  moonDetailed: boolean
   /** HUD → CameraRig bridge: request a snap to this stop index. */
   pendingStopRequest: number | null
   /** Le tiroir de la commode — voir `CabinetState`. */
@@ -54,6 +85,11 @@ interface InteractionState {
   openPanel: () => void
   closePanel: () => void
   enterTelescope: () => void
+  /** Appelé par `CameraRig` à la fin de l'excursion, jamais au clic. */
+  settleTelescope: () => void
+  hoverTelescope: (hovered: boolean) => void
+  /** Appelé par `CameraRig` à la fin du retour, jamais à la touche `Échap`. */
+  showDetailedMoon: (shown: boolean) => void
   exitTelescope: () => void
 }
 
@@ -61,6 +97,9 @@ export const useInteraction = create<InteractionState>((set, get) => ({
   phase: 'touring',
   stopIndex: 0,
   ready: false,
+  telescopeSettled: false,
+  telescopeHovered: false,
+  moonDetailed: false,
   pendingStopRequest: null,
   cabinet: 'closed',
   selectedProject: null,
@@ -96,9 +135,25 @@ export const useInteraction = create<InteractionState>((set, get) => ({
 
   enterTelescope: () => {
     const { phase } = get()
-    if (phase === 'touring' || phase === 'parked') set({ phase: 'telescope' })
+    if (phase === 'touring' || phase === 'parked') {
+      // `telescopeHovered` est éteint ICI et pas au prochain mouvement de
+      // souris : après le clic, la souris ne bouge plus, et le cerne restait
+      // allumé pendant toute l'excursion — visible en plein cadre sur le tube.
+      set({ phase: 'telescope', telescopeSettled: false, telescopeHovered: false })
+    }
+  },
+  settleTelescope: () => {
+    // L'écran est noir ici : c'est le seul instant de la séquence où l'échange
+    // de lune est invisible par construction.
+    if (get().phase === 'telescope') set({ telescopeSettled: true, moonDetailed: true })
+  },
+  showDetailedMoon: (moonDetailed) => {
+    if (get().moonDetailed !== moonDetailed) set({ moonDetailed })
+  },
+  hoverTelescope: (telescopeHovered) => {
+    if (get().telescopeHovered !== telescopeHovered) set({ telescopeHovered })
   },
   exitTelescope: () => {
-    if (get().phase === 'telescope') set({ phase: 'parked' })
+    if (get().phase === 'telescope') set({ phase: 'parked', telescopeSettled: false })
   },
 }))

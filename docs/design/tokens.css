@@ -48,6 +48,9 @@
   --t-cv-out: 200ms;      /* même sortie qu'une bulle — voir CV_OUT_MS */
   --t-decrypt: 1600ms;    /* déchiffrement du nom — voir DECRYPT_MS */
   --t-cascade: 420ms;     /* déchiffrement d'un titre — voir CASCADE_MS */
+  --t-ping: 2400ms;       /* cycle de la pastille qui désigne un objet */
+  --t-scope-in: 620ms;    /* ouverture de la visée du télescope */
+  --t-scope-out: 260ms;   /* fermeture — voir SCOPE_OUT_MS */
   --t-sweep: 700ms;       /* balayage d'une cartouche au survol */
   --ease-out: cubic-bezier(.2, .8, .2, 1);
 }
@@ -662,6 +665,148 @@
 @keyframes cv-in { from { opacity: 0; } to { opacity: 1; } }
 @keyframes cv-out { from { opacity: 1; } to { opacity: 0; } }
 
+/* ===== Pastille de désignation (#106) =====
+   Elle dit qu'un objet de la scène est cliquable, là où rien ne le disait avant
+   qu'on l'ait déjà survolé — or on ne survole que ce qu'on soupçonne.
+
+   Son anatomie est celle du `bubble__dot` : même point, même cyan. Rien de
+   nouveau dans le vocabulaire, seulement l'anneau qui s'en échappe.
+
+   Elle est en DOM et jamais en 3D. Ce n'est pas une commodité : la boucle de
+   comparaison capture le tampon WebGL, dont les références Blender ne
+   contiennent aucun indice d'interface — tout ce qu'on dessinerait dans la
+   scène au repos ferait dériver la mesure de l'arrêt. */
+.ping {
+  position: relative; display: block; width: 10px; height: 10px;
+  pointer-events: none;
+}
+.ping__dot {
+  position: absolute; inset: 0; border-radius: 50%;
+  background: var(--glow);
+  box-shadow: 0 0 10px rgba(var(--glow-rgb), .65);
+}
+/* L'anneau part du point et s'efface en s'écartant — le geste d'un radar. Il
+   s'éteint AVANT d'avoir fini de grandir : un anneau qui disparaît net à son
+   diamètre maximal se lit comme un cercle qui clignote, pas comme une onde. */
+.ping__ring {
+  position: absolute; inset: 0; border-radius: 50%;
+  border: 1px solid rgba(var(--glow-rgb), .9);
+  animation: ping-out var(--t-ping) var(--ease-out) infinite;
+}
+@keyframes ping-out {
+  0%        { transform: scale(1);   opacity: .9; }
+  70%, 100% { transform: scale(3.4); opacity: 0; }
+}
+
+/* ===== Visée du télescope (#106) =====
+   Un cache circulaire qui dit qu'on regarde DANS un télescope, au lieu de
+   simplement voler vers la lune plein cadre.
+
+   C'est un DÉGRADÉ RADIAL, pas une seconde passe de rendu. La spec laissait le
+   choix ; le DOM gagne parce que la scène est un bake non éclairé qu'on ne
+   retouche pas, et qu'une passe supplémentaire serait un coût GPU permanent
+   pour ce qui n'est qu'un dégradé.
+
+   Il vit à `--z-bubble` (100) et NON à `--z-panel` : à 300 il couvrirait la
+   barre de menu, et `Échap` deviendrait la seule sortie. Même arbitrage que le
+   CV — ce qui n'est pas modal ne se comporte pas comme un modal.
+
+   `min(100vw, 100vh)` pour le diamètre : un cercle, sur tout format d'écran.
+   En pourcentage, l'ouverture deviendrait une ellipse hors du carré. */
+.scope {
+  position: absolute; inset: 0; z-index: var(--z-bubble); pointer-events: none;
+  transform-origin: 50% 50%;
+  /* Deux rayons, et c'est la LARGEUR du cadre qui les fixe tous les deux —
+     jamais `min(100vw, 100vh)`.
+     La raison est la même que pour les bulles : le tour ajuste son champ
+     HORIZONTALEMENT (`src/lib/stops.ts`), donc la taille apparente de la lune
+     est proportionnelle à la largeur du cadre et à rien d'autre. Un rayon
+     calculé sur `min()` suivait la lune tant qu'on restait proche du 16:9 et
+     s'en décrochait ailleurs — mesuré, la cible tombait à 0,95 du limbe et
+     coupait la face de l'astre.
+
+     `--scope-moon` est le rayon APPARENT de la lune dans la VISÉE, mesuré en
+     capture : 230 px sur un cadre de 1280, soit 0,18. Il vaut pour l'excursion
+     et pour elle seule — celle-ci élargit le champ d'un facteur 1,5
+     (`TELESCOPE_FOV_PAD`) pour dégager du ciel autour de la lune, alors que
+     l'arrêt `Moon` du tour, lui, garde le cadrage plein cadre voulu par
+     Blender. Changer ce facteur oblige à re-mesurer cette valeur. */
+  --scope-moon: calc(100vw * 0.18);
+  /* L'ouverture claire, POSÉE AU-DELÀ du limbe : la lune doit se voir entière,
+     avec un peu de ciel autour, et rien ne doit empiéter dessus. Plus étroite,
+     le cache mordait sur l'astre et on ne voyait plus qu'on regardait à
+     travers quelque chose. */
+  --scope-r: calc(var(--scope-moon) * 1.2);
+  background: radial-gradient(
+    circle at 50% 50%,
+    transparent 0,
+    transparent var(--scope-r),
+    /* Le vignettage : la lumière tombe AVANT le bord du cache, sinon
+       l'ouverture a l'air découpée aux ciseaux plutôt que vue à travers une
+       optique. */
+    rgba(0, 0, 0, .55) calc(var(--scope-r) * 1.16),
+    rgba(0, 0, 0, .94) calc(var(--scope-r) * 1.3),
+    var(--ink) calc(var(--scope-r) * 1.45)
+  );
+  animation: scope-in var(--t-scope-in) var(--ease-out) both;
+}
+/* Le liseré de l'oculaire, posé sur le LIMBE de la lune — pas sur l'ouverture.
+   C'est la seule position où il se lit comme le bord d'une optique : plus
+   dedans, un trait fin en travers d'un astre ressemble à une rayure ; plus
+   dehors, il flotte dans le noir sans rien border. */
+.scope::before {
+  content: ''; position: absolute; inset: 0;
+  background: radial-gradient(
+    circle at 50% 50%,
+    transparent calc(var(--scope-moon) * 1.14),
+    rgba(var(--glow-rgb), .16) calc(var(--scope-moon) * 1.17),
+    transparent calc(var(--scope-moon) * 1.2)
+  );
+}
+/* Le réticule : quatre traits courts au bord de l'ouverture, jamais une croix
+   au centre — le centre, c'est la lune, et on ne la barre pas. */
+.scope__reticle {
+  position: absolute; left: 50%; top: 50%; width: 0; height: 0;
+  color: rgba(var(--glow-rgb), .5);
+}
+.scope__tick {
+  position: absolute; background: currentColor;
+  width: 1px; height: 14px; margin: -7px 0 0 -0.5px;
+}
+.scope__tick--n { transform: translateY(calc(var(--scope-moon) * -1.17 + 7px)); }
+.scope__tick--s { transform: translateY(calc(var(--scope-moon) * 1.17 - 7px)); }
+.scope__tick--w { width: 14px; height: 1px; margin: -0.5px 0 0 -7px;
+  transform: translateX(calc(var(--scope-moon) * -1.17 + 7px)); }
+.scope__tick--e { width: 14px; height: 1px; margin: -0.5px 0 0 -7px;
+  transform: translateX(calc(var(--scope-moon) * 1.17 - 7px)); }
+
+/* Le rappel de sortie, en haut à gauche. Il est DANS le cache et non à côté :
+   il doit donc apparaître, s'effacer et se mettre à l'échelle avec lui, sans
+   qu'on ait à synchroniser deux animations.
+   Sa place est le coin, jamais le centre — le centre est ce qu'on est venu
+   regarder. */
+.scope__exit {
+  position: absolute; top: 30px; left: 34px; margin: 0;
+  display: flex; align-items: center; gap: 9px;
+  font-size: var(--fs-meta); letter-spacing: .04em;
+  color: rgba(var(--cream-rgb), .55);
+}
+
+/* Déclaré APRÈS `.scope` : à spécificité égale, le dernier gagne, et la sortie
+   l'emporte sur l'entrée. Même règle que `.cv--out` et `.sheet--out`. */
+.scope--out { animation: scope-out var(--t-scope-out) linear both; }
+
+/* L'ouverture se resserre en mettant à l'échelle le CACHE ENTIER, et non le
+   rayon : une propriété personnalisée ne s'interpole pas en `@keyframes` sans
+   `@property`, elle sauterait d'une valeur à l'autre.
+   Agrandi, le cache déborde du cadre — donc le noir couvre toujours l'écran
+   pendant que le trou se referme, ce qu'un rayon animé n'aurait pas garanti. */
+@keyframes scope-in {
+  from { opacity: 0; transform: scale(1.25); }
+  to   { opacity: 1; transform: scale(1); }
+}
+@keyframes scope-out { from { opacity: 1; } to { opacity: 0; } }
+
 /* ===== Mouvement réduit =====
    Le critère est l'autonomie, pas le déplacement : ce qui part tout seul ou
    tourne en boucle est neutralisé, ce que l'utilisateur déclenche lui-même est
@@ -693,6 +838,14 @@
   /* fiche : le relais ne se déclenche plus au milieu du vol, puisque le vol est
      coupé côté app — elle paraît d'un bloc, sans délai. */
   .sheet { animation: sheet-in var(--t-sheet-out) linear both !important; }
+  /* pastille : l'anneau tourne en boucle tout seul, il part. Le POINT reste —
+     l'indication n'est pas du mouvement, et la retirer priverait d'affordance
+     précisément les personnes qui ont demandé moins d'animation. */
+  .ping__ring { animation: none !important; opacity: 0 !important; }
+  /* visée : l'ouverture répond à un clic, elle est donc conservée — mais
+     réduite à un fondu. Le resserrement du cercle, lui, part tout seul une
+     fois le clic donné, et c'est du mouvement plein cadre. */
+  .scope { animation: scope-out var(--t-scope-out) linear reverse both !important; }
   /* CV : il paraît AVEC la bulle de son arrêt, donc il doit se raccourcir avec
      elle. Sans cette ligne il tiendrait 480 ms pendant que la bulle en prend
      200, et l'invariant que --t-cv-in annonce serait faux là où il compte le

@@ -7,6 +7,7 @@ import { Hud } from '@/ui/Hud'
 import { CvScreen } from '@/ui/CvScreen'
 import { Menu } from '@/ui/Menu'
 import { ProjectSheet } from '@/ui/ProjectSheet'
+import { TelescopeScope } from '@/ui/TelescopeScope'
 
 /**
  * L'expérience 3D complète. One Canvas, one render camera. The scene is
@@ -59,6 +60,10 @@ export default function App3D() {
           il n'est pas modal, la barre (200) reste au-dessus et « Résumé » reste
           la porte de sortie. Il ne rend rien hors de l'arrêt CV. */}
       <CvScreen />
+      {/* La visée du télescope (#106), montée AVANT la barre et à
+          --z-bubble : elle n'est pas modale, la barre reste au-dessus et
+          cliquable. Elle ne rend rien hors de la phase TELESCOPE. */}
+      <TelescopeScope />
       <Menu />
       {/* La fiche projet (#83) est montée APRÈS la barre : elle la couvre, comme
           l'empilement panneaux 300 > barre 200 l'impose. Elle ne rend rien tant
