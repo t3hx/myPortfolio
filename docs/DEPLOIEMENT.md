@@ -22,10 +22,10 @@ squash réécrit les SHA et fait diverger les deux troncs définitivement.
 Provider **registre Docker**, jamais Nixpacks ni buildpack — l'image est déjà
 construite par GitHub Actions.
 
-| Champ | Valeur |
-| --- | --- |
-| Image | `ghcr.io/t3hx/myportfolio:latest` |
-| Port exposé | `80` |
+| Champ       | Valeur                                    |
+| ----------- | ----------------------------------------- |
+| Image       | `ghcr.io/t3hx/myportfolio:latest`         |
+| Port exposé | `80`                                      |
 | Healthcheck | `GET /` (nginx répond dès qu'il est levé) |
 
 Relever l'`applicationId` de l'application créée : il va dans les secrets.
