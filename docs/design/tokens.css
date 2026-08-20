@@ -682,11 +682,22 @@
 .scope {
   position: absolute; inset: 0; z-index: var(--z-bubble); pointer-events: none;
   transform-origin: 50% 50%;
-  /* Rayon de l'ouverture claire. La lune, à ce grossissement, est PLUS GRANDE
-     que l'ouverture — c'est ce que fait un oculaire à fort grossissement, on
-     regarde un morceau de l'astre. Tout ce qui décore le bord doit donc vivre
-     dans la zone déjà assombrie, jamais sur la face de la lune. */
-  --scope-r: calc(min(100vw, 100vh) * 0.36);
+  /* Deux rayons, et c'est la LARGEUR du cadre qui les fixe tous les deux —
+     jamais `min(100vw, 100vh)`.
+     La raison est la même que pour les bulles : le tour ajuste son champ
+     HORIZONTALEMENT (`src/lib/stops.ts`), donc la taille apparente de la lune
+     est proportionnelle à la largeur du cadre et à rien d'autre. Un rayon
+     calculé sur `min()` suivait la lune tant qu'on restait proche du 16:9 et
+     s'en décrochait ailleurs — mesuré, la cible tombait à 0,95 du limbe et
+     coupait la face de l'astre.
+
+     `--scope-moon` est le rayon APPARENT de la lune, mesuré en capture :
+     310 px sur un cadre de 1280, soit 0,242 — arrondi à 0,25 pour que la cible
+     borde le limbe par l'extérieur plutôt que de mordre dessus. */
+  --scope-moon: calc(100vw * 0.25);
+  /* L'ouverture claire, plus étroite : c'est elle qui fait tomber la lumière
+     avant le bord de l'image, donc l'impression d'optique. */
+  --scope-r: calc(100vw * 0.2);
   background: radial-gradient(
     circle at 50% 50%,
     transparent 0,
@@ -700,17 +711,17 @@
   );
   animation: scope-in var(--t-scope-in) var(--ease-out) both;
 }
-/* Le liseré de l'oculaire. Il est posé à 1,14 rayon, DANS la zone assombrie et
-   non au bord de l'ouverture : à 1,0 il tombait en pleine face de la lune, et
-   un trait fin en travers d'un astre se lit comme une rayure, pas comme le
-   bord d'une optique. Ici il borde le noir, ce qui est le rôle d'un barillet. */
+/* Le liseré de l'oculaire, posé sur le LIMBE de la lune — pas sur l'ouverture.
+   C'est la seule position où il se lit comme le bord d'une optique : plus
+   dedans, un trait fin en travers d'un astre ressemble à une rayure ; plus
+   dehors, il flotte dans le noir sans rien border. */
 .scope::before {
   content: ''; position: absolute; inset: 0;
   background: radial-gradient(
     circle at 50% 50%,
-    transparent calc(var(--scope-r) * 1.125),
-    rgba(var(--glow-rgb), .13) calc(var(--scope-r) * 1.14),
-    transparent calc(var(--scope-r) * 1.155)
+    transparent calc(var(--scope-moon) * 1.01),
+    rgba(var(--glow-rgb), .16) calc(var(--scope-moon) * 1.03),
+    transparent calc(var(--scope-moon) * 1.05)
   );
 }
 /* Le réticule : quatre traits courts au bord de l'ouverture, jamais une croix
@@ -723,12 +734,12 @@
   position: absolute; background: currentColor;
   width: 1px; height: 14px; margin: -7px 0 0 -0.5px;
 }
-.scope__tick--n { transform: translateY(calc(var(--scope-r) * -1.14 + 7px)); }
-.scope__tick--s { transform: translateY(calc(var(--scope-r) * 1.14 - 7px)); }
+.scope__tick--n { transform: translateY(calc(var(--scope-moon) * -1.03 + 7px)); }
+.scope__tick--s { transform: translateY(calc(var(--scope-moon) * 1.03 - 7px)); }
 .scope__tick--w { width: 14px; height: 1px; margin: -0.5px 0 0 -7px;
-  transform: translateX(calc(var(--scope-r) * -1.14 + 7px)); }
+  transform: translateX(calc(var(--scope-moon) * -1.03 + 7px)); }
 .scope__tick--e { width: 14px; height: 1px; margin: -0.5px 0 0 -7px;
-  transform: translateX(calc(var(--scope-r) * 1.14 - 7px)); }
+  transform: translateX(calc(var(--scope-moon) * 1.03 - 7px)); }
 
 /* Déclaré APRÈS `.scope` : à spécificité égale, le dernier gagne, et la sortie
    l'emporte sur l'entrée. Même règle que `.cv--out` et `.sheet--out`. */
@@ -740,7 +751,7 @@
    Agrandi, le cache déborde du cadre — donc le noir couvre toujours l'écran
    pendant que le trou se referme, ce qu'un rayon animé n'aurait pas garanti. */
 @keyframes scope-in {
-  from { opacity: 0; transform: scale(1.4); }
+  from { opacity: 0; transform: scale(1.25); }
   to   { opacity: 1; transform: scale(1); }
 }
 @keyframes scope-out { from { opacity: 1; } to { opacity: 0; } }

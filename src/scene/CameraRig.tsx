@@ -235,6 +235,9 @@ export function CameraRig({ stops }: CameraRigProps) {
             camera.fov = fromFov + (verticalFov(moon.hfov, camera.aspect) - fromFov) * t.v
             camera.updateProjectionMatrix()
           },
+          // L'ARRIVÉE, et pas le clic, ouvre la visée : le cache circulaire ne
+          // doit pas se poser sur une pièce qui défile encore.
+          onComplete: () => useInteraction.getState().settleTelescope(),
         })
       }
 

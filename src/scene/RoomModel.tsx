@@ -22,6 +22,7 @@ import {
 import { extractStops, orderedStops, type StopTransform } from '@/lib/stops'
 import { useInteraction } from '@/state/interaction'
 import { useLoading } from '@/state/loading'
+import { isTelescope } from '@/config/telescope'
 
 interface RoomModelProps {
   /** Appelé une fois la scène parsée et ses matériaux reconstruits. La scène
@@ -232,10 +233,29 @@ export function RoomModel({ onReady }: RoomModelProps) {
     const name = e.object.name
     console.info(`[raycast] clicked "${name}"`)
     const { phase, enterTelescope } = useInteraction.getState()
-    if (phase === 'parked' && name.toLowerCase().includes('telescope')) enterTelescope()
+    if (phase === 'parked' && isTelescope(name)) enterTelescope()
   }
 
-  return <primitive object={scene} onClick={onClick} />
+  // Le survol du télescope est publié dans l'état, pas traité ici : le cerne
+  // vit dans `TelescopeHover`, qui ne peut pas monter un second `<primitive>`
+  // sur le même objet sans le déparenter de cette scène-ci.
+  function onPointerOver(e: ThreeEvent<PointerEvent>) {
+    const { phase, hoverTelescope } = useInteraction.getState()
+    hoverTelescope(phase === 'parked' && isTelescope(e.object.name))
+  }
+
+  function onPointerOut() {
+    useInteraction.getState().hoverTelescope(false)
+  }
+
+  return (
+    <primitive
+      object={scene}
+      onClick={onClick}
+      onPointerOver={onPointerOver}
+      onPointerOut={onPointerOut}
+    />
+  )
 }
 
 /* Il n'y a plus de `preload` au niveau du module, et c'est délibéré (#25) :

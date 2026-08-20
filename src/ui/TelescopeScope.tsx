@@ -25,8 +25,11 @@ import { useInteraction } from '@/state/interaction'
 export const SCOPE_OUT_MS = 260
 
 export function TelescopeScope() {
-  const phase = useInteraction((s) => s.phase)
-  const visible = phase === 'telescope'
+  // `telescopeSettled`, PAS `phase === 'telescope'` : la phase bascule au clic,
+  // alors que la caméra met 1,6 s à rejoindre l'oculaire. Ouvrir la visée tout
+  // de suite montrait le cache posé sur une pièce encore en mouvement — on
+  // regardait dans un télescope avant d'y être arrivé.
+  const visible = useInteraction((s) => s.telescopeSettled)
 
   // Démontage différé, comme la bulle, la fiche et le CV : `visible` à false
   // lance le fondu, le démontage suit. Démonter tout de suite emporterait la
