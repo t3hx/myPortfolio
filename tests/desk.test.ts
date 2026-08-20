@@ -1,15 +1,17 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import {
+  FAN_BLADE_MATERIAL,
   FAN_RPS_MAX,
   FAN_RPS_MIN,
+  FAN_SPIN,
   PC_FANS,
   SMOKE_LIFE,
   SMOKE_OPACITY,
   SMOKE_PUFFS,
   SMOKE_RISE,
 } from '@/config/desk'
-import { fanAxis, fanDirection, fanSpeed, puff } from '@/lib/desk'
+import { fanAxis, fanSpeed, puff } from '@/lib/desk'
 
 /**
  * Le bureau qui respire (#35). Ce que l'œil ne rattrape pas : un ventilateur
@@ -52,9 +54,13 @@ describe('les vitesses', () => {
     expect(new Set(speeds.map((s) => s.toFixed(3))).size).toBeGreaterThan(7)
   })
 
-  it('alternent le sens', () => {
-    expect(fanDirection(0)).toBe(1)
-    expect(fanDirection(1)).toBe(-1)
+  it('tournent TOUTES dans le même sens', () => {
+    // Le sens était alterné, pour « casser l'impression de bloc » — une idée
+    // de designer appliquée à de la mécanique. Dans un vrai boîtier, tous les
+    // ventilateurs sont montés dans le même sens ; ce qui varie, c'est la
+    // vitesse. `FAN_SPIN` est une constante, pas une fonction du rang.
+    expect(typeof FAN_SPIN).toBe('number')
+    expect(Math.abs(FAN_SPIN)).toBe(1)
   })
 
   it('sont reproductibles', () => {
@@ -128,5 +134,17 @@ describe('le mouvement réduit', () => {
     // les ventilateurs auraient déjà pris de l'avance au moment de la capture.
     const capture = readFileSync('tests/e2e/renderComparison.ts', 'utf8')
     expect(capture.indexOf('emulateMedia')).toBeLessThan(capture.indexOf('page.goto'))
+  })
+})
+
+describe('le support rond', () => {
+  it('ne tourne pas avec les pales', () => {
+    // Chaque ventilateur est un maillage à DEUX primitives — `Mat_FanFrame`
+    // (le support) et `Mat_FanBlade` (les pales) — que le chargeur glTF monte
+    // en deux `Mesh` frères. Faire tourner le parent emportait le support,
+    // alors qu'il est vissé au boîtier.
+    const component = readFileSync('src/scene/DeskAlive.tsx', 'utf8')
+    expect(component).toContain('FAN_BLADE_MATERIAL')
+    expect(FAN_BLADE_MATERIAL).toBe('Mat_FanBlade')
   })
 })

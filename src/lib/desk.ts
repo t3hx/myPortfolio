@@ -43,12 +43,6 @@ export function fanSpeed(index: number): number {
   return FAN_RPS_MIN + r * (FAN_RPS_MAX - FAN_RPS_MIN)
 }
 
-/** Le sens de rotation, alterné : deux ventilateurs voisins qui tournent en
- *  sens contraire suffisent à casser l'impression de bloc. */
-export function fanDirection(index: number): 1 | -1 {
-  return index % 2 === 0 ? 1 : -1
-}
-
 export interface Puff {
   /** Montée depuis la surface du café, en mètres. */
   rise: number

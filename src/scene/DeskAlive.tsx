@@ -10,8 +10,16 @@ import {
   ShaderMaterial,
   Vector3,
 } from 'three'
-import { MUG_SURFACE, PC_FANS, SMOKE_PUFFS, SMOKE_SIZE_MAX, SMOKE_SIZE_MIN } from '@/config/desk'
-import { fanAxis, fanDirection, fanSpeed, puff } from '@/lib/desk'
+import {
+  FAN_BLADE_MATERIAL,
+  FAN_SPIN,
+  MUG_SURFACE,
+  PC_FANS,
+  SMOKE_PUFFS,
+  SMOKE_SIZE_MAX,
+  SMOKE_SIZE_MIN,
+} from '@/config/desk'
+import { fanAxis, fanSpeed, puff } from '@/lib/desk'
 
 /**
  * Le bureau qui respire (issue #35) : les dix ventilateurs du boîtier tournent,
@@ -34,9 +42,15 @@ interface DeskAliveProps {
 }
 
 /**
- * Une bouffée est un point rond et flou, dessiné par le fragment shader —
- * plutôt qu'une texture à charger. Le dégradé est en puissance quatre : un
- * dégradé linéaire donne un disque à bord net qu'on lit comme une bille.
+ * Une bouffée est un point rond et flou, dessiné par le fragment shader plutôt
+ * que chargé comme texture.
+ *
+ * **Le profil est gaussien, pas polynomial.** Une puissance sur `1 - d`
+ * s'annule avec une pente non nulle : le disque garde un bord, et cinquante
+ * bords empilés se lisent comme de la poussière. Une gaussienne s'éteint
+ * asymptotiquement — il n'y a plus de bord du tout, seulement une densité qui
+ * décroît, et c'est ce qui permet aux bouffées de fondre les unes dans les
+ * autres.
  */
 const SMOKE_VERT = /* glsl */ `
   attribute float size;
@@ -52,9 +66,9 @@ const SMOKE_VERT = /* glsl */ `
 const SMOKE_FRAG = /* glsl */ `
   varying float vAlpha;
   void main() {
-    float d = length(gl_PointCoord - vec2(0.5));
-    if (d > 0.5) discard;
-    float soft = pow(1.0 - d * 2.0, 4.0);
+    float d = length(gl_PointCoord - vec2(0.5)) * 2.0;
+    if (d > 1.0) discard;
+    float soft = exp(-d * d * 4.5);
     gl_FragColor = vec4(vec3(0.82, 0.84, 0.86), vAlpha * soft);
   }
 `
@@ -71,9 +85,25 @@ export function DeskAlive({ scene }: DeskAliveProps) {
         console.warn(`[desk] ventilateur « ${name} » absent du .glb — ignoré`)
         return null
       }
+      // SEULES LES PALES tournent. Chaque ventilateur est un maillage à deux
+      // primitives que le chargeur glTF monte en deux `Mesh` frères : le
+      // support rond et les pales. Faire tourner le parent emportait le
+      // support, alors qu'il est vissé au boîtier.
+      let blades: Object3D | null = null
+      object.traverse((child) => {
+        const material = (child as { material?: { name?: string } }).material
+        if (material?.name === FAN_BLADE_MATERIAL) blades = child
+      })
+      if (!blades) {
+        console.warn(`[desk] « ${name} » sans primitive « ${FAN_BLADE_MATERIAL} » — ignoré`)
+        return null
+      }
+
+      // L'axe se mesure sur le ventilateur ENTIER : le support donne le disque
+      // complet, donc la dimension fine sans ambiguïté.
       const box = new Box3().setFromObject(object)
       const size = box.getSize(new Vector3())
-      return { object, axis: fanAxis([size.x, size.y, size.z]) }
+      return { object: blades as Object3D, axis: fanAxis([size.x, size.y, size.z]) }
     }).filter((f): f is { object: Object3D; axis: 0 | 1 | 2 } => f !== null)
 
     // La fumée part de la SURFACE du café, pas du centre de la tasse.
@@ -124,7 +154,7 @@ export function DeskAlive({ scene }: DeskAliveProps) {
     for (let i = 0; i < rig.fans.length; i++) {
       const fan = rig.fans[i]
       fan.object.rotation[(['x', 'y', 'z'] as const)[fan.axis]] +=
-        fanSpeed(i) * fanDirection(i) * Math.PI * 2 * delta
+        fanSpeed(i) * FAN_SPIN * Math.PI * 2 * delta
     }
 
     const points = smoke.current
