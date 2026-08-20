@@ -19,16 +19,29 @@ squash réécrit les SHA et fait diverger les deux troncs définitivement.
 
 ### 1. L'application Dokploy
 
-Provider **registre Docker**, jamais Nixpacks ni buildpack — l'image est déjà
-construite par GitHub Actions.
+Le panneau est sur le tailnet : **http://100.72.212.99:3000** (`sovereign-vps`,
+retrouvable par `tailscale status`). C'est la valeur de `DOKPLOY_URL`.
 
-| Champ       | Valeur                                    |
-| ----------- | ----------------------------------------- |
-| Image       | `ghcr.io/t3hx/myportfolio:latest`         |
-| Port exposé | `80`                                      |
-| Healthcheck | `GET /` (nginx répond dès qu'il est levé) |
+Dans le panneau : créer une application, puis dans son onglet **General**,
+régler **`Source Type` sur `Docker`** — et non `Git`/`GitHub`, qui ferait
+construire Dokploy alors que l'image est déjà construite par Actions.
 
-Relever l'`applicationId` de l'application créée : il va dans les secrets.
+| Champ                     | Valeur                            |
+| ------------------------- | --------------------------------- |
+| Source Type               | **`Docker`**                      |
+| Docker Image              | `ghcr.io/t3hx/myportfolio:latest` |
+| Port (onglet **Domains**) | `80`                              |
+
+Puis **Save**, **Deploy**, et l'onglet **Domains** pour attacher le domaine.
+
+**L'`applicationId` se lit dans l'URL du panneau** une fois l'application
+ouverte : `.../services/application/<applicationId>`. C'est la valeur de
+`DOKPLOY_APP_ID`.
+
+**La clé d'API (`DOKPLOY_TOKEN`) se génère dans les réglages du compte.** Le
+chemin exact dépend de la version de Dokploy et n'est documenté nulle part en
+amont — le panneau expose sa propre API sous `/swagger`, une fois connecté,
+qui fait foi pour la version installée.
 
 ### 2. Rendre le paquet GHCR tirable
 
