@@ -186,3 +186,35 @@ describe('le cerne au survol', () => {
     expect(enter).toContain('telescopeHovered: false')
   })
 })
+
+describe('la pastille de désignation', () => {
+  const ping = readFileSync('src/scene/TelescopePing.tsx', 'utf8')
+
+  it('vit dans le DOM, jamais dans la scène', () => {
+    // Ce n'est pas une commodité : la boucle de comparaison capture le tampon
+    // WebGL, et les références Blender ne contiennent aucun indice d'interface.
+    // Tout ce qu'on dessinerait EN 3D au repos ferait dériver l'arrêt — et le
+    // couper sous `prefers-reduced-motion` pour sauver la mesure aurait privé
+    // d'affordance les personnes sensibles au mouvement, c'est-à-dire laissé
+    // le test décider du design.
+    expect(ping).toContain('<Html')
+    expect(ping).toContain('portal={portal}')
+  })
+
+  it("ne s'affiche qu'où le clic répond", () => {
+    // Une pastille allumée là où le clic ne fait rien est une promesse non
+    // tenue — la même faute que le survol des cartouches de formation.
+    expect(ping).toContain("phase === 'parked'")
+    expect(ping).toContain('TELESCOPE_STOP')
+    // Et elle s'efface au survol : le cerne prend le relais.
+    expect(ping).toContain('hovered')
+  })
+
+  it('garde le point sous mouvement réduit, et perd l’anneau', () => {
+    // L'anneau tourne en boucle tout seul : il part. Le point reste —
+    // l'indication n'est pas du mouvement.
+    const reduced = tokens.slice(tokens.indexOf('@media (prefers-reduced-motion'))
+    expect(reduced).toContain('.ping__ring')
+    expect(reduced).not.toContain('.ping__dot')
+  })
+})

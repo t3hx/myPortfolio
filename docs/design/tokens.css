@@ -48,6 +48,7 @@
   --t-cv-out: 200ms;      /* même sortie qu'une bulle — voir CV_OUT_MS */
   --t-decrypt: 1600ms;    /* déchiffrement du nom — voir DECRYPT_MS */
   --t-cascade: 420ms;     /* déchiffrement d'un titre — voir CASCADE_MS */
+  --t-ping: 2400ms;       /* cycle de la pastille qui désigne un objet */
   --t-scope-in: 620ms;    /* ouverture de la visée du télescope */
   --t-scope-out: 260ms;   /* fermeture — voir SCOPE_OUT_MS */
   --t-sweep: 700ms;       /* balayage d'une cartouche au survol */
@@ -664,6 +665,39 @@
 @keyframes cv-in { from { opacity: 0; } to { opacity: 1; } }
 @keyframes cv-out { from { opacity: 1; } to { opacity: 0; } }
 
+/* ===== Pastille de désignation (#106) =====
+   Elle dit qu'un objet de la scène est cliquable, là où rien ne le disait avant
+   qu'on l'ait déjà survolé — or on ne survole que ce qu'on soupçonne.
+
+   Son anatomie est celle du `bubble__dot` : même point, même cyan. Rien de
+   nouveau dans le vocabulaire, seulement l'anneau qui s'en échappe.
+
+   Elle est en DOM et jamais en 3D. Ce n'est pas une commodité : la boucle de
+   comparaison capture le tampon WebGL, dont les références Blender ne
+   contiennent aucun indice d'interface — tout ce qu'on dessinerait dans la
+   scène au repos ferait dériver la mesure de l'arrêt. */
+.ping {
+  position: relative; display: block; width: 10px; height: 10px;
+  pointer-events: none;
+}
+.ping__dot {
+  position: absolute; inset: 0; border-radius: 50%;
+  background: var(--glow);
+  box-shadow: 0 0 10px rgba(var(--glow-rgb), .65);
+}
+/* L'anneau part du point et s'efface en s'écartant — le geste d'un radar. Il
+   s'éteint AVANT d'avoir fini de grandir : un anneau qui disparaît net à son
+   diamètre maximal se lit comme un cercle qui clignote, pas comme une onde. */
+.ping__ring {
+  position: absolute; inset: 0; border-radius: 50%;
+  border: 1px solid rgba(var(--glow-rgb), .9);
+  animation: ping-out var(--t-ping) var(--ease-out) infinite;
+}
+@keyframes ping-out {
+  0%        { transform: scale(1);   opacity: .9; }
+  70%, 100% { transform: scale(3.4); opacity: 0; }
+}
+
 /* ===== Visée du télescope (#106) =====
    Un cache circulaire qui dit qu'on regarde DANS un télescope, au lieu de
    simplement voler vers la lune plein cadre.
@@ -792,6 +826,10 @@
   /* fiche : le relais ne se déclenche plus au milieu du vol, puisque le vol est
      coupé côté app — elle paraît d'un bloc, sans délai. */
   .sheet { animation: sheet-in var(--t-sheet-out) linear both !important; }
+  /* pastille : l'anneau tourne en boucle tout seul, il part. Le POINT reste —
+     l'indication n'est pas du mouvement, et la retirer priverait d'affordance
+     précisément les personnes qui ont demandé moins d'animation. */
+  .ping__ring { animation: none !important; opacity: 0 !important; }
   /* visée : l'ouverture répond à un clic, elle est donc conservée — mais
      réduite à un fondu. Le resserrement du cercle, lui, part tout seul une
      fois le clic donné, et c'est du mouvement plein cadre. */

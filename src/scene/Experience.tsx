@@ -12,6 +12,7 @@ import { CameraRig } from '@/scene/CameraRig'
 import { CatAlive } from '@/scene/CatAlive'
 import { DeskAlive } from '@/scene/DeskAlive'
 import { TelescopeHover } from '@/scene/TelescopeHover'
+import { TelescopePing } from '@/scene/TelescopePing'
 import { Outlines } from '@/scene/Outlines'
 import { RoomModel } from '@/scene/RoomModel'
 import { useInteraction } from '@/state/interaction'
@@ -87,6 +88,11 @@ export function Experience({ bubbleLayer }: ExperienceProps) {
           son arrêt ne le disait pas. Ne rend rien — les lignes sont enfants de
           l'objet qu'elles cernent. */}
       {scene && <TelescopeHover scene={scene} />}
+
+      {/* La pastille qui désigne le télescope (#106). En DOM et pas en 3D :
+          la boucle de comparaison capture le tampon WebGL, où la référence
+          Blender ne contient aucun indice d'interface. */}
+      {scene && <TelescopePing scene={scene} portal={bubbleLayer} />}
 
       {/* Contours spike: ?outline=off|hull|edges|both — see Outlines.tsx. */}
       {stops.length > 0 && <Outlines />}

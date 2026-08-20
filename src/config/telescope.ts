@@ -61,3 +61,16 @@ export const TELESCOPE_APPROACH_HFOV = 52
  * champ, et elle seule — le tour continue de rendre le cadrage authored.
  */
 export const TELESCOPE_FOV_PAD = 1.5
+
+/**
+ * Hauteur de la pastille au-dessus du centre du télescope, en fraction de sa
+ * hauteur totale.
+ *
+ * MESURÉE, parce que le centre de la boîte englobante ne tombe pas où on
+ * l'imagine : le télescope descend jusqu'à son pied, donc son centre 3D
+ * projette SOUS le cadre (y = 898 pour 720 de haut). Au sommet de la boîte, la
+ * pastille flotte dans le ciel et se lit comme une étoile — c'est ce qui est
+ * arrivé au premier essai. 0,34 la pose sur le tube lui-même, la seule
+ * position où elle désigne l'objet au lieu de le survoler.
+ */
+export const PING_RISE = 0.34
