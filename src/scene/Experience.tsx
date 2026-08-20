@@ -10,6 +10,7 @@ import { Bubble } from '@/scene/Bubble'
 import { CabinetDrawer } from '@/scene/CabinetDrawer'
 import { CameraRig } from '@/scene/CameraRig'
 import { CatAlive } from '@/scene/CatAlive'
+import { DeskAlive } from '@/scene/DeskAlive'
 import { Outlines } from '@/scene/Outlines'
 import { RoomModel } from '@/scene/RoomModel'
 import { useInteraction } from '@/state/interaction'
@@ -75,6 +76,11 @@ export function Experience({ bubbleLayer }: ExperienceProps) {
           transformations — aucun matériau touché, donc aucun risque pour le
           rendu cuit. */}
       {scene && <CatAlive scene={scene} />}
+
+      {/* Le bureau qui respire (#35) : les ventilateurs tournent, la tasse
+          fume. La fumée est de la géométrie AJOUTÉE, pas un matériau cuit
+          modifié — le pipeline non éclairé n'est pas touché. */}
+      {scene && <DeskAlive scene={scene} />}
 
       {/* Contours spike: ?outline=off|hull|edges|both — see Outlines.tsx. */}
       {stops.length > 0 && <Outlines />}
