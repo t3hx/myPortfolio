@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { CAMERA_STOPS } from '@/config/cameraStops'
 import { CV, CV_JOBS_EMPTY, type CvGlyph } from '@/content/cv'
 import { CASCADE_MS, CASCADE_STEP_MS, CV_OUT_MS, CV_STOP_LABEL, DECRYPT_MS } from '@/ui/CvScreen'
+import { LOCALES, t, tm } from '@/lib/locale'
 
 /**
  * Le CV (#93). Quatre choses qu'aucune relecture ne rattraperait :
@@ -206,13 +207,18 @@ describe('le contenu du CV', () => {
     // Le composant lit ces champs sans garde : un poste incomplet laisserait un
     // blanc dans la composition plutôt qu'une erreur.
     for (const job of CV.jobs) {
-      expect(job.title, job.company).toBeTruthy()
-      expect(job.company, job.title).toBeTruthy()
+      expect(job.company, job.company).toBeTruthy()
       expect(job.period, job.company).toBeTruthy()
-      // Quatre au minimum (décision de l'auteur, 2026-08-20) : une cartouche
-      // qui n'en montre que deux ne récompense pas le survol qui l'a ouverte.
-      expect(job.missions.length, job.company).toBeGreaterThanOrEqual(4)
-      for (const mission of job.missions) expect(mission, job.company).toBeTruthy()
+      // Les DEUX langues (#33) : une traduction oubliée laisse un blanc dans
+      // la composition, exactement comme un champ vide.
+      for (const locale of LOCALES) {
+        const where = `${job.company} (${locale})`
+        expect(t(job.title, locale).trim(), where).not.toBe('')
+        // Quatre au minimum (décision de l'auteur, 2026-08-20) : une cartouche
+        // qui n'en montre que deux ne récompense pas le survol qui l'a ouverte.
+        expect(t(job.missions, locale).length, where).toBeGreaterThanOrEqual(4)
+        for (const m of t(job.missions, locale)) expect(m.trim(), where).not.toBe('')
+      }
     }
   })
 
@@ -224,24 +230,32 @@ describe('le contenu du CV', () => {
   })
 
   it('a des faits complets et une phrase de repli', () => {
-    expect(CV.factsTitle).toBeTruthy()
+    for (const locale of LOCALES) expect(t(CV.factsTitle, locale).trim()).not.toBe('')
     expect(CV.facts.length).toBeGreaterThan(0)
     for (const fact of CV.facts) {
-      expect(fact.label).toBeTruthy()
-      expect(fact.value).toBeTruthy()
+      for (const locale of LOCALES) {
+        expect(t(fact.label, locale).trim(), locale).not.toBe('')
+        expect(tm(fact.value, locale).trim(), locale).not.toBe('')
+      }
     }
-    expect(CV_JOBS_EMPTY.trim().length).toBeGreaterThan(0)
+    for (const locale of LOCALES) {
+      expect(t(CV_JOBS_EMPTY, locale).trim().length, locale).toBeGreaterThan(0)
+    }
   })
 })
 
 describe('les formations', () => {
   it('affichent chaque cartouche sans trou', () => {
-    expect(CV.formationsTitle.trim()).not.toBe('')
     expect(CV.formations.length).toBeGreaterThan(0)
+    for (const locale of LOCALES) {
+      expect(t(CV.formationsTitle, locale).trim(), locale).not.toBe('')
+    }
     for (const f of CV.formations) {
-      expect(f.title, f.school).toBeTruthy()
-      expect(f.school, f.title).toBeTruthy()
+      expect(f.school, f.school).toBeTruthy()
       expect(f.period, f.school).toBeTruthy()
+      for (const locale of LOCALES) {
+        expect(t(f.title, locale).trim(), `${f.school} (${locale})`).not.toBe('')
+      }
     }
   })
 
@@ -270,7 +284,12 @@ describe('les réglettes de vignettes', () => {
     // ne relierait à sa cause.
     for (const [strip, items] of strips) {
       expect(items.length, strip).toBeGreaterThan(0)
-      for (const item of items) expect(item.name.trim(), strip).not.toBe('')
+      for (const item of items) {
+        // `tm` : un savoir-être est traduit, une technologie non — même champ.
+        for (const locale of LOCALES) {
+          expect(tm(item.name, locale).trim(), `${strip} (${locale})`).not.toBe('')
+        }
+      }
     }
   })
 
@@ -321,9 +340,13 @@ describe('« Le cap »', () => {
     // Le budget est vertical, pas éditorial : à 13 px dans une carte de ~545 px,
     // une ligne porte ~95 signes. Au-delà de quatre, le CV déborde de l'écran
     // dès qu'un accordéon s'ouvre — mesuré, la marge n'est que de 33 px.
-    expect(CV.outlookTitle.trim()).not.toBe('')
-    expect(CV.outlook.trim()).not.toBe('')
-    expect(CV.outlook.length).toBeLessThanOrEqual(400)
+    // Le plafond vaut pour les DEUX langues : c'est la hauteur rendue qui est
+    // contrainte, et elle ne connaît pas la langue.
+    for (const locale of LOCALES) {
+      expect(t(CV.outlookTitle, locale).trim(), locale).not.toBe('')
+      expect(t(CV.outlook, locale).trim(), locale).not.toBe('')
+      expect(t(CV.outlook, locale).length, locale).toBeLessThanOrEqual(400)
+    }
   })
 })
 

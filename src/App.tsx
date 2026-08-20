@@ -1,4 +1,4 @@
-import { Suspense, lazy, useState } from 'react'
+import { Suspense, lazy, useEffect, useState } from 'react'
 import {
   clearStoredChoice,
   isWebGLAvailable,
@@ -8,6 +8,7 @@ import {
   type ExperienceChoice,
   type ExperienceResolution,
 } from '@/lib/experienceChoice'
+import { useLocale } from '@/state/locale'
 import { ClassicApp } from '@/ui/ClassicApp'
 import { Preloader } from '@/ui/Preloader'
 import { Preselection } from '@/ui/Preselection'
@@ -39,6 +40,16 @@ function resolveFromBrowser(): ExperienceResolution {
 
 export default function App() {
   const [resolution, setResolution] = useState<ExperienceResolution>(resolveFromBrowser)
+  const locale = useLocale((state) => state.locale)
+
+  // `lang` du document (#33) — accessibilité et SEO. Écrit ICI et nulle part
+  // ailleurs : `index.html` livre `lang="fr"` en dur, et le store peut résoudre
+  // `en` dès le chargement. Deux endroits qui écrivent le même attribut
+  // finiraient par diverger, et ce serait le premier rendu qui aurait tort —
+  // celui qu'aucun test ne regarde.
+  useEffect(() => {
+    document.documentElement.lang = locale
+  }, [locale])
 
   const choose = (choice: ExperienceChoice) => {
     storeChoice(choice)

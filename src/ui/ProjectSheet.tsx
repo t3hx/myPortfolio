@@ -1,5 +1,8 @@
 import { useEffect, useState } from 'react'
 import { PROJECTS } from '@/content/projects'
+import { UI } from '@/content/ui'
+import { t } from '@/lib/locale'
+import { useLocale } from '@/state/locale'
 import { useInteraction } from '@/state/interaction'
 
 /**
@@ -26,6 +29,7 @@ export function ProjectSheet() {
   const phase = useInteraction((s) => s.phase)
   const selected = useInteraction((s) => s.selectedProject)
   const closePanel = useInteraction((s) => s.closePanel)
+  const locale = useLocale((s) => s.locale)
 
   const visible = phase === 'panel' && selected !== null
 
@@ -59,11 +63,11 @@ export function ProjectSheet() {
       aria-labelledby="sheet-title"
     >
       <div className="sheet__close">
-        <span className="sheet__key">Échap</span>
+        <span className="sheet__key">{t(UI.sheet.escape, locale)}</span>
         <button
           className="sheet__close-btn"
           type="button"
-          aria-label="Fermer la fiche"
+          aria-label={t(UI.sheet.close, locale)}
           onClick={closePanel}
         >
           ×
@@ -78,28 +82,28 @@ export function ProjectSheet() {
         {project.cover ? (
           <img className="sheet__cover" src={project.cover} alt="" />
         ) : (
-          <div className="sheet__cover">illustration</div>
+          <div className="sheet__cover">{t(UI.sheet.cover, locale)}</div>
         )}
 
         <div>
           <header className="sheet__kicker">
             <span className="sheet__dot" />
-            <span className="sheet__label">Projet</span>
+            <span className="sheet__label">{t(UI.sheet.kicker, locale)}</span>
           </header>
 
           <h1 className="sheet__title" id="sheet-title">
             {project.name}
           </h1>
-          <p className="sheet__tagline">{project.tagline}</p>
+          <p className="sheet__tagline">{t(project.tagline, locale)}</p>
 
           <div className="sheet__meta">
             <div className="sheet__meta-item">
-              <span className="sheet__meta-key">Année</span>
+              <span className="sheet__meta-key">{t(UI.sheet.year, locale)}</span>
               <span className="sheet__meta-value sheet__meta-value--mono">{project.year}</span>
             </div>
             <div className="sheet__meta-item">
-              <span className="sheet__meta-key">Rôle</span>
-              <span className="sheet__meta-value">{project.role}</span>
+              <span className="sheet__meta-key">{t(UI.sheet.role, locale)}</span>
+              <span className="sheet__meta-value">{t(project.role, locale)}</span>
             </div>
           </div>
 
@@ -112,7 +116,7 @@ export function ProjectSheet() {
           </ul>
 
           <ul className="sheet__points">
-            {project.highlights.map((point) => (
+            {t(project.highlights, locale).map((point) => (
               <li key={point}>{point}</li>
             ))}
           </ul>
@@ -130,7 +134,7 @@ export function ProjectSheet() {
                   target="_blank"
                   rel="noreferrer"
                 >
-                  {link.label}
+                  {t(link.label, locale)}
                 </a>
               ))}
             </div>

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { DRAWER_CAPACITY, TAB_LABEL_MAX_CHARS } from '@/config/cabinet'
 import { GENERIC_COVER_SRC, PROJECTS, PROJECTS_EMPTY } from '@/content/projects'
+import { LOCALES, t } from '@/lib/locale'
 
 /**
  * `PROJECTS` n'est pas qu'une liste de textes : c'est la source du nombre de
@@ -39,13 +40,18 @@ describe('PROJECTS', () => {
   })
 
   it('remplit ce qu’une fiche promet', () => {
+    // Les DEUX langues (#33) : une traduction oubliée laisse un blanc dans la
+    // composition, exactement comme un champ vide — et rien ne le dirait.
     for (const p of PROJECTS) {
       expect(p.name.trim(), p.slug).not.toBe('')
-      expect(p.tagline.trim(), p.slug).not.toBe('')
       expect(p.year.trim(), p.slug).not.toBe('')
-      expect(p.role.trim(), p.slug).not.toBe('')
       expect(p.stack.length, p.slug).toBeGreaterThan(0)
-      expect(p.highlights.length, p.slug).toBeGreaterThan(0)
+      for (const locale of LOCALES) {
+        const where = `${p.slug} (${locale})`
+        expect(t(p.tagline, locale).trim(), where).not.toBe('')
+        expect(t(p.role, locale).trim(), where).not.toBe('')
+        expect(t(p.highlights, locale).length, where).toBeGreaterThan(0)
+      }
     }
   })
 
@@ -57,7 +63,9 @@ describe('PROJECTS', () => {
       if (p.links === undefined) continue
       expect(p.links.length, p.slug).toBeGreaterThan(0)
       for (const link of p.links) {
-        expect(link.label.trim(), p.slug).not.toBe('')
+        for (const locale of LOCALES) {
+          expect(t(link.label, locale).trim(), `${p.slug} (${locale})`).not.toBe('')
+        }
         expect(link.href, p.slug).toMatch(/^https:\/\//)
       }
     }
@@ -77,8 +85,10 @@ describe('les replis', () => {
     // Zéro projet est un état possible, pas une panne. Et c'est UNE PHRASE, pas
     // un écran : sans dossier à cliquer, aucune fiche ne s'ouvre jamais — le
     // repli prend la place de la bulle de la commode (#78).
-    expect(PROJECTS_EMPTY.trim()).not.toBe('')
-    expect(PROJECTS_EMPTY).not.toMatch(/\n/)
+    for (const locale of LOCALES) {
+      expect(t(PROJECTS_EMPTY, locale).trim(), locale).not.toBe('')
+      expect(t(PROJECTS_EMPTY, locale), locale).not.toMatch(/\n/)
+    }
   })
 
   it('vise un seul chemin de couverture générique', () => {

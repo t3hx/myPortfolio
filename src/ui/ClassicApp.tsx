@@ -1,4 +1,7 @@
 import { Logo } from '@/ui/Logo'
+import { UI } from '@/content/ui'
+import { t } from '@/lib/locale'
+import { useLocale } from '@/state/locale'
 
 /**
  * Version classique — pour l'instant un échafaudage honnête : la vraie page 2D
@@ -15,25 +18,22 @@ export function ClassicApp({
   /** Rouvre l'écran de pré-sélection (efface le choix mémorisé). */
   onReopen: () => void
 }) {
+  const locale = useLocale((s) => s.locale)
+
   return (
     <main className="stage">
       <div className="presel classic">
         <header className="presel__head">
           <Logo />
-          <p className="presel__eyebrow">Portfolio — expérience classique</p>
-          <h1 className="presel__title">La version légère arrive.</h1>
+          <p className="presel__eyebrow">{t(UI.classic.eyebrow, locale)}</p>
+          <h1 className="presel__title">{t(UI.classic.title, locale)}</h1>
         </header>
-        <p className="classic__body">
-          Cette page racontera la même histoire que la pièce en 3D — projets, CV, contact — en HTML
-          léger et accessible. Elle est en construction.
-        </p>
+        <p className="classic__body">{t(UI.classic.body, locale)}</p>
         {autoFallback ? (
-          <p className="presel__note">
-            WebGL n'est pas disponible sur cet appareil — vous avez été orienté ici automatiquement.
-          </p>
+          <p className="presel__note">{t(UI.classic.noWebgl, locale)}</p>
         ) : (
           <button type="button" className="classic__switch" onClick={onReopen}>
-            changer d'expérience
+            {t(UI.classic.switch, locale)}
           </button>
         )}
       </div>

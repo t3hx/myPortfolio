@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { CAMERA_STOPS } from '@/config/cameraStops'
 import { CV, CV_JOBS_EMPTY, type CvGlyph } from '@/content/cv'
+import { UI } from '@/content/ui'
+import { type Locale, t, tm } from '@/lib/locale'
+import { useLocale } from '@/state/locale'
 import { useInteraction } from '@/state/interaction'
 
 /**
@@ -156,17 +159,30 @@ function CvName({ text, elapsed }: { text: string; elapsed: number | null }) {
  * — une icône cassée est pire qu'un vide assumé, et c'est la donnée qui décide,
  * jamais le réseau. Même discipline que la couverture d'une fiche projet.
  */
-function CvTiles({ items, variant }: { items: CvGlyph[]; variant: string }) {
+function CvTiles({
+  items,
+  variant,
+  locale,
+}: {
+  items: CvGlyph[]
+  variant: string
+  locale: Locale
+}) {
   return (
     <div className={`cv__tiles cv__tiles--${variant}`}>
-      {items.map((item) => (
-        <div className="cv__tile" key={item.name}>
-          <span className="cv__tile-mark" aria-hidden="true">
-            {item.icon ? <img src={item.icon} alt="" /> : item.name.slice(0, 1)}
-          </span>
-          <span className="cv__tile-label">{item.name}</span>
-        </div>
-      ))}
+      {items.map((item) => {
+        // `tm` et pas `t` : un savoir-être se traduit, un nom de technologie
+        // non — et c'est le même champ. Voir `MaybeLocalized`.
+        const name = tm(item.name, locale)
+        return (
+          <div className="cv__tile" key={name}>
+            <span className="cv__tile-mark" aria-hidden="true">
+              {item.icon ? <img src={item.icon} alt="" /> : name.slice(0, 1)}
+            </span>
+            <span className="cv__tile-label">{name}</span>
+          </div>
+        )
+      })}
     </div>
   )
 }
@@ -175,6 +191,7 @@ export function CvScreen() {
   const phase = useInteraction((s) => s.phase)
   const stopIndex = useInteraction((s) => s.stopIndex)
   const root = useRef<HTMLElement>(null)
+  const locale = useLocale((s) => s.locale)
 
   const visible = phase === 'parked' && CAMERA_STOPS[stopIndex]?.label === CV_STOP_LABEL
 
@@ -228,7 +245,11 @@ export function CvScreen() {
   if (!mounted) return null
 
   return (
-    <section ref={root} className={visible ? 'cv' : 'cv cv--out'} aria-label="Curriculum vitae">
+    <section
+      ref={root}
+      className={visible ? 'cv' : 'cv cv--out'}
+      aria-label={t(UI.cv.region, locale)}
+    >
       <CvName text={CV.identity.name} elapsed={elapsed} />
 
       <div className="cv__row">
@@ -237,26 +258,30 @@ export function CvScreen() {
             fichier absent afficherait une icône cassée, ce qui est pire qu'un
             vide assumé. */}
         <div className="cv__photo">
-          {CV.identity.photo ? <img src={CV.identity.photo} alt={CV.identity.alt} /> : 'photo'}
+          {CV.identity.photo ? (
+            <img src={CV.identity.photo} alt={t(CV.identity.alt, locale)} />
+          ) : (
+            t(UI.cv.photo, locale)
+          )}
         </div>
 
         {/* Le savoir-être s'intercale entre la photo et les faits (2026-08-20) :
             trois cartes de largeur égale, la photo donnant la hauteur. */}
         <div className="cv__card cv__card--traits">
           <h2 className="cv__card-title">
-            <Scrambled text={CV.traitsTitle} elapsed={elapsed} delay={cue(1)} />
+            <Scrambled text={t(CV.traitsTitle, locale)} elapsed={elapsed} delay={cue(1)} />
           </h2>
-          <CvTiles items={CV.traits} variant="traits" />
+          <CvTiles items={CV.traits} variant="traits" locale={locale} />
         </div>
 
         <div className="cv__card">
           <h2 className="cv__card-title">
-            <Scrambled text={CV.factsTitle} elapsed={elapsed} delay={cue(2)} />
+            <Scrambled text={t(CV.factsTitle, locale)} elapsed={elapsed} delay={cue(2)} />
           </h2>
           {CV.facts.map((fact) => (
-            <div className="cv__fact" key={fact.label}>
-              <b>{fact.label}</b>
-              <span>{fact.value}</span>
+            <div className="cv__fact" key={fact.label.fr}>
+              <b>{t(fact.label, locale)}</b>
+              <span>{tm(fact.value, locale)}</span>
             </div>
           ))}
         </div>
@@ -264,9 +289,9 @@ export function CvScreen() {
 
       <div className="cv__card">
         <h2 className="cv__card-title">
-          <Scrambled text={CV.skillsTitle} elapsed={elapsed} delay={cue(3)} />
+          <Scrambled text={t(CV.skillsTitle, locale)} elapsed={elapsed} delay={cue(3)} />
         </h2>
-        <CvTiles items={CV.skills} variant="skills" />
+        <CvTiles items={CV.skills} variant="skills" locale={locale} />
       </div>
 
       {/* « Le cap » : la seule ligne du CV qui parle à la première personne,
@@ -278,26 +303,26 @@ export function CvScreen() {
           section à part entière, au même rang qu'Expériences et Formations, et
           la marge du titre est ce qui la détache du savoir-faire au-dessus. */}
       <h2 className="cv__section-title">
-        <Scrambled text={CV.outlookTitle} elapsed={elapsed} delay={cue(4)} />
+        <Scrambled text={t(CV.outlookTitle, locale)} elapsed={elapsed} delay={cue(4)} />
       </h2>
       <div className="cv__card">
-        <p className="cv__outlook-text">{CV.outlook}</p>
+        <p className="cv__outlook-text">{t(CV.outlook, locale)}</p>
       </div>
 
       <h2 className="cv__section-title">
-        <Scrambled text={CV.jobsTitle} elapsed={elapsed} delay={cue(5)} />
+        <Scrambled text={t(CV.jobsTitle, locale)} elapsed={elapsed} delay={cue(5)} />
       </h2>
 
       {/* Aucun poste : une phrase, jamais un écran vide. L'identité et les
           langues restent là — seul le parcours manque, et il le dit. */}
       {CV.jobs.length === 0 ? (
-        <p className="cv__empty">{CV_JOBS_EMPTY}</p>
+        <p className="cv__empty">{t(CV_JOBS_EMPTY, locale)}</p>
       ) : (
         CV.jobs.map((job, i) => (
           <div className="job" key={`${job.company}-${job.period}`} tabIndex={0}>
             <div className="job__head">
               <span className="job__title">
-                <Scrambled text={job.title} elapsed={elapsed} delay={cue(6 + i)} />
+                <Scrambled text={t(job.title, locale)} elapsed={elapsed} delay={cue(6 + i)} />
               </span>
               <span className="job__company">{job.company}</span>
               <span className="job__period">{job.period}</span>
@@ -307,7 +332,7 @@ export function CvScreen() {
                 souris pour reproduire ce que le sélecteur fait seul. */}
             <div className="job__missions">
               <ul>
-                {job.missions.map((mission) => (
+                {t(job.missions, locale).map((mission) => (
                   <li key={mission}>{mission}</li>
                 ))}
               </ul>
@@ -317,7 +342,11 @@ export function CvScreen() {
       )}
 
       <h2 className="cv__section-title">
-        <Scrambled text={CV.formationsTitle} elapsed={elapsed} delay={cue(6 + CV.jobs.length)} />
+        <Scrambled
+          text={t(CV.formationsTitle, locale)}
+          elapsed={elapsed}
+          delay={cue(6 + CV.jobs.length)}
+        />
       </h2>
       {/* Mêmes cartouches, MOINS l'accordéon : un diplôme n'a pas de missions à
           dérouler. `--static` retire aussi la réaction au survol — un fond qui
@@ -328,7 +357,7 @@ export function CvScreen() {
           <div className="job__head">
             <span className="job__title">
               <Scrambled
-                text={formation.title}
+                text={t(formation.title, locale)}
                 elapsed={elapsed}
                 delay={cue(7 + CV.jobs.length + i)}
               />
