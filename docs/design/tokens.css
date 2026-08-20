@@ -195,12 +195,23 @@
 }
 .menu__social:hover, .menu__social:focus-visible { background: rgba(var(--cream-rgb), .09); color: var(--cream); }
 .menu__lang { display: flex; flex-direction: column; align-items: center; gap: 3px; margin-top: 10px; font-size: 10px; font-weight: 600; letter-spacing: .08em; }
+/* Les deux côtés sont des BOUTONS depuis #33, et un bouton arrive avec son
+   chrome système — fond gris, bordure biseautée, et surtout sa police à lui :
+   un `<button>` n'hérite PAS de `font-family`. C'est exactement la faute qui
+   avait fait juger la barre « cheap » à sa livraison ; ces quatre remises à
+   zéro sont ce qui l'évite. */
+.menu__lang button {
+  appearance: none; background: none; border: 0; padding: 0;
+  font: inherit; letter-spacing: inherit; color: inherit; cursor: pointer;
+}
 .menu__lang-on  { color: var(--glow); }
 .menu__lang-off { color: rgba(var(--cream-rgb), .45); cursor: pointer; }
 /* `:not([aria-disabled])` : tant que le bilingue n'existe pas (#33), EN est
    rendu inerte — il ne doit pas s'allumer au survol comme s'il attendait un clic. */
-.menu__lang-off:not([aria-disabled='true']):hover { color: var(--cream); }
-.menu__lang-off[aria-disabled='true'] { cursor: default; }
+.menu__lang-off:hover, .menu__lang-off:focus-visible { color: var(--cream); outline: none; }
+/* Le côté actif reste cliquable : le désactiver ferait disparaître
+   l'indicateur, or c'est lui qui dit dans quelle langue on est. */
+.menu__lang-on { cursor: default; }
 .menu__lang-rule { width: 14px; height: 1px; background: rgba(var(--cream-rgb), .2); }
 
 /* ===== Pré-loader (écran 0b) =====

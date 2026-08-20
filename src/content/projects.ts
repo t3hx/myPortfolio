@@ -15,9 +15,11 @@
  * leur auteur. Ce qui est vérifié par les tests, c'est la FORME — pas la prose.
  */
 
+import type { Localized } from '@/lib/locale'
+
 export interface ProjectLink {
   /** Ce qui s'affiche : « Code », « Voir le site »… */
-  label: string
+  label: Localized
   href: string
 }
 
@@ -30,13 +32,14 @@ export interface Project {
    *  Souvent plus court que `name` : « Celestial Walker » ne rentre pas. */
   tabLabel: string
   /** Une phrase, celle qu'on lit avant tout le reste. */
-  tagline: string
+  tagline: Localized
   /** « 2026 » ou « 2025 — 2026 ». Du texte : ce n'est pas une date qu'on trie. */
   year: string
-  role: string
+  role: Localized
+  /** Jamais traduit : un nom de technologie n'a pas de version française. */
   stack: string[]
   /** Deux ou trois faits saillants. Ni un journal de bord, ni un CV. */
-  highlights: string[]
+  highlights: Localized<string[]>
   /**
    * Absent = aucun lien affiché, et c'est délibéré pour les dépôts privés.
    *
@@ -53,63 +56,104 @@ export const PROJECTS: Project[] = [
     slug: 'owlog',
     name: 'Owlog',
     tabLabel: 'Owlog',
-    tagline: "Le visionnage est l'unité d'enregistrement, pas le film.",
+    tagline: {
+      fr: "Le visionnage est l'unité d'enregistrement, pas le film.",
+      en: 'A viewing is the unit of record, not the film.',
+    },
     year: '2026',
-    role: 'Conception et développement',
+    role: { fr: 'Conception et développement', en: 'Design and development' },
     stack: ['TypeScript', 'PWA', 'Nuxt'],
-    highlights: [
-      'Un même film revu trois fois compte trois entrées, pas une ligne modifiée.',
-      'Fonctionne hors ligne : le suivi se fait souvent loin du réseau.',
-    ],
+    highlights: {
+      fr: [
+        'Un même film revu trois fois compte trois entrées, pas une ligne modifiée.',
+        'Fonctionne hors ligne : le suivi se fait souvent loin du réseau.',
+      ],
+      en: [
+        'The same film watched three times is three entries, not one edited row.',
+        'Works offline: logging often happens far from a network.',
+      ],
+    },
   },
   {
     slug: 'odysong',
     name: 'Odysong',
     tabLabel: 'Odysong',
-    tagline: 'Un voyage en 3D fabriqué à partir de vos goûts musicaux Spotify.',
+    tagline: {
+      fr: 'Un voyage en 3D fabriqué à partir de vos goûts musicaux Spotify.',
+      en: 'A 3D journey built from your Spotify listening.',
+    },
     year: '2026',
-    role: 'Conception et développement',
+    role: { fr: 'Conception et développement', en: 'Design and development' },
     stack: ['TypeScript', 'WebGL', 'API Spotify'],
-    highlights: ["Le paysage traversé est dérivé de l'écoute réelle, pas d'un décor générique."],
+    highlights: {
+      fr: ["Le paysage traversé est dérivé de l'écoute réelle, pas d'un décor générique."],
+      en: ['The landscape is derived from real listening, not from a generic backdrop.'],
+    },
   },
   {
     slug: 'celestial-walker',
     name: 'Celestial Walker',
     tabLabel: 'Celestial',
-    tagline: "Une visite du système solaire, à l'échelle, dans le navigateur.",
+    tagline: {
+      fr: "Une visite du système solaire, à l'échelle, dans le navigateur.",
+      en: 'A tour of the solar system, to scale, in the browser.',
+    },
     year: '2026',
-    role: 'Développement',
+    role: { fr: 'Développement', en: 'Development' },
     stack: ['Nuxt', 'TypeScript', 'Three.js'],
-    highlights: ['Architecture documentée en composables, factories et stores.'],
-    links: [{ label: 'Code', href: 'https://github.com/t3hx/celestial-walker-nuxt' }],
+    highlights: {
+      fr: ['Architecture documentée en composables, factories et stores.'],
+      en: ['Architecture documented as composables, factories and stores.'],
+    },
+    links: [
+      { label: { fr: 'Code', en: 'Code' }, href: 'https://github.com/t3hx/celestial-walker-nuxt' },
+    ],
   },
   {
     slug: 'txpf',
     name: 'TXPF',
     tabLabel: 'TXPF',
-    tagline: 'Le portfolio précédent : une vitrine Vue adossée à une API Nest.',
+    tagline: {
+      fr: 'Le portfolio précédent : une vitrine Vue adossée à une API Nest.',
+      en: 'The previous portfolio: a Vue showcase backed by a Nest API.',
+    },
     year: '2025 — 2026',
-    role: 'Conception et développement',
+    role: { fr: 'Conception et développement', en: 'Design and development' },
     stack: ['Vue 3', 'TailwindCSS', 'NestJS'],
-    highlights: ['Démos de projets protégées derrière le back-office.'],
+    highlights: {
+      fr: ['Démos de projets protégées derrière le back-office.'],
+      en: ['Project demos gated behind the back-office.'],
+    },
     links: [
-      { label: 'Front', href: 'https://github.com/t3hx/txpf-frontend-vue' },
-      { label: 'API', href: 'https://github.com/t3hx/txpf-backend-nest' },
+      { label: { fr: 'Front', en: 'Front' }, href: 'https://github.com/t3hx/txpf-frontend-vue' },
+      { label: { fr: 'API', en: 'API' }, href: 'https://github.com/t3hx/txpf-backend-nest' },
     ],
   },
   {
     slug: 'portfolio',
     name: 'Ce portfolio',
     tabLabel: 'Portfolio',
-    tagline: 'Une pièce modélisée sous Blender, parcourue au défilement.',
+    tagline: {
+      fr: 'Une pièce modélisée sous Blender, parcourue au défilement.',
+      en: 'A room modelled in Blender, explored by scrolling.',
+    },
     year: '2026',
-    role: 'Conception, modélisation et développement',
+    role: {
+      fr: 'Conception, modélisation et développement',
+      en: 'Design, modelling and development',
+    },
     stack: ['React', 'react-three-fiber', 'Blender', 'GSAP'],
-    highlights: [
-      'Rendu entièrement pré-cuit : aucune lumière au runtime, tout est dans les textures.',
-      'La caméra suit onze cadrages composés dans Blender, jamais réécrits en code.',
-    ],
-    links: [{ label: 'Code', href: 'https://github.com/t3hx/myPortfolio' }],
+    highlights: {
+      fr: [
+        'Rendu entièrement pré-cuit : aucune lumière au runtime, tout est dans les textures.',
+        'La caméra suit onze cadrages composés dans Blender, jamais réécrits en code.',
+      ],
+      en: [
+        'Fully pre-baked render: no runtime lights, everything lives in the textures.',
+        'The camera follows eleven framings composed in Blender, never rewritten in code.',
+      ],
+    },
+    links: [{ label: { fr: 'Code', en: 'Code' }, href: 'https://github.com/t3hx/myPortfolio' }],
   },
 ]
 
@@ -134,5 +178,7 @@ export const GENERIC_COVER_SRC = '/images/projects/cover-generique.svg'
  * Tranché en session design (#78) ; la maquette
  * `docs/design/screens/03c-project-empty.html` fait foi pour la copy.
  */
-export const PROJECTS_EMPTY =
-  "Le tiroir est vide pour l'instant. Les projets arrivent — le reste de la pièce se visite déjà."
+export const PROJECTS_EMPTY: Localized = {
+  fr: "Le tiroir est vide pour l'instant. Les projets arrivent — le reste de la pièce se visite déjà.",
+  en: 'The drawer is empty for now. Projects are coming — the rest of the room is already open.',
+}

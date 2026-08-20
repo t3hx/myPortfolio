@@ -1,6 +1,9 @@
-import { useCallback, useMemo, useRef } from 'react'
+import { Fragment, useCallback, useMemo, useRef } from 'react'
 import { CAMERA_STOPS } from '@/config/cameraStops'
 import { MENU_SECTIONS, MENU_SOCIALS } from '@/content/menu'
+import { UI } from '@/content/ui'
+import { LOCALES, t } from '@/lib/locale'
+import { useLocale } from '@/state/locale'
 import { useInteraction } from '@/state/interaction'
 import { Logo } from '@/ui/Logo'
 
@@ -28,6 +31,8 @@ export function Menu() {
   const stopIndex = useInteraction((s) => s.stopIndex)
   const requestStop = useInteraction((s) => s.requestStop)
   const nav = useRef<HTMLElement>(null)
+  const locale = useLocale((s) => s.locale)
+  const setLocale = useLocale((s) => s.setLocale)
 
   // Un arrêt cité par le menu mais absent de CAMERA_STOPS est ignoré avec un
   // avertissement — même discipline que `extractStops` pour une caméra absente
@@ -64,7 +69,7 @@ export function Menu() {
   }, [])
 
   return (
-    <nav className="menu" aria-label="Menu" ref={nav} onKeyDown={onKeyDown}>
+    <nav className="menu" aria-label={t(UI.menu.region, locale)} ref={nav} onKeyDown={onKeyDown}>
       <Logo className="menu__logo" />
       <div className="menu__rule menu__rule--head" />
 
@@ -72,7 +77,7 @@ export function Menu() {
         const active = section.index === stopIndex
         return (
           <button
-            key={section.label}
+            key={section.stop}
             type="button"
             data-menu-item
             className={`menu__link${active ? ' menu__link--active' : ''}`}
@@ -83,7 +88,7 @@ export function Menu() {
               if (e.detail > 0) e.currentTarget.blur()
             }}
           >
-            <span>{section.label}</span>
+            <span>{t(section.label, locale)}</span>
           </button>
         )
       })}
@@ -104,16 +109,30 @@ export function Menu() {
         </a>
       ))}
 
-      {/* FR/EN : le bilingue est l'issue #33. EN reste un <span> et pas un
-          bouton désactivé — un bouton, même `disabled`, arrive avec sa propre
-          apparence système, et son gris à 45 % suffit à le lire comme la moitié
-          inactive d'un indicateur. */}
+      {/* FR/EN, vivant depuis #33. Les deux côtés sont des boutons : c'était
+          un `<span>` désactivé tant que l'anglais n'existait pas, parce qu'un
+          bouton, même `disabled`, arrive avec sa propre apparence système. Le
+          côté actif reste rendu et cliquable — le désactiver ferait disparaître
+          l'indicateur, or c'est lui qui dit dans quelle langue on est.
+          Le clic souris rend les flèches au tour, comme les sections. */}
       <div className="menu__lang">
-        <span className="menu__lang-on">FR</span>
-        <span className="menu__lang-rule" />
-        <span className="menu__lang-off" aria-disabled="true" title="Version anglaise à venir">
-          EN
-        </span>
+        {LOCALES.map((code, i) => (
+          <Fragment key={code}>
+            {i > 0 && <span className="menu__lang-rule" />}
+            <button
+              type="button"
+              className={code === locale ? 'menu__lang-on' : 'menu__lang-off'}
+              aria-current={code === locale ? 'true' : undefined}
+              title={t(UI.menu.switchTo, code)}
+              onClick={(e) => {
+                setLocale(code)
+                if (e.detail > 0) e.currentTarget.blur()
+              }}
+            >
+              {code.toUpperCase()}
+            </button>
+          </Fragment>
+        ))}
       </div>
     </nav>
   )

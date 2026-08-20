@@ -217,7 +217,20 @@ describe('BUBBLES', () => {
 
     // Comparaison par ensemble : l'ordre du tour est une décision produit et
     // n'a pas à suivre l'ordre de capture des maquettes — le texte, si.
-    expect([...BUBBLES.map((b) => b.text)].sort()).toEqual([...mockups].sort())
+    //
+    // **Le FRANÇAIS seulement, et c'est délibéré** (#33). Les maquettes de la
+    // session design sont en français : c'est la seule langue dont il existe
+    // une référence, donc la seule qui puisse dériver en silence. L'anglais
+    // n'a pas de maquette et n'est pas verrouillé ici — l'absence de contrôle
+    // est une décision, pas un trou à combler par une maquette inventée.
+    expect([...BUBBLES.map((b) => b.text.fr)].sort()).toEqual([...mockups].sort())
+
+    // Ce que l'anglais doit à ce test : exister et ne pas être vide. Une
+    // traduction oubliée laisserait une bulle blanche, que rien ne dirait.
+    for (const bubble of BUBBLES) {
+      expect(bubble.text.en.trim(), bubble.stop).not.toBe('')
+      if (bubble.subject) expect(bubble.subject.en.trim(), bubble.stop).not.toBe('')
+    }
   })
 
   it('reste dans le cadre : centres en fraction, largeurs du design', () => {
@@ -233,15 +246,17 @@ describe('BUBBLES', () => {
 
 describe('bubbleKicker', () => {
   it("numérote dans l'ordre du tour, home ne consommant pas de numéro", () => {
-    expect(bubbleKicker(BUBBLES, 0)).toBeUndefined() // home, variante inline
-    expect(bubbleKicker(BUBBLES, 1)).toBe('01 — Le CV')
-    expect(bubbleKicker(BUBBLES, 2)).toBe('02 — Le bureau')
-    expect(bubbleKicker(BUBBLES, BUBBLES.length - 1)).toBe('10 — La lune')
+    expect(bubbleKicker(BUBBLES, 0, 'fr')).toBeUndefined() // home, variante inline
+    expect(bubbleKicker(BUBBLES, 1, 'fr')).toBe('01 — Le CV')
+    expect(bubbleKicker(BUBBLES, 2, 'fr')).toBe('02 — Le bureau')
+    expect(bubbleKicker(BUBBLES, BUBBLES.length - 1, 'fr')).toBe('10 — La lune')
+    // Le numéro ne dépend pas de la langue, seul le sujet est traduit (#33).
+    expect(bubbleKicker(BUBBLES, 1, 'en')).toBe('01 — The résumé')
   })
 
   it('renumérote quand le tour est réordonné', () => {
     const swapped = [BUBBLES[0], BUBBLES[2], BUBBLES[1], ...BUBBLES.slice(3)]
-    expect(bubbleKicker(swapped, 1)).toBe('01 — Le bureau')
-    expect(bubbleKicker(swapped, 2)).toBe('02 — Le CV')
+    expect(bubbleKicker(swapped, 1, 'fr')).toBe('01 — Le bureau')
+    expect(bubbleKicker(swapped, 2, 'fr')).toBe('02 — Le CV')
   })
 })

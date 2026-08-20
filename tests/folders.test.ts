@@ -9,6 +9,7 @@ import {
 import type { Project } from '@/content/projects'
 import { buildDrawerGroup } from '@/lib/cabinetDrawer'
 import { buildFolders, folderZ } from '@/lib/folders'
+import type { Localized } from '@/lib/locale'
 
 /**
  * Un dossier par projet (#80). Trois pannes possibles, toutes muettes :
@@ -65,16 +66,20 @@ const stubLabel = (tab: Object3D, project: Project): Object3D => {
   return o
 }
 
+/** Un contenu bilingue de test, identique dans les deux langues : ce fichier
+ *  vérifie la géométrie des dossiers, pas la traduction. */
+const both = (value: string): Localized => ({ fr: value, en: value })
+
 function project(slug: string): Project {
   return {
     slug,
     name: slug,
     tabLabel: slug,
-    tagline: 'x',
+    tagline: both('x'),
     year: '2026',
-    role: 'x',
+    role: both('x'),
     stack: ['x'],
-    highlights: ['x'],
+    highlights: { fr: ['x'], en: ['x'] },
   }
 }
 

@@ -4,6 +4,7 @@ import { CAMERA_STOPS } from '@/config/cameraStops'
 import { BUBBLES, bubbleKicker, bubbleText } from '@/content/bubbles'
 import { PROJECTS } from '@/content/projects'
 import { resolveBubbleAnchors } from '@/lib/bubbleAnchors'
+import { useLocale } from '@/state/locale'
 import type { StopTransform } from '@/lib/stops'
 import { Bubble } from '@/scene/Bubble'
 import { CabinetDrawer } from '@/scene/CabinetDrawer'
@@ -39,6 +40,7 @@ export function Experience({ bubbleLayer }: ExperienceProps) {
   const phase = useInteraction((s) => s.phase)
   const stopIndex = useInteraction((s) => s.stopIndex)
   const setReady = useInteraction((s) => s.setReady)
+  const locale = useLocale((s) => s.locale)
 
   const onReady = useCallback(
     (ordered: StopTransform[], scene: Object3D) => {
@@ -80,14 +82,14 @@ export function Experience({ bubbleLayer }: ExperienceProps) {
             anchor={anchor}
             portal={bubbleLayer}
             visible={parkedStop === bubble.stop}
-            kicker={bubbleKicker(BUBBLES, i)}
+            kicker={bubbleKicker(BUBBLES, i, locale)}
             maxWidth={bubble.maxWidth}
             tick={bubble.tick}
             tilt={bubble.tilt}
           >
             {/* Le tiroir vide n'ouvre aucune fiche : son repli passe par la
                 bulle de la commode, pas par un écran (#78). */}
-            {bubbleText(bubble, PROJECTS.length)}
+            {bubbleText(bubble, PROJECTS.length, locale)}
           </Bubble>
         )
       })}

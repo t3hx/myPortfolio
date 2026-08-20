@@ -2,6 +2,9 @@ import { useEffect, useState } from 'react'
 import { Logo } from '@/ui/Logo'
 import { useInteraction } from '@/state/interaction'
 import { useLoading } from '@/state/loading'
+import { UI } from '@/content/ui'
+import { t } from '@/lib/locale'
+import { useLocale } from '@/state/locale'
 
 /**
  * L'écran 0b du design system, recréé depuis
@@ -33,6 +36,7 @@ export const BYTES_SHARE = 0.9
 
 export function Preloader() {
   const ready = useInteraction((s) => s.ready)
+  const locale = useLocale((s) => s.locale)
   const fraction = useLoading((s) => s.fraction)
   const known = useLoading((s) => s.total > 0)
   // Initialisé depuis `ready` et non à `true` : la scène reste chargée d'un
@@ -55,7 +59,11 @@ export function Preloader() {
   const pct = Math.round(progress * 100)
 
   return (
-    <div className={`preload${ready ? ' preload--out' : ''}`} role="status" aria-label="Chargement">
+    <div
+      className={`preload${ready ? ' preload--out' : ''}`}
+      role="status"
+      aria-label={t(UI.preloader.region, locale)}
+    >
       <Logo className="preload__logo" />
       <div>
         <div className={`preload__bar${known ? '' : ' preload__bar--unknown'}`}>
@@ -64,7 +72,7 @@ export function Preloader() {
           </div>
         </div>
         <div className="preload__row">
-          <span className="preload__copy">On allume les lampes…</span>
+          <span className="preload__copy">{t(UI.preloader.copy, locale)}</span>
           {known && <span className="preload__pct">{pct} %</span>}
         </div>
       </div>

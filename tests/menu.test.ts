@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { CAMERA_STOPS } from '@/config/cameraStops'
 import { MENU_SECTIONS, MENU_SOCIALS } from '@/content/menu'
+import { t } from '@/lib/locale'
 
 /**
  * Le menu vise des arrêts par `label`. Renommer un arrêt dans CAMERA_STOPS ou
@@ -18,7 +19,7 @@ describe('menu sections', () => {
 
   it('sends the projects entry to the cabinet, not the desk', () => {
     // Décision produit du 2026-08-18 : les projets sont dans la commode.
-    expect(MENU_SECTIONS.find((s) => s.label === 'Projets')?.stop).toBe('Cabinet')
+    expect(MENU_SECTIONS.find((s) => t(s.label, 'fr') === 'Projets')?.stop).toBe('Cabinet')
   })
 })
 

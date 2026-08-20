@@ -24,9 +24,12 @@
  * `onError` — une icône cassée est pire qu'un vide assumé, et c'est la donnée
  * qui décide, pas le réseau. Même règle que la couverture d'une fiche projet.
  */
+import type { Localized, MaybeLocalized } from '@/lib/locale'
+
 export interface CvGlyph {
-  /** Ce qui s'écrit sous la vignette, et dont l'initiale sert de repli. */
-  name: string
+  /** Ce qui s'écrit sous la vignette, et dont l'initiale sert de repli.
+   *  Traduit pour un savoir-être, neutre pour un nom de technologie. */
+  name: MaybeLocalized
   /**
    * Chemin d'un SVG servi depuis `public/` (ex. `/icons/react.svg`). Absent =
    * l'initiale. Rendu en `<img>`, pas en `mask-image` : les vraies marques sont
@@ -39,14 +42,15 @@ export interface CvGlyph {
 /** Une ligne de la carte « Langues & permis » : un intitulé, une valeur. */
 export interface CvFact {
   /** « Français », « Anglais », « Permis »… */
-  label: string
-  /** Ce qui s'aligne à droite, en chasse fixe : « natif », « C1 », « B ». */
-  value: string
+  label: Localized
+  /** Ce qui s'aligne à droite : « natif » se traduit, « C1 » et « B » non. */
+  value: MaybeLocalized
 }
 
 export interface CvJob {
   /** L'intitulé du poste. */
-  title: string
+  title: Localized
+  /** Nom propre : jamais traduit. */
   company: string
   /** « 2023 — 2026 ». Du texte : ce n'est pas une date qu'on trie. */
   period: string
@@ -61,7 +65,7 @@ export interface CvJob {
    * puce coûte ~21 px de hauteur ouverte, et la hauteur est la ressource rare
    * de cet écran.
    */
-  missions: string[]
+  missions: Localized<string[]>
 }
 
 /**
@@ -70,7 +74,8 @@ export interface CvJob {
  * n'ouvre rien serait une promesse non tenue.
  */
 export interface CvFormation {
-  title: string
+  title: Localized
+  /** Nom propre : jamais traduit. */
   school: string
   /** « 2016 — 2018 ». Du texte, comme la période d'un poste. */
   period: string
@@ -88,10 +93,10 @@ export interface Cv {
     name: string
     photo?: string
     /** Le texte alternatif de la photo, quand il y en a une. */
-    alt: string
+    alt: Localized
   }
   /** Le titre de la carte de savoir-être. */
-  traitsTitle: string
+  traitsTitle: Localized
   /**
    * Six vignettes, et six exactement : la carte les range en 3 × 2 pour tenir
    * à la hauteur de la photo, dans la rangée du haut. Cinq laissent un trou,
@@ -100,10 +105,10 @@ export interface Cv {
    */
   traits: CvGlyph[]
   /** Le titre de la carte de faits — « Langues & permis ». */
-  factsTitle: string
+  factsTitle: Localized
   facts: CvFact[]
   /** Le titre de la réglette de savoir-faire. */
-  skillsTitle: string
+  skillsTitle: Localized
   /**
    * La réglette se répartit toute seule (`auto-fit`) et passe à la ligne quand
    * il le faut : le nombre n'est pas contraint, mais chaque ligne coûte ~44 px
@@ -111,15 +116,15 @@ export interface Cv {
    */
   skills: CvGlyph[]
   /** Le titre de la section de vision — « Le cap » (décision du 2026-08-20). */
-  outlookTitle: string
+  outlookTitle: Localized
   /** Quatre lignes au maximum : au-delà, le CV ne tient plus dans l'écran. */
-  outlook: string
+  outlook: Localized
   /** Le titre de la pile d'expériences — « Expériences ». */
-  jobsTitle: string
+  jobsTitle: Localized
   /** Du plus récent au plus ancien : l'ordre du tableau EST l'ordre affiché. */
   jobs: CvJob[]
   /** Le titre de la pile de formations — « Formations ». */
-  formationsTitle: string
+  formationsTitle: Localized
   /** Quatre cartouches, du plus récent au plus ancien. */
   formations: CvFormation[]
 }
@@ -132,27 +137,32 @@ export interface Cv {
  * que `PROJECTS_EMPTY` pour le tiroir vide (#78) — le système ne montre jamais
  * un trou sans phrase.
  */
-export const CV_JOBS_EMPTY =
-  'Le parcours arrive. En attendant, la version papier dort dans la commode.'
+export const CV_JOBS_EMPTY: Localized = {
+  fr: 'Le parcours arrive. En attendant, la version papier dort dans la commode.',
+  en: 'The track record is on its way. Until then, the paper copy sleeps in the cabinet.',
+}
 
 export const CV: Cv = {
-  identity: { name: 'Thibault Dubois', alt: 'Photo de Thibault' },
-  traitsTitle: 'Savoir-être',
+  identity: {
+    name: 'Thibault Dubois',
+    alt: { fr: 'Photo de Thibault', en: 'Photograph of Thibault' },
+  },
+  traitsTitle: { fr: 'Savoir-être', en: 'Soft skills' },
   traits: [
-    { name: 'Curiosité' },
-    { name: 'Rigueur' },
-    { name: 'Autonomie' },
-    { name: 'Écoute' },
-    { name: 'Pédagogie' },
-    { name: 'Ténacité' },
+    { name: { fr: 'Curiosité', en: 'Curiosity' } },
+    { name: { fr: 'Rigueur', en: 'Rigour' } },
+    { name: { fr: 'Autonomie', en: 'Autonomy' } },
+    { name: { fr: 'Écoute', en: 'Listening' } },
+    { name: { fr: 'Pédagogie', en: 'Teaching' } },
+    { name: { fr: 'Ténacité', en: 'Tenacity' } },
   ],
-  factsTitle: 'Langues & permis',
+  factsTitle: { fr: 'Langues & permis', en: 'Languages & licence' },
   facts: [
-    { label: 'Français', value: 'natif' },
-    { label: 'Anglais', value: 'C1' },
-    { label: 'Permis', value: 'B' },
+    { label: { fr: 'Français', en: 'French' }, value: { fr: 'natif', en: 'native' } },
+    { label: { fr: 'Anglais', en: 'English' }, value: 'C1' },
+    { label: { fr: 'Permis', en: 'Driving licence' }, value: 'B' },
   ],
-  skillsTitle: 'Savoir-faire',
+  skillsTitle: { fr: 'Savoir-faire', en: 'Technical skills' },
   skills: [
     { name: 'TypeScript' },
     { name: 'React' },
@@ -163,78 +173,117 @@ export const CV: Cv = {
     { name: 'Blender' },
     { name: 'Git' },
   ],
-  outlookTitle: 'Le cap',
-  outlook:
-    "Continuer à faire des interfaces qu'on a envie de toucher, là où le détail " +
-    'compte autant que la structure. Je cherche une équipe qui construit sur ' +
-    'plusieurs années plutôt que sur plusieurs sprints, et qui laisse le temps ' +
-    'de bien poser les fondations.',
-  jobsTitle: 'Expériences',
+  outlookTitle: { fr: 'Le cap', en: 'The heading' },
+  outlook: {
+    fr:
+      "Continuer à faire des interfaces qu'on a envie de toucher, là où le détail " +
+      'compte autant que la structure. Je cherche une équipe qui construit sur ' +
+      'plusieurs années plutôt que sur plusieurs sprints, et qui laisse le temps ' +
+      'de bien poser les fondations.',
+    en:
+      'Keep building interfaces people want to touch, where the detail matters as ' +
+      'much as the structure. I am looking for a team that builds over years ' +
+      'rather than over sprints, and that leaves time to lay the foundations ' +
+      'properly.',
+  },
+  jobsTitle: { fr: 'Expériences', en: 'Experience' },
   jobs: [
     {
-      title: 'Développeur front-end senior',
+      title: { fr: 'Développeur front-end senior', en: 'Senior front-end developer' },
       company: 'Studio Nova',
       period: '2023 — 2026',
-      missions: [
-        'Refonte WebGL du site vitrine (three.js, 60 fps)',
-        'Design system interne — tokens, composants, docs',
-        'Mentorat de deux développeurs juniors',
-        'Budget de performance tenu sur trois refontes de suite',
-      ],
+      missions: {
+        fr: [
+          'Refonte WebGL du site vitrine (three.js, 60 fps)',
+          'Design system interne — tokens, composants, docs',
+          'Mentorat de deux développeurs juniors',
+          'Budget de performance tenu sur trois refontes de suite',
+        ],
+        en: [
+          'WebGL rebuild of the marketing site (three.js, 60 fps)',
+          'Internal design system — tokens, components, docs',
+          'Mentored two junior developers',
+          'Performance budget held across three consecutive rebuilds',
+        ],
+      },
     },
     {
-      title: 'Développeur full-stack',
+      title: { fr: 'Développeur full-stack', en: 'Full-stack developer' },
       company: 'Atelier K',
       period: '2020 — 2023',
-      missions: [
-        'Plateforme e-commerce (Node, PostgreSQL)',
-        'Intégration paiement et facturation',
-        'Mise en place CI/CD et revues de code',
-        'Migration du catalogue vers un schéma versionné',
-      ],
+      missions: {
+        fr: [
+          'Plateforme e-commerce (Node, PostgreSQL)',
+          'Intégration paiement et facturation',
+          'Mise en place CI/CD et revues de code',
+          'Migration du catalogue vers un schéma versionné',
+        ],
+        en: [
+          'E-commerce platform (Node, PostgreSQL)',
+          'Payment and invoicing integration',
+          'Set up CI/CD and code review',
+          'Migrated the catalogue to a versioned schema',
+        ],
+      },
     },
     {
-      title: 'Intégrateur web',
+      title: { fr: 'Intégrateur web', en: 'Web integrator' },
       company: 'Freelance',
       period: '2018 — 2020',
-      missions: [
-        'Sites vitrines pour artisans et studios',
-        'Audits performance et accessibilité',
-        'Reprise de trois sites laissés sans mainteneur',
-        'Formation des clients à la mise à jour de leur contenu',
-      ],
+      missions: {
+        fr: [
+          'Sites vitrines pour artisans et studios',
+          'Audits performance et accessibilité',
+          'Reprise de trois sites laissés sans mainteneur',
+          'Formation des clients à la mise à jour de leur contenu',
+        ],
+        en: [
+          'Showcase sites for craftspeople and studios',
+          'Performance and accessibility audits',
+          'Took over three sites left without a maintainer',
+          'Trained clients to update their own content',
+        ],
+      },
     },
     {
-      title: 'Alternance développement web',
+      title: { fr: 'Alternance développement web', en: 'Web development apprenticeship' },
       company: 'Coopérative Lumen',
       period: '2016 — 2018',
-      missions: [
-        'Outil interne de suivi des adhérents',
-        'Reprise du parc de sites sous un socle commun',
-        'Automatisation des exports comptables mensuels',
-        'Documentation du socle pour les alternants suivants',
-      ],
+      missions: {
+        fr: [
+          'Outil interne de suivi des adhérents',
+          'Reprise du parc de sites sous un socle commun',
+          'Automatisation des exports comptables mensuels',
+          'Documentation du socle pour les alternants suivants',
+        ],
+        en: [
+          'Internal member-tracking tool',
+          'Consolidated the site estate onto a shared base',
+          'Automated the monthly accounting exports',
+          'Documented the base for the next apprentices',
+        ],
+      },
     },
   ],
-  formationsTitle: 'Formations',
+  formationsTitle: { fr: 'Formations', en: 'Education' },
   formations: [
     {
-      title: 'Master développement web',
+      title: { fr: 'Master développement web', en: "Master's in web development" },
       school: 'École Ardent',
       period: '2016 — 2018',
     },
     {
-      title: 'Licence informatique',
+      title: { fr: 'Licence informatique', en: "Bachelor's in computer science" },
       school: 'Université de Verlaine',
       period: '2013 — 2016',
     },
     {
-      title: 'DUT informatique',
+      title: { fr: 'DUT informatique', en: 'Two-year computer science diploma' },
       school: 'IUT de Vallonne',
       period: '2011 — 2013',
     },
     {
-      title: 'Baccalauréat scientifique',
+      title: { fr: 'Baccalauréat scientifique', en: 'Science baccalaureate' },
       school: 'Lycée Saint-Aubert',
       period: '2011',
     },

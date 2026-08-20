@@ -6,20 +6,22 @@
  * dupliqué : le menu ne connaît pas de pose, il demande un arrêt et c'est
  * CameraRig qui vole jusque-là.
  */
+import type { Localized } from '@/lib/locale'
+
 export interface MenuSection {
   /** Texte vertical affiché dans la barre. */
-  label: string
+  label: Localized
   /** `label` de l'arrêt visé dans CAMERA_STOPS. */
   stop: string
 }
 
 export const MENU_SECTIONS: MenuSection[] = [
-  { label: 'Accueil', stop: 'Home' },
-  { label: 'Résumé', stop: 'CV' },
+  { label: { fr: 'Accueil', en: 'Home' }, stop: 'Home' },
+  { label: { fr: 'Résumé', en: 'Résumé' }, stop: 'CV' },
   // Les projets sont dans la commode, pas sur le bureau (décision produit,
   // 2026-08-18). Le second clic — ouvrir une fiche projet une fois sur place —
   // reste à construire.
-  { label: 'Projets', stop: 'Cabinet' },
+  { label: { fr: 'Projets', en: 'Projects' }, stop: 'Cabinet' },
 ]
 
 /** Liens externes du bas de barre. Une entrée sans `href` n'est pas rendue :
