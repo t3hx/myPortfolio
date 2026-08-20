@@ -143,6 +143,16 @@ Issue #35: the ten case fans turn, the mug steams.
 - **What makes smoke is size and falloff, not opacity.** Calibrated in three measured passes. At 22 puffs of 15–54 px they never touched: isolated white dots, i.e. dust. At 190 px they merged into a fog patch three times wider than the mug. 120 puffs of 26–78 px, very faint, read as a rising filament. The falloff is **gaussian, not polynomial**: a power of `1 - d` dies with a non-zero slope, so each disc keeps an edge, and fifty stacked edges read as grain — a gaussian has no edge at all, only a density that decays, which is what lets puffs dissolve into one another.
 - **Reduced motion cuts the loop _and_ unmounts the smoke.** Freezing is not enough for it: frozen puffs stay **visible**, and the Blender references contain none.
 
+### The telescope viewfinder (`src/ui/TelescopeScope.tsx`)
+
+Issue #106, and the last interaction `docs/PORTFOLIO_3D_INTERACTIONS.md` specified without an issue. Clicking the telescope already flew the camera to the moon and swapped `Outside_Moon` → `Outside_Moon_Detailed`; nothing said you were looking _through_ anything. This circular mask is the difference between a camera that moved and an eyepiece.
+
+- **A radial gradient in the DOM, not a second render pass.** The spec allowed either. The DOM wins because the scene is a baked unlit render we do not touch, and an extra pass would be a permanent GPU cost for what is only a gradient.
+- **It is not modal.** At `--z-bubble` (100) it sits _under_ the menu bar; at `--z-panel` it would cover it and `Escape` would become the only way out. Same call as the CV.
+- **Nothing that decorates the rim may fall inside the aperture.** At this magnification the moon is _larger_ than the opening — that is what a high-power eyepiece does. The eyepiece ring first sat at 1.0 × the radius, which put a thin line straight across the moon's face: that reads as a scratch, not as optics. Every rim decoration now lives beyond the radius, in the already-darkened zone, and `tests/scope.test.ts` fails if one drifts back inside.
+- **The reticle is four ticks at the rim, never a crosshair at the centre** — the centre is the moon, and you do not strike it through.
+- **The aperture closes by scaling the whole mask, not the radius.** A custom property does not interpolate in `@keyframes` without `@property`; it would jump. Scaled up, the mask overflows the frame, so the black still covers the screen while the hole closes.
+
 ### Outlines (`src/scene/Outlines.tsx` + `src/config/lineArt.ts`)
 
 Runtime 2.5D ink, URL-toggled: `?outline=off|hull|edges|both` (+ `?lw=<px>` live width). `hull` = three OutlineEffect (batched inverted hull, view-dependent silhouettes — takes over rendering via a priority useFrame). `edges` = per-mesh `EdgesGeometry` rendered as screen-space fat lines (`LineSegments2`), with `LINE_OVERRIDES` per-object exclusions. Known drei/browser gotchas are commented in the code — read them before refactoring (Html portals, z-index ranges).
