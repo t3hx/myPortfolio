@@ -22,3 +22,42 @@ export const TELESCOPE_OBJECT = 'Telescope_Merged'
 export function isTelescope(name: string): boolean {
   return name === TELESCOPE_OBJECT || name.startsWith(`${TELESCOPE_OBJECT}_`)
 }
+
+/**
+ * L'excursion se fait en DEUX TEMPS (issue #106, deuxième passe).
+ *
+ * En un seul vol, on passait de la fenêtre à un gros plan de lune à ~270 mm
+ * sans que rien ne dise qu'un télescope se trouvait entre les deux : la caméra
+ * traversait l'instrument. La chorégraphie demandée est
+ * « fenêtre → objectif → dans l'objectif → lune », donc il faut un arrêt.
+ *
+ * Le premier temps amène derrière l'OCULAIRE, l'instrument plein cadre. C'est
+ * là que la visée s'ouvre — on vient d'y coller l'œil. Le second temps se fait
+ * DANS la visée, et ne change plus que le champ : c'est le grossissement, pas
+ * un déplacement.
+ */
+export const TELESCOPE_APPROACH_S = 0.95
+export const TELESCOPE_ZOOM_S = 1.25
+
+/**
+ * Recul derrière l'oculaire, en mètres, le long de l'axe de visée.
+ *
+ * La pose de l'oculaire n'est pas dans le `.glb` : elle se déduit de la caméra
+ * `CameraStop_TelescopeMoon`, que Blender a déjà posée à 58 cm du télescope,
+ * en reculant le long de son axe. Rien à re-exporter.
+ */
+export const TELESCOPE_EYEPIECE_BACK = 0.5
+
+/** Champ horizontal, en degrés, du temps d'approche : l'instrument entier. */
+export const TELESCOPE_APPROACH_HFOV = 52
+
+/**
+ * Élargissement du champ final, en facteur.
+ *
+ * L'arrêt `Moon` du tour cadre la lune plein écran — c'est la décision de
+ * Blender et elle ne bouge pas. Mais dans une VISÉE, une lune qui touche les
+ * bords ne laisse pas voir qu'on regarde à travers quelque chose : il faut du
+ * ciel autour d'elle et de la place pour le cache. L'excursion élargit donc son
+ * champ, et elle seule — le tour continue de rendre le cadrage authored.
+ */
+export const TELESCOPE_FOV_PAD = 1.5

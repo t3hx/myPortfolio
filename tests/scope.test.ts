@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
-import { isTelescope } from '@/config/telescope'
+import { TELESCOPE_FOV_PAD, isTelescope } from '@/config/telescope'
 import { SCOPE_OUT_MS } from '@/ui/TelescopeScope'
 
 /**
@@ -118,5 +118,71 @@ describe("le moment de l'ouverture", () => {
     expect(code(component)).not.toContain("phase === 'telescope'")
     expect(rig).toContain('settleTelescope()')
     expect(rig.indexOf('onComplete')).toBeLessThan(rig.indexOf('settleTelescope()'))
+  })
+})
+
+describe("l'excursion en deux temps", () => {
+  const rig = readFileSync('src/scene/CameraRig.tsx', 'utf8')
+
+  it("s'arrête à l'oculaire avant de grossir", () => {
+    // En un seul vol, la caméra traversait l'instrument pour finir en gros
+    // plan de lune sans que rien ne dise qu'un télescope se trouvait entre les
+    // deux. La chorégraphie demandée est « fenêtre → objectif → dans
+    // l'objectif → lune », donc il FAUT un arrêt.
+    expect(rig).toContain('TELESCOPE_APPROACH_S')
+    expect(rig).toContain('TELESCOPE_ZOOM_S')
+    // Et la visée s'ouvre ENTRE les deux, pas au début ni à la fin.
+    //
+    // `lastIndexOf` sur les DURÉES, pas `indexOf` sur les noms : la première
+    // occurrence de chaque constante est son import, en tête de fichier, donc
+    // toujours avant tout le reste — comparer des positions d'imports ne dit
+    // rien de l'ordre réel des deux temps.
+    const settle = rig.lastIndexOf('settleTelescope()')
+    expect(settle).toBeGreaterThan(rig.lastIndexOf('duration: TELESCOPE_APPROACH_S'))
+    expect(settle).toBeLessThan(rig.lastIndexOf('duration: TELESCOPE_ZOOM_S'))
+  })
+
+  it('élargit le champ pour dégager du ciel autour de la lune', () => {
+    // L'arrêt `Moon` du tour cadre la lune plein écran — décision de Blender,
+    // qui ne bouge pas. Mais dans une VISÉE, une lune qui touche les bords ne
+    // laisse pas voir qu'on regarde à travers quelque chose.
+    expect(TELESCOPE_FOV_PAD).toBeGreaterThan(1)
+    expect(rig).toContain('TELESCOPE_FOV_PAD')
+  })
+
+  it("déduit l'oculaire de la caméra de Blender, sans rien ajouter au .glb", () => {
+    // `CameraStop_TelescopeMoon` est déjà à 58 cm du télescope : la pose de
+    // l'oculaire s'obtient en reculant le long de son axe.
+    expect(rig).toContain('TELESCOPE_EYEPIECE_BACK')
+  })
+})
+
+describe('le cerne au survol', () => {
+  const hover = readFileSync('src/scene/TelescopeHover.tsx', 'utf8')
+
+  it('décide par un lancer de rayon, pas par onPointerOver', () => {
+    // Posés sur la scène entière, `onPointerOver` / `onPointerOut` se
+    // déclenchent pour CHAQUE maillage traversé : entrer sur le télescope
+    // allumait le cerne, puis un `pointerOut` retardé venant d'un voisin
+    // l'éteignait. Mesuré : un cerne qui ne s'allumait pas quand il fallait, et
+    // qui s'allumait quand la souris était ailleurs.
+    expect(hover).toContain('setFromCamera')
+    expect(hover).toContain("addEventListener('pointermove'")
+    expect(code(hover)).not.toContain('onPointerOver')
+    const room = readFileSync('src/scene/RoomModel.tsx', 'utf8')
+    expect(code(room)).not.toContain('onPointerOver')
+  })
+
+  it("s'éteint au DÉPART de l'excursion, pas au prochain mouvement", () => {
+    // Après le clic la souris ne bouge plus : sans cela le cerne restait
+    // allumé pendant tout le vol, en plein cadre sur le tube.
+    const state = readFileSync('src/state/interaction.ts', 'utf8')
+    // `lastIndexOf` : la première occurrence est la DÉCLARATION de l'interface,
+    // pas l'implémentation.
+    const enter = state.slice(
+      state.lastIndexOf('enterTelescope: ()'),
+      state.lastIndexOf('settleTelescope: ()'),
+    )
+    expect(enter).toContain('telescopeHovered: false')
   })
 })

@@ -691,13 +691,18 @@
      s'en décrochait ailleurs — mesuré, la cible tombait à 0,95 du limbe et
      coupait la face de l'astre.
 
-     `--scope-moon` est le rayon APPARENT de la lune, mesuré en capture :
-     310 px sur un cadre de 1280, soit 0,242 — arrondi à 0,25 pour que la cible
-     borde le limbe par l'extérieur plutôt que de mordre dessus. */
-  --scope-moon: calc(100vw * 0.25);
-  /* L'ouverture claire, plus étroite : c'est elle qui fait tomber la lumière
-     avant le bord de l'image, donc l'impression d'optique. */
-  --scope-r: calc(100vw * 0.2);
+     `--scope-moon` est le rayon APPARENT de la lune dans la VISÉE, mesuré en
+     capture : 230 px sur un cadre de 1280, soit 0,18. Il vaut pour l'excursion
+     et pour elle seule — celle-ci élargit le champ d'un facteur 1,5
+     (`TELESCOPE_FOV_PAD`) pour dégager du ciel autour de la lune, alors que
+     l'arrêt `Moon` du tour, lui, garde le cadrage plein cadre voulu par
+     Blender. Changer ce facteur oblige à re-mesurer cette valeur. */
+  --scope-moon: calc(100vw * 0.18);
+  /* L'ouverture claire, POSÉE AU-DELÀ du limbe : la lune doit se voir entière,
+     avec un peu de ciel autour, et rien ne doit empiéter dessus. Plus étroite,
+     le cache mordait sur l'astre et on ne voyait plus qu'on regardait à
+     travers quelque chose. */
+  --scope-r: calc(var(--scope-moon) * 1.2);
   background: radial-gradient(
     circle at 50% 50%,
     transparent 0,
@@ -719,9 +724,9 @@
   content: ''; position: absolute; inset: 0;
   background: radial-gradient(
     circle at 50% 50%,
-    transparent calc(var(--scope-moon) * 1.01),
-    rgba(var(--glow-rgb), .16) calc(var(--scope-moon) * 1.03),
-    transparent calc(var(--scope-moon) * 1.05)
+    transparent calc(var(--scope-moon) * 1.14),
+    rgba(var(--glow-rgb), .16) calc(var(--scope-moon) * 1.17),
+    transparent calc(var(--scope-moon) * 1.2)
   );
 }
 /* Le réticule : quatre traits courts au bord de l'ouverture, jamais une croix
@@ -734,12 +739,12 @@
   position: absolute; background: currentColor;
   width: 1px; height: 14px; margin: -7px 0 0 -0.5px;
 }
-.scope__tick--n { transform: translateY(calc(var(--scope-moon) * -1.03 + 7px)); }
-.scope__tick--s { transform: translateY(calc(var(--scope-moon) * 1.03 - 7px)); }
+.scope__tick--n { transform: translateY(calc(var(--scope-moon) * -1.17 + 7px)); }
+.scope__tick--s { transform: translateY(calc(var(--scope-moon) * 1.17 - 7px)); }
 .scope__tick--w { width: 14px; height: 1px; margin: -0.5px 0 0 -7px;
-  transform: translateX(calc(var(--scope-moon) * -1.03 + 7px)); }
+  transform: translateX(calc(var(--scope-moon) * -1.17 + 7px)); }
 .scope__tick--e { width: 14px; height: 1px; margin: -0.5px 0 0 -7px;
-  transform: translateX(calc(var(--scope-moon) * 1.03 - 7px)); }
+  transform: translateX(calc(var(--scope-moon) * 1.17 - 7px)); }
 
 /* Déclaré APRÈS `.scope` : à spécificité égale, le dernier gagne, et la sortie
    l'emporte sur l'entrée. Même règle que `.cv--out` et `.sheet--out`. */

@@ -1,10 +1,10 @@
 import { useThree } from '@react-three/fiber'
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import type { Mesh, Object3D } from 'three'
-import { Vector2 } from 'three'
+import { Raycaster, Vector2 } from 'three'
 import { LineMaterial } from 'three/addons/lines/LineMaterial.js'
 import { HOVER_OUTLINE_COLOR, HOVER_OUTLINE_WIDTH_PX } from '@/config/cabinet'
-import { TELESCOPE_OBJECT } from '@/config/telescope'
+import { TELESCOPE_OBJECT, isTelescope } from '@/config/telescope'
 import { attachOutline, disposeOutline } from '@/lib/folderOutline'
 import { useInteraction } from '@/state/interaction'
 
@@ -28,7 +28,9 @@ interface TelescopeHoverProps {
 
 export function TelescopeHover({ scene }: TelescopeHoverProps) {
   const { size, gl } = useThree()
+  const { camera, gl: renderer } = useThree()
   const hovered = useInteraction((s) => s.telescopeHovered)
+  const raycaster = useRef(new Raycaster())
 
   const material = useMemo(() => {
     const m = new LineMaterial({
@@ -70,9 +72,52 @@ export function TelescopeHover({ scene }: TelescopeHoverProps) {
     }
   }, [rig, material])
 
-  // `RoomModel` n'allume le drapeau qu'en phase PARKED, donc le cerne s'éteint
-  // tout seul dès que l'excursion commence — il resterait sinon allumé sur un
-  // objet qu'on ne voit plus.
+  /**
+   * Le survol est décidé par UN lancer de rayon par mouvement de souris, et non
+   * par les événements `onPointerOver` / `onPointerOut` de react-three-fiber.
+   *
+   * Posés sur la scène entière, ces deux-là se déclenchent pour CHAQUE maillage
+   * traversé : entrer sur le télescope allumait le cerne, puis un `pointerOut`
+   * retardé venant d'un objet voisin l'éteignait — et inversement. Résultat
+   * mesuré : un cerne qui ne s'allumait pas quand il fallait, et qui
+   * s'allumait quand la souris était ailleurs.
+   *
+   * Un rayon ne s'apparie avec rien : à chaque mouvement, on demande ce qui est
+   * touché EN PREMIER dans toute la scène, et le cerne s'allume si c'est le
+   * télescope. Un seul état, pas d'ordre d'événements à faire tenir.
+   */
+  useEffect(() => {
+    if (!rig) return
+    const canvas = renderer.domElement
+    const pointer = new Vector2()
+
+    const onMove = (e: PointerEvent) => {
+      const { phase, hoverTelescope } = useInteraction.getState()
+      if (phase !== 'parked') return hoverTelescope(false)
+      const r = canvas.getBoundingClientRect()
+      pointer.set(
+        ((e.clientX - r.left) / r.width) * 2 - 1,
+        -((e.clientY - r.top) / r.height) * 2 + 1,
+      )
+      raycaster.current.setFromCamera(pointer, camera)
+      // La scène ENTIÈRE, pas le seul télescope : viser l'objet isolément
+      // l'allumerait à travers ce qui le cache.
+      const hit = raycaster.current.intersectObject(scene, true)[0]
+      hoverTelescope(!!hit && isTelescope(hit.object.name))
+    }
+    const onLeave = () => useInteraction.getState().hoverTelescope(false)
+
+    canvas.addEventListener('pointermove', onMove)
+    canvas.addEventListener('pointerleave', onLeave)
+    return () => {
+      canvas.removeEventListener('pointermove', onMove)
+      canvas.removeEventListener('pointerleave', onLeave)
+    }
+  }, [rig, scene, camera, renderer])
+
+  // Le drapeau ne s'allume qu'en phase PARKED, donc le cerne s'éteint tout seul
+  // dès que l'excursion commence — il resterait sinon allumé sur un objet qu'on
+  // ne voit plus.
   useEffect(() => {
     if (!rig) return
     for (const line of rig.lines) line.visible = hovered

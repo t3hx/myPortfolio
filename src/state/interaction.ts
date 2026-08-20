@@ -121,7 +121,10 @@ export const useInteraction = create<InteractionState>((set, get) => ({
   enterTelescope: () => {
     const { phase } = get()
     if (phase === 'touring' || phase === 'parked') {
-      set({ phase: 'telescope', telescopeSettled: false })
+      // `telescopeHovered` est éteint ICI et pas au prochain mouvement de
+      // souris : après le clic, la souris ne bouge plus, et le cerne restait
+      // allumé pendant toute l'excursion — visible en plein cadre sur le tube.
+      set({ phase: 'telescope', telescopeSettled: false, telescopeHovered: false })
     }
   },
   settleTelescope: () => {

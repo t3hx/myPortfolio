@@ -236,26 +236,7 @@ export function RoomModel({ onReady }: RoomModelProps) {
     if (phase === 'parked' && isTelescope(name)) enterTelescope()
   }
 
-  // Le survol du télescope est publié dans l'état, pas traité ici : le cerne
-  // vit dans `TelescopeHover`, qui ne peut pas monter un second `<primitive>`
-  // sur le même objet sans le déparenter de cette scène-ci.
-  function onPointerOver(e: ThreeEvent<PointerEvent>) {
-    const { phase, hoverTelescope } = useInteraction.getState()
-    hoverTelescope(phase === 'parked' && isTelescope(e.object.name))
-  }
-
-  function onPointerOut() {
-    useInteraction.getState().hoverTelescope(false)
-  }
-
-  return (
-    <primitive
-      object={scene}
-      onClick={onClick}
-      onPointerOver={onPointerOver}
-      onPointerOut={onPointerOut}
-    />
-  )
+  return <primitive object={scene} onClick={onClick} />
 }
 
 /* Il n'y a plus de `preload` au niveau du module, et c'est délibéré (#25) :
