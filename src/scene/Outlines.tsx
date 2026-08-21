@@ -68,8 +68,9 @@ export function Outlines() {
 
     // La sonde de curation, dans l'esprit de `__rigDebug`. Une liste
     // d'exclusions qu'on ne peut pas relire finit par contenir des entrées que
-    // plus personne ne sait justifier : celle-ci dit, arrêt par arrêt, ce qui
-    // a été sauté et POURQUOI.
+    // plus personne ne sait justifier : celle-ci dit ce qui a été sauté et
+    // POURQUOI. Inventaire de TOUTE la scène, pris une fois ici — la traversée
+    // ne sait pas ce que la caméra cadre, donc ce n'est pas un relevé par arrêt.
     const skipped: Record<string, { material: string; reason: InkSkip }> = {}
     let inked = 0
 

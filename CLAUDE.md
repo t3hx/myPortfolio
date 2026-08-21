@@ -206,7 +206,7 @@ The three remaining lists are named for their own reason rather than pooled: the
 
 Material names are matched in FULL, never by substring: `Mat_Poster_Expanse` must say nothing about `Mat_PosterFrame`. The node-name path (`LINE_OVERRIDES`, substring, parents included) stays but is **empty** — it is for the day two objects share a material without sharing its treatment, and keeping the old five entries there would have been two mechanisms for one question.
 
-`window.__inkDebug` reports, per stop, how many meshes were inked and which were skipped with which reason. An exclusion list nobody can re-read ends up holding entries nobody can justify. Current count: **174 inked, 32 skipped** (22 emitters, 5 too-fine, 3 too-dense, 2 deforming).
+`window.__inkDebug` reports how many meshes were inked and which were skipped with which reason. It is an inventory of the WHOLE scene, taken once when `Outlines` mounts — not a per-stop reading, since the traversal has no idea what the camera is framing. An exclusion list nobody can re-read ends up holding entries nobody can justify. Current count: **174 inked, 32 skipped** (22 emitters, 5 too-fine, 3 too-dense, 2 deforming).
 
 `tests/e2e/renderComparison.ts` requests `&outline=off` explicitly: the references in `docs/renders/refs/` are bare Blender renders with no Line Art, and that loop's job is to prove the _bake_ arrives intact. Ink is art direction laid on top at runtime; letting it in would diverge all eleven stops at once and drown the only signal the comparison can produce.
 

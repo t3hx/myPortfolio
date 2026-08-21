@@ -142,9 +142,11 @@ export type InkSkip = 'emitter' | 'fine' | 'dense' | 'deformed' | 'node' | null
  * La décision d'encre pour une maille, et sa RAISON.
  *
  * Rendre la raison plutôt qu'un booléen est ce qui rend la liste curable : la
- * sonde `window.__inkDebug` affiche, arrêt par arrêt, ce qui a été sauté et
- * pourquoi. Une liste d'exclusions qu'on ne peut pas relire finit par contenir
- * des entrées que plus personne ne sait justifier.
+ * sonde `window.__inkDebug` affiche ce qui a été sauté et pourquoi. C'est un
+ * inventaire de TOUTE la scène, pris une fois au montage — pas un relevé par
+ * arrêt, la traversée ne sait pas ce que la caméra cadre. Une liste
+ * d'exclusions qu'on ne peut pas relire finit par contenir des entrées que
+ * plus personne ne sait justifier.
  */
 export function inkSkipReason(
   materialName: string | undefined,
