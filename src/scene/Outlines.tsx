@@ -8,8 +8,8 @@ import { LineSegmentsGeometry } from 'three/addons/lines/LineSegmentsGeometry.js
 import {
   HULL_THICKNESS,
   LINE_COLOR,
-  LINE_OVERRIDES,
   LINE_THRESHOLD_DEG,
+  lineFactor,
   lineWidthFromUrl,
 } from '@/config/lineArt'
 import { outlineMode } from '@/lib/viewMode'
@@ -34,13 +34,6 @@ import { outlineMode } from '@/lib/viewMode'
  */
 
 const EDGE_LAYER_NAME = '__spike_edge_lines'
-
-function lineFactor(name: string, parents: string[]): number {
-  for (const [match, factor] of Object.entries(LINE_OVERRIDES)) {
-    if (name.includes(match) || parents.some((p) => p.includes(match))) return factor
-  }
-  return 1
-}
 
 export function Outlines() {
   const gl = useThree((s) => s.gl)

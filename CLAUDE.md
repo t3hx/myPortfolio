@@ -186,7 +186,19 @@ Issue #38 — a **vertex** displacement in the vertex shader of the single `Mat_
 
 ### Outlines (`src/scene/Outlines.tsx` + `src/config/lineArt.ts`)
 
-Runtime 2.5D ink, URL-toggled: `?outline=off|hull|edges|both` (+ `?lw=<px>` live width). `hull` = three OutlineEffect (batched inverted hull, view-dependent silhouettes — takes over rendering via a priority useFrame). `edges` = per-mesh `EdgesGeometry` rendered as screen-space fat lines (`LineSegments2`), with `LINE_OVERRIDES` per-object exclusions. Known drei/browser gotchas are commented in the code — read them before refactoring (Html portals, z-index ranges).
+Runtime 2.5D ink, still URL-switchable: `?outline=off|hull|edges|both` (+ `?lw=<px>` live width). `hull` = three OutlineEffect (batched inverted hull, view-dependent silhouettes — takes over rendering via a priority useFrame). `edges` = per-mesh `EdgesGeometry` rendered as screen-space fat lines (`LineSegments2`), curated by `LINE_OVERRIDES`. Known drei/browser gotchas are commented in the code — read them before refactoring (Html portals, z-index ranges).
+
+**`edges` is the default since #41** (arbitration, 2026-08-21) — it is no longer a spike flag, and `?outline=off` is the escape hatch. What settled it was measurement, on six stops × four modes:
+
+- **The hull had never been painted the colour it declares.** `OutlineEffect.defaultColor` is a raw triplet dropped into the renderer's _linear_ working space, unlike `LineMaterial({ color })`, which goes through `Color.setStyle` and converts from sRGB. The hardcoded value was `#10131f` divided by 255 — an sRGB fraction in a linear slot — so the renderer re-encoded it on output and painted **#474d62**, twelve times too bright. Measured: 96–100% of hull pixels were _lighter_ than what they replaced. It was not drawing ink, it was drawing a halo — and that halo was the only thing separating the black guitar and the black cat from their dark backgrounds. Both values are `number[]`; nothing but `tests/lineArt.test.ts` can catch this coming back.
+- Painted correctly, **`hull` covers 0.0–1.0% of the frame** and its Cat panels are indistinguishable from `off`. In a dark room, dark ink on a dark silhouette does nothing. The knob that would make it read is `HULL_THICKNESS` — _world_ units, so its apparent width changes across the tour's 84°→7.6° focal span, and unlike `?lw=` it has no live override.
+- **`both` adds a defect neither half has** (the Sharmall decal scribbles over). Not isolated; reproduced across two capture runs.
+
+**`LINE_OVERRIDES` is not tuning, it is the mode's correctness condition.** A 2.2 px stroke is _wider_ than what it outlines in four measured cases, and there the ink does not underline the object, it replaces it: `Outside_Stars` (the night sky came back peppered with **black** dots — `Sky: 0` covered `Outside_Sky`, but the stars are a separate node), `Guitar_Strings`, `Prop_Keyboard_Keys`, `Poster_`. A fifth entry, `Window_Curtain_`, is there for a different reason — the ink is not too wide, it is in the wrong place: `Curtains` (#38) displaces vertices in the **vertex shader** while `EdgesGeometry` is built once from the rest pose, so the stroke detaches and hangs ~15 px out in the night sky. **No capture in `prefers-reduced-motion` can show that**, and that is the mode the whole comparison loop runs in — check ink against animated geometry by hand.
+
+`tests/e2e/renderComparison.ts` therefore requests `&outline=off` explicitly: the references in `docs/renders/refs/` are bare Blender renders with no Line Art, and that loop's job is to prove the _bake_ arrives intact. Ink is art direction laid on top at runtime; letting it in would diverge all eleven stops at once and drown the only signal the comparison can produce.
+
+**The cost is fill, not draw calls, and it is only half-measured.** On Desk: 120 draws/frame at `off`, 239 at `hull`, 237 at `edges`, 473 at `both` — yet over the same window `hull` renders 46 frames and `edges` renders 9. Nearly identical draw counts, wildly different frame times: the fat lines are instanced quads and the bill is fragments. That measurement is **SwiftShader**, a software rasterizer that exaggerates precisely that cost, so it is a relative signal and not an fps prediction. **`edges` has not been profiled on a real GPU, and fill-bound is exactly what kills mobile** — do that before this reaches main (relevant to the KTX2 work, #39/#50/#51/#52).
 
 ### The narrative bubble (`src/scene/Bubble.tsx`)
 
@@ -268,7 +280,7 @@ Issue #33. The toggle in the menu bar is live; **every visitor-facing string goe
 ### URL parameters (dev tooling — keep working)
 
 - `?stop=<label>` — deterministic camera snap (render-comparison loop + shareable links)
-- `?outline=`, `?lw=` — ink A/B and width
+- `?outline=off|hull|edges|both` — the ink; **`edges` is the default**, `off` is the escape hatch (and what the comparison loop asks for). `?lw=<px>` sets the stroke width live
 - `?debug` — the diagnostic HUD (phase banner, stop rail, panel/telescope buttons); `?debug-fly` — fly mode, not yet ported to R3F
 - `?capture` — `preserveDrawingBuffer` for the render-comparison loop; nothing else (#45)
 - `?choose` — clears the stored 3D/classic choice and reopens the preselection screen

@@ -178,7 +178,14 @@ export async function captureStop(page: Page, label: string): Promise<Buffer> {
   // explicite ne peut pas être avalé en silence, et `tests/desk.test.ts` le
   // verrouille.
   await page.emulateMedia({ reducedMotion: 'reduce' })
-  await page.goto(`/?stop=${encodeURIComponent(label)}&capture`)
+  // `outline=off`, DEMANDÉ EXPLICITEMENT depuis que #41 a fait de `edges` le
+  // défaut. Les références de `docs/renders/refs/` sont des rendus Blender nus,
+  // sans une ligne de Line Art : cette boucle vérifie que le CUIT arrive
+  // intact à l'écran — les matériaux, les couleurs, le cadrage. L'encre est une
+  // direction artistique posée par-dessus, au moteur ; la laisser entrer ici
+  // ferait diverger chaque arrêt d'un coup et noierait la seule chose que la
+  // comparaison sait dire.
+  await page.goto(`/?stop=${encodeURIComponent(label)}&capture&outline=off`)
 
   // Le préchargeur se DÉMONTE quand la scène est prête (#25) : sa disparition
   // est donc le signal de fin de chargement, pas une approximation.
