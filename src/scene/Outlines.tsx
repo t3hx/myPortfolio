@@ -1,6 +1,6 @@
 import { useFrame, useThree } from '@react-three/fiber'
 import { useEffect, useMemo } from 'react'
-import { EdgesGeometry, Material, Mesh, Vector2, type Object3D } from 'three'
+import { Color, EdgesGeometry, Material, Mesh, Vector2, type Object3D } from 'three'
 import { OutlineEffect } from 'three/addons/effects/OutlineEffect.js'
 import { LineMaterial } from 'three/addons/lines/LineMaterial.js'
 import { LineSegments2 } from 'three/addons/lines/LineSegments2.js'
@@ -122,18 +122,24 @@ export function Outlines() {
   }, [scene, wantEdges, lineMat])
 
   // --- hull: OutlineEffect wraps the render (manual-render mode) ----------------------
-  const effect = useMemo(
-    () =>
-      wantHull
-        ? new OutlineEffect(gl, {
-            defaultThickness: HULL_THICKNESS,
-            defaultColor: [0.063, 0.075, 0.122], // #10131f
-            defaultAlpha: 1,
-            defaultKeepAlive: true,
-          })
-        : null,
-    [gl, wantHull],
-  )
+  const effect = useMemo(() => {
+    if (!wantHull) return null
+    // `defaultColor` est un triplet BRUT, poussé tel quel dans l'espace de
+    // travail LINÉAIRE du moteur — contrairement à `LineMaterial({ color })`,
+    // qui passe par `Color.setStyle` et convertit depuis sRGB. Le triplet
+    // écrit en dur ici était `#10131f` simplement divisé par 255 : le rendu le
+    // ré-encodait donc en sRGB à la sortie et peignait **#474d62**, un ardoise
+    // moyen 12× trop clair. Mesuré : 96 à 100 % des pixels du cerne étaient
+    // plus CLAIRS que ce qu'ils recouvraient — une auréole, pas de l'encre.
+    // `new Color()` fait la conversion, et garde `LINE_COLOR` seule source.
+    const ink = new Color(LINE_COLOR)
+    return new OutlineEffect(gl, {
+      defaultThickness: HULL_THICKNESS,
+      defaultColor: [ink.r, ink.g, ink.b],
+      defaultAlpha: 1,
+      defaultKeepAlive: true,
+    })
+  }, [gl, wantHull])
 
   useFrame(
     () => {
