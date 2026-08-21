@@ -98,12 +98,26 @@ export function NanoLeaf({ scene }: NanoLeafProps) {
           `#include <dithering_fragment>
            // Le rang de la tuile fait avancer la vague ; le temps la déplace.
            float p = fract(vTile * ${LED_SPREAD.toFixed(3)} - uLedTime / ${LED_PERIOD.toFixed(1)});
-           float s = p * 3.0;
-           int i = int(floor(s));
-           // Cyclique : le dernier arrêt revient au premier, sans couture.
-           vec3 a = i == 0 ? uRamp[0] : (i == 1 ? uRamp[1] : uRamp[2]);
-           vec3 b = i == 0 ? uRamp[1] : (i == 1 ? uRamp[2] : uRamp[0]);
-           vec3 tint = mix(a, b, smoothstep(0.0, 1.0, fract(s)));
+           // MÉLANGE CYCLIQUE PAR LOBES, et non par segments.
+           //
+           // La version par segments choisissait deux arrêts selon un
+           // floor(), puis interpolait entre eux. Deux frontières nettes
+           // traversaient donc le cycle, et une tuile qui les franchissait
+           // changeait de régime d'un coup — c'est ce qui se lisait comme un
+           // manque de fluidité.
+           //
+           // Ici, chaque arrêt porte un lobe en cosinus centré sur lui. Il n'y
+           // a plus de frontière du tout : à tout instant deux lobes se
+           // recouvrent, leur somme normalise le résultat, et la couleur se
+           // déplace sans jamais « arriver » quelque part.
+           vec3 tint = vec3(0.0);
+           float wSum = 0.0;
+           for (int k = 0; k < 3; k++) {
+             float w = max(0.0, cos(6.2831853 * (p - float(k) / 3.0)));
+             tint += uRamp[k] * w;
+             wSum += w;
+           }
+           tint /= max(wSum, 1e-4);
            // LA TEINTE CHANGE LA COULEUR, JAMAIS LA LUMINOSITÉ. Multiplier le
            // bake par la teinte puis rehausser faisait déborder les canaux et
            // saturait le panneau : il devenait plus lumineux que ce que Blender

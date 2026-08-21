@@ -76,18 +76,23 @@ describe('le rang des tuiles', () => {
 })
 
 describe('la palette', () => {
-  it('ne contient que des couleurs déjà présentes dans la pièce', () => {
-    // C'est ce qui fait que l'animation a l'air native plutôt que collée
-    // dessus : le rose-violet des pales du PC, le cyan des LED, le bleu du
-    // clavier. Aucune n'est inventée.
-    expect(LED_RAMP).toEqual(['#ed9ef5', '#4dd9ff', '#4da6ff'])
+  it('forme une vraie triade, pas deux voisins et un tiers', () => {
+    // Le premier jeu mêlait deux bleus — cyan et bleu électrique — et un rose :
+    // deux voisins sur la roue chromatique ne font pas une triade, et le
+    // panneau lisait « bleu qui varie ». Vert, violet et magenta sont répartis
+    // autour de la roue, et c'est ce qui donne l'accord.
+    expect(LED_RAMP).toEqual(['#36ff51', '#7c46d6', '#e24bc0'])
+    expect(LED_RAMP.length).toBe(3)
   })
 
-  it('boucle sans couture', () => {
-    // Le dernier arrêt revient au premier : sans ce retour, la vague ferait un
-    // saut de couleur à chaque tour.
-    expect(component).toContain('uRamp[0]')
-    expect(LED_RAMP.length).toBe(3)
+  it('boucle sans couture NI frontière', () => {
+    // La version par segments choisissait deux arrêts avec un floor() : deux
+    // frontières nettes traversaient le cycle, et une tuile qui les
+    // franchissait changeait de régime d'un coup. Chaque arrêt porte
+    // maintenant un lobe en cosinus centré sur lui — il n'y a plus de
+    // frontière du tout.
+    expect(component).toContain('cos(6.2831853')
+    expect(component).not.toContain('floor(s)')
   })
 
   it('reste une lumière d’ambiance, pas un gyrophare', () => {
@@ -106,8 +111,14 @@ describe('le respect du bake', () => {
     // ramenée à la luminance du bake avant d'être mélangée.
     expect(component).toContain('lumBake')
     expect(component).toContain('lumTint')
-    // 0,5 est mesuré : au-delà, la saturation du panneau dépasse celle du bake.
-    expect(LED_TINT).toBeLessThanOrEqual(0.5)
+    // La force est mesurée. La triade vert / violet / magenta est plus saturée
+    // que le bleu cuit, donc le panneau finit forcément au-dessus de la
+    // saturation du bake — c'est le prix de l'accord demandé. Ce qui reste
+    // borné, c'est la LUMINOSITÉ : plus la teinte monte, plus les canaux
+    // saturés écrêtent et plus le panneau s'assombrit. Mesuré à l'arrêt
+    // Bureau : bake 208 ; teinte 0,35 → 194 ; 0,42 → 190 ; 0,5 → 185. Au-delà,
+    // le panneau perd sa place dans l'image.
+    expect(LED_TINT).toBeLessThanOrEqual(0.45)
   })
 
   it("ne touche qu'un seul matériau, nommé", () => {

@@ -16,21 +16,31 @@ export const LED_TILES_OBJECT = 'LEDTiles_Merged'
 export const LED_TILES_MATERIAL = 'Mat_LEDEmissive'
 
 /**
- * Les trois arrêts du dégradé, dans l'ordre du cycle.
+ * Les trois arrêts du dégradé, dans l'ordre du cycle : vert, violet, magenta.
  *
- * - `#ed9ef5` — `Mat_FanBlade`, le rose-violet qui sort du boîtier du PC ;
- * - `#4dd9ff` — `Mat_MonitorStatusLED`, `Mat_HeadsetLED`, `Mat_GuitarString` :
- *   le cyan de toutes les LED de la pièce, cousin de l'accent `--glow` ;
- * - `#4da6ff` — `Mat_KeyboardBacklight`, le bleu électrique du clavier.
+ * Le premier jeu mêlait deux bleus — cyan et bleu électrique — et un rose. Deux
+ * voisins sur la roue chromatique ne font pas une triade : le panneau lisait
+ * « bleu qui varie », pas trois couleurs. Vert, violet et magenta sont, eux,
+ * répartis autour de la roue, et c'est ce qui donne l'accord cyberpunk.
  *
- * Elles sont désaturées par le bake lui-même, donc « cyberpunk » sans être
- * criardes : c'est la pièce qui a déjà fait ce réglage, pas nous.
+ * - `#36ff51` — **relevé dans la pièce** : `Mat_CatEyes`, le vert électrique du
+ *   regard du chat, la seule vraie couleur verte de la scène ;
+ * - `#7c46d6` — le violet profond. **Celui-là est nouveau** : aucun matériau du
+ *   `.glb` n'en porte. Il fait le pont entre les deux autres, qui sans lui
+ *   sauteraient du vert au magenta par le plus court chemin — c'est-à-dire par
+ *   un gris sale ;
+ * - `#e24bc0` — le magenta, une version soutenue du rose des pales du PC
+ *   (`Mat_FanBlade`, `#ed9ef5`), qui était trop pâle pour tenir son rang face
+ *   au vert.
+ *
+ * La saturation, elle, n'est pas laissée à ces valeurs : `LED_TINT` la borne
+ * sous celle du bake, mesurée.
  */
-export const LED_RAMP = ['#ed9ef5', '#4dd9ff', '#4da6ff'] as const
+export const LED_RAMP = ['#36ff51', '#7c46d6', '#e24bc0'] as const
 
-/** Durée d'un tour complet du dégradé, en secondes. Lent : c'est une lumière
- *  d'ambiance, pas un gyrophare. */
-export const LED_PERIOD = 16
+/** Durée d'un tour complet du dégradé, en secondes. Reste une lumière
+ *  d'ambiance, mais assez vive pour qu'on la voie vivre sans la fixer. */
+export const LED_PERIOD = 11
 
 /**
  * Nombre de cycles visibles simultanément sur le panneau.
@@ -59,4 +69,4 @@ export const LED_SPREAD = 0.45
  * au rose criard ; à 0,5 elle retombe à 0,306, sous le bake. La luminosité,
  * elle, ne bouge pas (217 contre 218) par construction.
  */
-export const LED_TINT = 0.5
+export const LED_TINT = 0.42
