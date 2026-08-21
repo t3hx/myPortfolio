@@ -44,24 +44,45 @@ export const LINE_THRESHOLD_DEG = 29
  * lieu de la refaire.
  *
  * La règle attrape d'un coup le rétroéclairage du clavier, les LED du casque
- * et du boîtier, les pales de ventilateur, les yeux du chat, les ampoules —
- * **les étoiles et les cordes de guitare aussi**, qui étaient listées à la
- * main avant qu'on regarde de quoi elles étaient faites. Et elle couvre la
- * LED que le prochain export ajoutera.
+ * et du boîtier, les tuiles NanoLeaf, les yeux du chat, les ampoules — **les
+ * étoiles et les cordes de guitare aussi**, qui étaient listées à la main
+ * avant qu'on regarde de quoi elles étaient faites. Et elle couvre la LED que
+ * le prochain export ajoutera.
+ *
+ * Elle décrit un RISQUE et non une interdiction : le trait n'éteint l'émissif
+ * que lorsque celui-ci est plus petit que lui. Ce qui émet en grand le supporte
+ * très bien — voir `INK_EMITTER_KEEP`, où le paysage et les hélices de
+ * ventilateur sont nommés avec leur raison.
  */
 export const INK_SKIP_EMITTERS = true
 
 /**
- * Les trois émissifs qui gardent leur trait : le décor du dehors.
+ * Les émissifs qui gardent leur trait — deux familles, deux raisons.
  *
- * `Mat_Mountains`, `Mat_Treeline` et `Mat_Ground` se servent de l'émissif
- * comme d'un APLAT de peinture, pas comme d'une lampe — ce sont des masses
- * de paysage, pas des sources. Et leur silhouette est précisément ce qui fait
- * le paysage : c'est la crête cernée qui donne la gravure dans la fenêtre.
- * La règle ci-dessus ne tient pas pour elles, alors elles sont nommées, avec
- * la raison, plutôt que noyées dans un test de taille.
+ * **Le décor du dehors** (`Mat_Mountains`, `Mat_Treeline`, `Mat_Ground`) se
+ * sert de l'émissif comme d'un APLAT de peinture, pas comme d'une lampe : ce
+ * sont des masses de paysage, pas des sources. Et leur silhouette est
+ * précisément ce qui fait le paysage — c'est la crête cernée qui donne la
+ * gravure dans la fenêtre.
+ *
+ * **Les pales de ventilateur** (`Mat_FanBlade`) sont le contre-exemple qui
+ * montre que la règle dérivée décrit un RISQUE, pas une interdiction : un
+ * trait sur un émissif l'éteint quand l'émissif est petit — une LED, une
+ * étoile, une corde. Une hélice fait plusieurs centimètres, le trait en cerne
+ * les branches au lieu de les recouvrir, et c'est ce qui donne au boîtier ses
+ * dix roues dessinées. Arbitrage produit (2026-08-21), tranché sur capture.
+ *
+ * Le trait tourne AVEC la pale : `Outlines` attache ses lignes en enfant de la
+ * maille, et `DeskAlive` fait tourner cette maille par transformation. C'est
+ * la différence avec le rideau, dont les sommets partent dans un shader que
+ * la géométrie du trait ne voit pas.
  */
-export const INK_EMITTER_KEEP: readonly string[] = ['Mat_Mountains', 'Mat_Treeline', 'Mat_Ground']
+export const INK_EMITTER_KEEP: readonly string[] = [
+  'Mat_Mountains',
+  'Mat_Treeline',
+  'Mat_Ground',
+  'Mat_FanBlade',
+]
 
 /**
  * Le trait est plus large que le motif qu'il devrait cerner.

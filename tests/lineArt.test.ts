@@ -36,7 +36,7 @@ describe("ce qui émet de la lumière n'est pas encré", () => {
     expect(inkSkipReason('Mat_KeyboardBacklight', EMITTER)).toBe('emitter')
     expect(inkSkipReason('Mat_HeadsetLED', EMITTER)).toBe('emitter')
     expect(inkSkipReason('Mat_LEDEmissive', EMITTER)).toBe('emitter')
-    expect(inkSkipReason('Mat_FanBlade', EMITTER)).toBe('emitter')
+    expect(inkSkipReason('Mat_LEDEmissive', EMITTER)).toBe('emitter')
     expect(inkSkipReason('Mat_CatEyes', EMITTER)).toBe('emitter')
   })
 
@@ -49,10 +49,23 @@ describe("ce qui émet de la lumière n'est pas encré", () => {
 
   it('laisse le décor du dehors encré, lui qui peint plutôt qu’il n’éclaire', () => {
     // La crête cernée est ce qui donne la gravure dans la fenêtre. Ces trois
-    // matériaux se servent de l'émissif comme d'un aplat, pas comme d'une
-    // lampe — c'est la seule exception, et elle est nommée.
+    // matériaux se servent de l'émissif comme d'un aplat, pas comme d'une lampe.
     for (const mat of INK_EMITTER_KEEP) expect(inkSkipReason(mat, EMITTER)).toBeNull()
-    expect(INK_EMITTER_KEEP).toContain('Mat_Mountains')
+    for (const mat of ['Mat_Mountains', 'Mat_Treeline', 'Mat_Ground']) {
+      expect(INK_EMITTER_KEEP).toContain(mat)
+    }
+  })
+
+  it('laisse les hélices de ventilateur encrées', () => {
+    // Le contre-exemple qui dit ce que la règle veut vraiment dire : un trait
+    // n'éteint un émissif que s'il est plus large que lui. Une LED fait deux
+    // pixels, une hélice plusieurs centimètres — cernée, elle donne au boîtier
+    // ses dix roues dessinées. Arbitrage produit, tranché sur capture.
+    expect(inkSkipReason('Mat_FanBlade', EMITTER)).toBeNull()
+    // Le support reste cuit, donc encré par le cas général : les deux moitiés
+    // d'un ventilateur doivent porter le même trait, sans quoi seule l'hélice
+    // est dessinée et le boîtier a l'air troué.
+    expect(inkSkipReason('Mat_FanFrame', BAKED)).toBeNull()
   })
 })
 
