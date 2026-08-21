@@ -192,6 +192,11 @@ export function RoomModel({ onReady }: RoomModelProps) {
         if (!out) {
           out = rebuildMaterial(src, tag)
           out.name = src.name
+          // Le traitement choisi est MARQUÉ, pas seulement appliqué : `Outlines`
+          // (#41) a besoin de savoir ce qui émet de la lumière pour ne pas
+          // poser un trait sombre dessus. Le re-dériver là-bas ferait deux
+          // sources pour une même décision, et la seconde finirait par mentir.
+          out.userData.runtime = tag
           cache.set(key, out)
           disposed.push(src)
         }

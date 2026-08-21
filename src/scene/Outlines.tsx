@@ -9,8 +9,9 @@ import {
   HULL_THICKNESS,
   LINE_COLOR,
   LINE_THRESHOLD_DEG,
-  lineFactor,
+  inkSkipReason,
   lineWidthFromUrl,
+  type InkSkip,
 } from '@/config/lineArt'
 import { outlineMode } from '@/lib/viewMode'
 
@@ -65,6 +66,13 @@ export function Outlines() {
     const added: LineSegments2[] = []
     const offsetted: Material[] = []
 
+    // La sonde de curation, dans l'esprit de `__rigDebug`. Une liste
+    // d'exclusions qu'on ne peut pas relire finit par contenir des entrées que
+    // plus personne ne sait justifier : celle-ci dit, arrêt par arrêt, ce qui
+    // a été sauté et POURQUOI.
+    const skipped: Record<string, { material: string; reason: InkSkip }> = {}
+    let inked = 0
+
     scene.traverse((obj: Object3D) => {
       const mesh = obj as Mesh
       if (!mesh.isMesh || mesh.name === EDGE_LAYER_NAME) return
@@ -74,7 +82,25 @@ export function Outlines() {
         parents.push(p.name)
         p = p.parent
       }
-      if (lineFactor(mesh.name, parents) === 0) return
+
+      // Un matériau par maille : le chargeur glTF monte une maille par
+      // primitive. Le tableau est le cas dégénéré, et s'il survenait une seule
+      // `EdgesGeometry` couvrirait des surfaces sans rapport — on ne peut pas
+      // trancher, donc on n'encre pas plutôt que d'encrer de travers.
+      const material = Array.isArray(mesh.material) ? null : mesh.material
+      const reason = material
+        ? inkSkipReason(
+            material.name,
+            material.userData?.runtime as string | undefined,
+            mesh.name,
+            parents,
+          )
+        : 'fine'
+      if (reason) {
+        skipped[mesh.name] = { material: material?.name ?? '(multiple)', reason }
+        return
+      }
+      inked++
 
       const edges = new EdgesGeometry(mesh.geometry, LINE_THRESHOLD_DEG)
       const positions = edges.attributes.position.array as Float32Array
@@ -100,6 +126,15 @@ export function Outlines() {
         }
       }
     })
+
+    ;(window as unknown as Record<string, unknown>).__inkDebug = {
+      inked,
+      skipped,
+      counts: Object.values(skipped).reduce<Record<string, number>>((acc, s) => {
+        acc[s.reason ?? '?'] = (acc[s.reason ?? '?'] ?? 0) + 1
+        return acc
+      }, {}),
+    }
 
     return () => {
       for (const lines of added) {

@@ -1,15 +1,31 @@
 /**
  * Runtime ink configuration — the 2D-stroke half of the Blender Line Art
- * match (per-object overrides pattern, like the legacy light overrides).
+ * match.
  *
  * Blender's Grease Pencil strokes are SCREEN-SPACE constant width and
  * artistically selective (edge marks, not every crease). These knobs bring
  * the runtime edges as close as possible; full fidelity comes from baking
  * the view-independent Line Art into the .glb (see the design doc).
+ *
+ * **L'encre se décide par MATÉRIAU, pas par objet** (#41, 2026-08-21) — la
+ * même granularité que `RoomModel` utilise pour choisir ses traitements, et
+ * pour la même raison. Une maille fusionnée mélange des surfaces qui n'ont
+ * rien à voir : `Poster_Hellfest_Merged` porte le dessin ET son cadre. Exclue
+ * par son nom d'objet, l'affiche emportait le cadre avec elle — or c'est le
+ * cadre qui doit garder son trait, c'est lui l'objet. Le chargeur glTF monte
+ * une maille par primitive, donc une maille = un matériau, et la question se
+ * pose exactement là où la réponse diffère.
  */
 
-/** Stroke width in screen pixels (Grease Pencil feel: 2-3px). `?lw=` overrides. */
-export const LINE_WIDTH_PX = 2.2
+/**
+ * Stroke width in screen pixels. `?lw=` overrides it live.
+ *
+ * Grease Pencil tourne autour de 2 à 3 px, mais Blender encre une image fixe
+ * et nous une pièce meublée : à 2,2 px le trait était plus large que la moitié
+ * de ce qu'il cernait, et il fallait exclure objet après objet pour compenser
+ * une épaisseur. La largeur est le premier réglage, la liste vient après.
+ */
+export const LINE_WIDTH_PX = 1.4
 
 /** Ink color — near-black, matches the BD stroke of the UI direction. */
 export const LINE_COLOR = '#10131f'
@@ -18,56 +34,118 @@ export const LINE_COLOR = '#10131f'
 export const LINE_THRESHOLD_DEG = 29
 
 /**
- * Per-object line exclusions/tuning, matched by name substring (first match
- * wins): 0 = no ink on this object, 1 = default. Values other than 0/1 are
- * reserved for per-object width once material grouping lands.
+ * Ce qui ÉMET de la lumière n'est jamais encré — dérivé, jamais listé.
  *
- * Curate against the refs: Blender inks selectively — kill the ink where the
- * ref keeps surfaces clean.
+ * Dans un rendu cuit non éclairé, une surface émissive EST la lumière : il n'y
+ * a pas de lampe ailleurs dans la scène qui l'expliquerait. Poser un trait
+ * sombre de deux pixels sur une LED de deux pixels ne la souligne pas, il
+ * l'éteint. `RoomModel` a déjà classé chaque matériau pour le rendre, et il
+ * marque son choix dans `userData.runtime` : l'encre lit cette décision au
+ * lieu de la refaire.
+ *
+ * La règle attrape d'un coup le rétroéclairage du clavier, les LED du casque
+ * et du boîtier, les pales de ventilateur, les yeux du chat, les ampoules —
+ * **les étoiles et les cordes de guitare aussi**, qui étaient listées à la
+ * main avant qu'on regarde de quoi elles étaient faites. Et elle couvre la
+ * LED que le prochain export ajoutera.
  */
-export const LINE_OVERRIDES: Record<string, number> = {
-  Moon: 0, // dense sphere → wireframe hash
-  Sky: 0,
+export const INK_SKIP_EMITTERS = true
 
-  // La liste de curation de #41. Chacune de ces entrées répare un endroit où
-  // le trait est PLUS LARGE que ce qu'il cerne : à 2,2 px, l'encre ne souligne
-  // plus l'objet, elle le remplace.
-  //
-  // `Outside_Stars` est l'exemple qui décide : `Sky: 0` couvrait bien
-  // `Outside_Sky`, mais les étoiles sont un nœud SÉPARÉ, et chacune fait deux
-  // pixels. Cernées, elles devenaient des points NOIRS — le ciel nocturne de
-  // l'arrêt Télescope se retrouvait criblé à l'envers.
-  Outside_Stars: 0,
-  Guitar_Strings: 0, // six cordes cyan → une bouillie sombre
-  Prop_Keyboard_Keys: 0, // les touches se rejoignent en un bloc plein
-  Poster_: 0, // l'affiche est une maille fusionnée : le trait hache le dessin
+/**
+ * Les trois émissifs qui gardent leur trait : le décor du dehors.
+ *
+ * `Mat_Mountains`, `Mat_Treeline` et `Mat_Ground` se servent de l'émissif
+ * comme d'un APLAT de peinture, pas comme d'une lampe — ce sont des masses
+ * de paysage, pas des sources. Et leur silhouette est précisément ce qui fait
+ * le paysage : c'est la crête cernée qui donne la gravure dans la fenêtre.
+ * La règle ci-dessus ne tient pas pour elles, alors elles sont nommées, avec
+ * la raison, plutôt que noyées dans un test de taille.
+ */
+export const INK_EMITTER_KEEP: readonly string[] = ['Mat_Mountains', 'Mat_Treeline', 'Mat_Ground']
 
-  // Les rideaux, pour une raison DIFFÉRENTE des quatre entrées ci-dessus :
-  // ici le trait n'est pas trop large, il est au mauvais endroit. `Curtains`
-  // (#38) déplace les sommets dans le VERTEX SHADER, alors qu'`EdgesGeometry`
-  // est construite une fois, sur la géométrie au repos. L'encre ne peut pas
-  // suivre : mesuré à l'arrêt Télescope, elle décroche du tissu et reste
-  // pendue en plein ciel, à une quinzaine de pixels.
-  //
-  // Aucune capture en `prefers-reduced-motion` ne pouvait le montrer — la
-  // brise y est coupée, et c'est le mode dans lequel tourne toute la boucle de
-  // comparaison. Le `Window_CurtainRod_*`, lui, garde son trait : la tringle
-  // ne bouge pas, et `Window_Curtain_` ne l'attrape pas.
-  Window_Curtain_: 0,
+/**
+ * Le trait est plus large que le motif qu'il devrait cerner.
+ *
+ * Là, l'encre ne souligne pas, elle remplace : la grille de l'ampli devient un
+ * pâté, et le dessin d'une affiche se hache. **Le cadre des affiches n'est PAS
+ * dans cette liste** — `Mat_PosterFrame` et `Mat_PosterFrame_H` gardent leur
+ * trait, c'est tout l'intérêt de trancher par matériau.
+ */
+export const INK_SKIP_FINE: readonly string[] = [
+  'Mat_Amp_Grille',
+  'Mat_Amp_GrilleWire',
+  'Mat_Poster_Hellfest',
+  'Mat_Poster_Expanse',
+  'Mat_AmpText', // décalque à canal alpha : le trait cerne le quad, pas le logo
+]
+
+/**
+ * Géométrie dense dont les plis, cernés, virent au grillage.
+ *
+ * La lune est une sphère facettée vue de très près : chaque facette passe le
+ * seuil d'angle, et le trait en fait un fil de fer. Le ciel est une voûte
+ * fermée dont on ne veut aucune arête.
+ */
+export const INK_SKIP_DENSE: readonly string[] = ['Mat_Moon', 'Mat_MoonDetailed', 'Mat_Sky']
+
+/**
+ * Géométrie que l'encre ne peut pas suivre.
+ *
+ * `EdgesGeometry` est construite UNE FOIS, sur la pose au repos ; `Curtains`
+ * (#38) déplace ses sommets dans le vertex shader. Le trait reste donc là où
+ * le tissu n'est plus — mesuré à l'arrêt Télescope, il décroche et pend à une
+ * quinzaine de pixels en plein ciel. Aucune capture en `prefers-reduced-motion`
+ * ne peut le montrer, et c'est le mode dans lequel tourne toute la boucle de
+ * comparaison.
+ */
+export const INK_SKIP_DEFORMED: readonly string[] = ['Mat_Curtain']
+
+/**
+ * Le repli par NOM D'OBJET, gardé vide.
+ *
+ * Il reste parce qu'un jour deux objets partageront un matériau et devront
+ * être traités différemment — c'est le seul cas que le matériau ne sait pas
+ * dire. Les cinq entrées qu'il portait ont toutes trouvé leur matériau ; les
+ * y laisser aurait été deux mécanismes pour une question.
+ *
+ * La correspondance se fait par SOUS-CHAÎNE, sur l'objet ou n'importe lequel
+ * de ses parents, et c'est un piège tendu : `Window_Curtain_` ne doit pas
+ * attraper `Window_CurtainRod_Pole`. `tests/lineArt.test.ts` le verrouille.
+ */
+export const LINE_OVERRIDES: Record<string, number> = {}
+
+/** Pourquoi une maille n'est pas encrée. `null` = elle l'est. */
+export type InkSkip = 'emitter' | 'fine' | 'dense' | 'deformed' | 'node' | null
+
+/**
+ * La décision d'encre pour une maille, et sa RAISON.
+ *
+ * Rendre la raison plutôt qu'un booléen est ce qui rend la liste curable : la
+ * sonde `window.__inkDebug` affiche, arrêt par arrêt, ce qui a été sauté et
+ * pourquoi. Une liste d'exclusions qu'on ne peut pas relire finit par contenir
+ * des entrées que plus personne ne sait justifier.
+ */
+export function inkSkipReason(
+  materialName: string | undefined,
+  runtime: string | undefined,
+  nodeName = '',
+  parents: readonly string[] = [],
+): InkSkip {
+  const mat = materialName ?? ''
+  if (INK_SKIP_FINE.includes(mat)) return 'fine'
+  if (INK_SKIP_DENSE.includes(mat)) return 'dense'
+  if (INK_SKIP_DEFORMED.includes(mat)) return 'deformed'
+  if (INK_SKIP_EMITTERS && runtime === 'emissive' && !INK_EMITTER_KEEP.includes(mat))
+    return 'emitter'
+  if (lineFactor(nodeName, parents) === 0) return 'node'
+  return null
 }
 
 /**
- * Le facteur d'encre d'un objet : 0 = pas de trait, 1 = trait par défaut.
+ * Le facteur d'encre d'un objet par son NOM : 0 = pas de trait, 1 = trait.
  *
- * La correspondance se fait par SOUS-CHAÎNE, sur le nom de l'objet ou sur
- * celui de n'importe lequel de ses parents — une maille fusionnée porte
- * rarement le nom qu'on a en tête, et `Poster_` doit attraper les deux
- * affiches sans qu'on les liste. Premier match gagnant.
- *
- * Vit ici et pas dans `Outlines.tsx` pour être testable : la liste de curation
- * est la seule partie du contour qu'une régression peut casser en silence —
- * un ré-export qui renomme `Outside_Stars` recriblerait le ciel de points
- * noirs sans qu'aucun outil ne bronche.
+ * Vit ici et pas dans `Outlines.tsx` pour être testable — `Outlines.tsx` tire
+ * three et R3F. Premier match gagnant.
  */
 export function lineFactor(name: string, parents: readonly string[] = []): number {
   for (const [match, factor] of Object.entries(LINE_OVERRIDES)) {
