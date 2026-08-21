@@ -163,6 +163,16 @@ Issue #106, and the last interaction `docs/PORTFOLIO_3D_INTERACTIONS.md` specifi
 - **The reticle is four ticks at the rim, never a crosshair at the centre** — the centre is the moon, and you do not strike it through.
 - **The aperture closes by scaling the whole mask, not the radius.** A custom property does not interpolate in `@keyframes` without `@property`; it would jump. Scaled up, the mask overflows the frame, so the black still covers the screen while the hole closes.
 
+### The NanoLeaf gradient (`src/scene/NanoLeaf.tsx` + `src/lib/nanoleaf.ts` + `src/config/nanoleaf.ts`)
+
+Issue #36 — **the first animation that touches a baked material**, and it does so as narrowly as possible: `onBeforeCompile` on the single `Mat_LEDEmissive`. The material stays a `MeshBasicMaterial`, the unlit pipeline is unchanged, no light is added; three lines go into one fragment shader and nothing else.
+
+- **The three colours already exist in the room**, which is what makes the effect read as native rather than pasted on. Eyedropped from the glb's own emissives: `#ed9ef5` (`Mat_FanBlade`, the violet-pink coming out of the PC case), `#4dd9ff` (the cyan shared by the monitor LED, the headset and the guitar strings), `#4da6ff` (`Mat_KeyboardBacklight`). The tiles' resting colour, `#6699ff`, sits between the last two — the gradient walks the room's palette instead of importing one.
+- **The tint moves the hue, never the luminance.** The first version multiplied the bake by the tint and lifted it: channels clipped, the panel got brighter than Blender authored, and the colours went garish. The tint is now scaled to the bake's luminance before mixing. `LED_TINT` is **measured, not chosen** — the rule is that the panel may never end up _more saturated_ than the bake: tile-pixel saturation is 0.33 baked, 0.353 at tint 0.8 (above, and visibly hot), 0.306 at 0.5. Luminance is unchanged by construction (217 vs 218).
+- **The 14 tiles are triangles sharing no vertices**, so each gets a per-vertex constant — a flat colour per tile, which is what a NanoLeaf panel does; a continuous gradient would sweep _through_ them. The wave is indexed on each tile's **rank** along the panel diagonal, not its distance: the tiles are not evenly spaced, and on distance the wave would speed up and slow down across the gaps.
+- **Under reduced motion the material is not touched at all** — not frozen on a hue, untouched. That is what keeps the render loop, which captures with reduced motion, seeing exactly the bake, and therefore keeps the WYSIWYG rule verifiable despite a permanent animation. Measured: the `desk` stop stays at **1.503 %**.
+- The effect **unmounts cleanly** (`onBeforeCompile` cleared, `aTile` deleted), or hot reloads would stack injections and the material would never return to its baked state.
+
 ### Outlines (`src/scene/Outlines.tsx` + `src/config/lineArt.ts`)
 
 Runtime 2.5D ink, URL-toggled: `?outline=off|hull|edges|both` (+ `?lw=<px>` live width). `hull` = three OutlineEffect (batched inverted hull, view-dependent silhouettes — takes over rendering via a priority useFrame). `edges` = per-mesh `EdgesGeometry` rendered as screen-space fat lines (`LineSegments2`), with `LINE_OVERRIDES` per-object exclusions. Known drei/browser gotchas are commented in the code — read them before refactoring (Html portals, z-index ranges).

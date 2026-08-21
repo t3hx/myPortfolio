@@ -11,6 +11,7 @@ import { CabinetDrawer } from '@/scene/CabinetDrawer'
 import { CameraRig } from '@/scene/CameraRig'
 import { CatAlive } from '@/scene/CatAlive'
 import { DeskAlive } from '@/scene/DeskAlive'
+import { NanoLeaf } from '@/scene/NanoLeaf'
 import { TelescopeHover } from '@/scene/TelescopeHover'
 import { TelescopePing } from '@/scene/TelescopePing'
 import { Outlines } from '@/scene/Outlines'
@@ -83,6 +84,11 @@ export function Experience({ bubbleLayer }: ExperienceProps) {
           fume. La fumée est de la géométrie AJOUTÉE, pas un matériau cuit
           modifié — le pipeline non éclairé n'est pas touché. */}
       {scene && <DeskAlive scene={scene} />}
+
+      {/* Le dégradé des tuiles NanoLeaf (#36) : la seule animation du lot qui
+          touche un matériau cuit, et de la façon la plus étroite possible —
+          `onBeforeCompile` sur un seul matériau nommé. */}
+      {scene && <NanoLeaf scene={scene} />}
 
       {/* Le cerne du télescope au survol (#106) : le seul objet interactif de
           son arrêt ne le disait pas. Ne rend rien — les lignes sont enfants de
