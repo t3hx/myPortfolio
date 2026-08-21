@@ -11,6 +11,7 @@ import { CabinetDrawer } from '@/scene/CabinetDrawer'
 import { CameraRig } from '@/scene/CameraRig'
 import { CatAlive } from '@/scene/CatAlive'
 import { DeskAlive } from '@/scene/DeskAlive'
+import { Curtains } from '@/scene/Curtains'
 import { NanoLeaf } from '@/scene/NanoLeaf'
 import { TelescopeHover } from '@/scene/TelescopeHover'
 import { TelescopePing } from '@/scene/TelescopePing'
@@ -89,6 +90,10 @@ export function Experience({ bubbleLayer }: ExperienceProps) {
           touche un matériau cuit, et de la façon la plus étroite possible —
           `onBeforeCompile` sur un seul matériau nommé. */}
       {scene && <NanoLeaf scene={scene} />}
+
+      {/* Les rideaux dans la brise (#38) : un déplacement de sommets sur le
+          seul `Mat_Curtain`, dont la texture cuite reste intacte. */}
+      {scene && <Curtains scene={scene} />}
 
       {/* Le cerne du télescope au survol (#106) : le seul objet interactif de
           son arrêt ne le disait pas. Ne rend rien — les lignes sont enfants de

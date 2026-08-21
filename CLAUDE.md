@@ -174,6 +174,16 @@ Issue #36 — **the first animation that touches a baked material**, and it does
 - **Under reduced motion the material is not touched at all** — not frozen on a hue, untouched. That is what keeps the render loop, which captures with reduced motion, seeing exactly the bake, and therefore keeps the WYSIWYG rule verifiable despite a permanent animation. Measured: the `desk` stop stays at **1.503 %**.
 - The effect **unmounts cleanly** (`onBeforeCompile` cleared, `aTile` deleted), or hot reloads would stack injections and the material would never return to its baked state.
 
+### The curtains in a breeze (`src/scene/Curtains.tsx` + `src/config/curtains.ts`)
+
+Issue #38 — a **vertex** displacement in the vertex shader of the single `Mat_Curtain`. The baked texture is untouched: nothing changes about what is drawn, only about where the fabric is.
+
+- **Pinned at the top, free at the hem.** The amplitude ramps from 0 at the rod to 1 at the hem; a uniform amplitude would slide the whole drop sideways like a rigid panel on a pivot.
+- **The lateral sway is what makes the motion visible, and it took a measurement to notice.** At the Telescope stop the camera looks _toward_ the window — almost straight down the axis the breeze pushes along. With 9 cm of perpendicular billow the curtain's silhouette did not move by a single pixel; only its shading changed. A real curtain does not merely swell, its hem also swings along the rod, and that component is the one that reads head-on.
+- **The amplitude is bounded by the scene, not by taste.** The right curtain's bounding box already overlaps the telescope's by 7.8 cm in Z and shares its X range. Verified in capture at the stop where the two sit side by side: at 9 cm of billow and 3.5 cm of drift the fabric never reaches the instrument.
+- **The two panels are desynchronised by their world position** (`modelMatrix[3].z`). They share a material _and_ an identical local geometry; without the offset they waved in perfect step, which reads as a mechanism rather than as wind. The two wave periods are deliberately incommensurable for the same reason.
+- **Under reduced motion the material is untouched** — as with the NanoLeaf. Measured: the `telescope` stop stays at **1.335 %**.
+
 ### Outlines (`src/scene/Outlines.tsx` + `src/config/lineArt.ts`)
 
 Runtime 2.5D ink, URL-toggled: `?outline=off|hull|edges|both` (+ `?lw=<px>` live width). `hull` = three OutlineEffect (batched inverted hull, view-dependent silhouettes — takes over rendering via a priority useFrame). `edges` = per-mesh `EdgesGeometry` rendered as screen-space fat lines (`LineSegments2`), with `LINE_OVERRIDES` per-object exclusions. Known drei/browser gotchas are commented in the code — read them before refactoring (Html portals, z-index ranges).
