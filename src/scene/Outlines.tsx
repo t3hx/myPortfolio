@@ -1,6 +1,6 @@
 import { useFrame, useThree } from '@react-three/fiber'
 import { useEffect, useMemo } from 'react'
-import { EdgesGeometry, Material, Mesh, Vector2, type Object3D } from 'three'
+import { Color, EdgesGeometry, Material, Mesh, Vector2, type Object3D } from 'three'
 import { OutlineEffect } from 'three/addons/effects/OutlineEffect.js'
 import { LineMaterial } from 'three/addons/lines/LineMaterial.js'
 import { LineSegments2 } from 'three/addons/lines/LineSegments2.js'
@@ -8,9 +8,10 @@ import { LineSegmentsGeometry } from 'three/addons/lines/LineSegmentsGeometry.js
 import {
   HULL_THICKNESS,
   LINE_COLOR,
-  LINE_OVERRIDES,
   LINE_THRESHOLD_DEG,
+  inkSkipReason,
   lineWidthFromUrl,
+  type InkSkip,
 } from '@/config/lineArt'
 import { outlineMode } from '@/lib/viewMode'
 
@@ -34,13 +35,6 @@ import { outlineMode } from '@/lib/viewMode'
  */
 
 const EDGE_LAYER_NAME = '__spike_edge_lines'
-
-function lineFactor(name: string, parents: string[]): number {
-  for (const [match, factor] of Object.entries(LINE_OVERRIDES)) {
-    if (name.includes(match) || parents.some((p) => p.includes(match))) return factor
-  }
-  return 1
-}
 
 export function Outlines() {
   const gl = useThree((s) => s.gl)
@@ -72,6 +66,14 @@ export function Outlines() {
     const added: LineSegments2[] = []
     const offsetted: Material[] = []
 
+    // La sonde de curation, dans l'esprit de `__rigDebug`. Une liste
+    // d'exclusions qu'on ne peut pas relire finit par contenir des entrées que
+    // plus personne ne sait justifier : celle-ci dit ce qui a été sauté et
+    // POURQUOI. Inventaire de TOUTE la scène, pris une fois ici — la traversée
+    // ne sait pas ce que la caméra cadre, donc ce n'est pas un relevé par arrêt.
+    const skipped: Record<string, { material: string; reason: InkSkip }> = {}
+    let inked = 0
+
     scene.traverse((obj: Object3D) => {
       const mesh = obj as Mesh
       if (!mesh.isMesh || mesh.name === EDGE_LAYER_NAME) return
@@ -81,7 +83,25 @@ export function Outlines() {
         parents.push(p.name)
         p = p.parent
       }
-      if (lineFactor(mesh.name, parents) === 0) return
+
+      // Un matériau par maille : le chargeur glTF monte une maille par
+      // primitive. Le tableau est le cas dégénéré, et s'il survenait une seule
+      // `EdgesGeometry` couvrirait des surfaces sans rapport — on ne peut pas
+      // trancher, donc on n'encre pas plutôt que d'encrer de travers.
+      const material = Array.isArray(mesh.material) ? null : mesh.material
+      const reason = material
+        ? inkSkipReason(
+            material.name,
+            material.userData?.runtime as string | undefined,
+            mesh.name,
+            parents,
+          )
+        : 'fine'
+      if (reason) {
+        skipped[mesh.name] = { material: material?.name ?? '(multiple)', reason }
+        return
+      }
+      inked++
 
       const edges = new EdgesGeometry(mesh.geometry, LINE_THRESHOLD_DEG)
       const positions = edges.attributes.position.array as Float32Array
@@ -108,6 +128,15 @@ export function Outlines() {
       }
     })
 
+    ;(window as unknown as Record<string, unknown>).__inkDebug = {
+      inked,
+      skipped,
+      counts: Object.values(skipped).reduce<Record<string, number>>((acc, s) => {
+        acc[s.reason ?? '?'] = (acc[s.reason ?? '?'] ?? 0) + 1
+        return acc
+      }, {}),
+    }
+
     return () => {
       for (const lines of added) {
         lines.parent?.remove(lines)
@@ -122,18 +151,24 @@ export function Outlines() {
   }, [scene, wantEdges, lineMat])
 
   // --- hull: OutlineEffect wraps the render (manual-render mode) ----------------------
-  const effect = useMemo(
-    () =>
-      wantHull
-        ? new OutlineEffect(gl, {
-            defaultThickness: HULL_THICKNESS,
-            defaultColor: [0.063, 0.075, 0.122], // #10131f
-            defaultAlpha: 1,
-            defaultKeepAlive: true,
-          })
-        : null,
-    [gl, wantHull],
-  )
+  const effect = useMemo(() => {
+    if (!wantHull) return null
+    // `defaultColor` est un triplet BRUT, poussé tel quel dans l'espace de
+    // travail LINÉAIRE du moteur — contrairement à `LineMaterial({ color })`,
+    // qui passe par `Color.setStyle` et convertit depuis sRGB. Le triplet
+    // écrit en dur ici était `#10131f` simplement divisé par 255 : le rendu le
+    // ré-encodait donc en sRGB à la sortie et peignait **#474d62**, un ardoise
+    // moyen 12× trop clair. Mesuré : 96 à 100 % des pixels du cerne étaient
+    // plus CLAIRS que ce qu'ils recouvraient — une auréole, pas de l'encre.
+    // `new Color()` fait la conversion, et garde `LINE_COLOR` seule source.
+    const ink = new Color(LINE_COLOR)
+    return new OutlineEffect(gl, {
+      defaultThickness: HULL_THICKNESS,
+      defaultColor: [ink.r, ink.g, ink.b],
+      defaultAlpha: 1,
+      defaultKeepAlive: true,
+    })
+  }, [gl, wantHull])
 
   useFrame(
     () => {

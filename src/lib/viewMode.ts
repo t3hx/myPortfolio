@@ -22,20 +22,30 @@ function resolve(): ViewMode {
 export const viewMode: ViewMode = resolve()
 
 /**
- * Optional `?outline=<mode>` param — outline technique A/B for the contours
- * spike (design doc Next Step 3). Resolved once at module load, like the mode.
+ * `?outline=<mode>` — la technique d'encrage. Résolu une fois au chargement.
  *
- *   off   -> flat render (baseline, current look)
- *   hull  -> batched inverted hull (three OutlineEffect): silhouettes only
- *   edges -> EdgesGeometry crease lines (threshold angle): internal edges
- *   both  -> hull + edges combined (closest to Blender Line Art)
+ *   off   -> rendu plat (le cuit Blender, sans un trait)
+ *   hull  -> coque inversée (three OutlineEffect) : silhouettes seules
+ *   edges -> traits de pli EdgesGeometry en épaisseur écran
+ *   both  -> les deux
+ *
+ * **`edges` est le DÉFAUT depuis #41** (arbitrage produit, 2026-08-21) : c'est
+ * le seul mode qui change vraiment le rendu. Mesuré sur six arrêts, `hull` ne
+ * couvre que 0,0 à 1,0 % du cadre une fois peint à sa vraie couleur — dans une
+ * pièce sombre, une encre sombre ne se voit pas, et ce qui le rendait lisible
+ * était le bug d'espace colorimétrique corrigé dans `Outlines.tsx`. `both`
+ * ajoute par-dessus un défaut que ni l'un ni l'autre n'a seul (le décalque
+ * Sharmall se griffonne), pour quatre fois les appels de dessin.
+ *
+ * `?outline=off` reste la porte de sortie, et c'est celle que la boucle de
+ * comparaison emprunte : ses références sont des rendus Blender NUS.
  */
 export type OutlineMode = 'off' | 'hull' | 'edges' | 'both'
 
 export const outlineMode: OutlineMode = (() => {
-  if (typeof window === 'undefined') return 'off'
+  if (typeof window === 'undefined') return 'edges'
   const value = new URLSearchParams(window.location.search).get('outline')
-  return value === 'hull' || value === 'edges' || value === 'both' ? value : 'off'
+  return value === 'hull' || value === 'off' || value === 'both' ? value : 'edges'
 })()
 
 /**
