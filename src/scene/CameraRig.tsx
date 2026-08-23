@@ -49,9 +49,24 @@ const TAIL_GUARD_RATIO = 0.35
 
 interface CameraRigProps {
   stops: StopTransform[]
+  /**
+   * La pose d'arrivée de l'excursion du télescope — `CameraStop_TelescopeMoon`,
+   * lue dans le `.glb` mais **hors tour** (#113).
+   *
+   * Passée en propriété plutôt que reprise dans `stops`, parce que c'est la
+   * seule façon de dire qu'elle n'est PAS une étape : tant qu'elle fermait le
+   * tableau, l'excursion la prenait par `stops[stops.length - 1]` et suivait
+   * donc l'ORDRE du tour. Réordonner `CAMERA_STOPS` — geste que le fichier
+   * encourage explicitement — repointait l'excursion sur un autre objet, sans
+   * erreur et sans avertissement.
+   *
+   * `null` si la caméra manque au `.glb` : `readStopTransform()` a déjà crié,
+   * et le télescope se contente alors de ne pas décoller.
+   */
+  moon: StopTransform | null
 }
 
-export function CameraRig({ stops }: CameraRigProps) {
+export function CameraRig({ stops, moon }: CameraRigProps) {
   const camera = useThree((s) => s.camera) as PerspectiveCamera
   const glDom = useThree((s) => s.gl.domElement)
 
@@ -221,8 +236,7 @@ export function CameraRig({ stops }: CameraRigProps) {
 
   useEffect(() => {
     const unsub = useInteraction.subscribe((state, prev) => {
-      if (stops.length === 0) return
-      const moon = stops[stops.length - 1]
+      if (stops.length === 0 || !moon) return
 
       if (state.phase === 'telescope' && prev.phase !== 'telescope') {
         stroke.current?.kill()
@@ -313,7 +327,7 @@ export function CameraRig({ stops }: CameraRigProps) {
     })
     return unsub
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stops, camera])
+  }, [stops, moon, camera])
 
   // --- Per-frame: ONE camera write, owned by the current phase ------------------------
   useFrame(() => {

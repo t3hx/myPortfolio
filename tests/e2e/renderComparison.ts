@@ -32,6 +32,9 @@ export const ACTUAL_DIR = 'test-results/renders'
  *
  * `overview.png` n'est PAS un arrêt et n'a rien à faire ici — c'est un rendu de
  * la pièce entière, que la boucle ignore (voir `design/renders/README.md`).
+ * `moon.png` l'a rejoint avec #113 : la lune n'est plus une étape du tour, sa
+ * référence reste versionnée parce qu'elle est le fond de la maquette
+ * `design/screens/10-moon.html`, mais plus rien ne la compare.
  */
 export const REF_FILE: Record<string, string> = {
   CV: 'vertical_monitor',
@@ -118,21 +121,6 @@ export const KNOWN_DEVIATIONS: Record<string, KnownDeviation> = {
     reason:
       "la référence est antérieure au tiroir qui s'ouvre à l'arrivée (#76) et " +
       'aux dossiers étiquetés (#79) — à re-rendre depuis Blender, voir #97',
-  },
-  // Mesuré à 39,467 % sur la référence 1920 × 1080 : elle montre
-  // `Outside_Moon_Detailed` (la lune photographique), l'app montre
-  // `Outside_Moon` (la lune stylisée). L'échange de visibilité n'a lieu qu'en
-  // phase TELESCOPE, alors que l'arrêt se visite aussi à la molette, à 270 mm.
-  // Décision produit du 2026-08-20 : c'est la RÉFÉRENCE qui a tort — elle a été
-  // rendue avec le mauvais objet visible (#97). Ce ne sont pas deux rendus du
-  // même objet : il n'y a rien à comparer avant qu'elle soit re-rendue, et un
-  // plafond assez haut pour absorber 40 % n'attraperait plus rien.
-  moon: {
-    kind: 'unverified',
-    reason:
-      'la référence a été rendue avec la lune détaillée visible, que seule la ' +
-      "phase TELESCOPE affiche — l'arrêt montre bien la lune stylisée. " +
-      'Référence à re-rendre, voir #97',
   },
 }
 

@@ -199,7 +199,7 @@ La caméra se déplace entre des **points d'arrêt prédéfinis** (`CameraStop_*
 
 Chaque stop caméra affiche un texte descriptif (overlay HTML piloté par le stop actif — composant livré : `src/scene/Bubble.tsx`, issue #47).
 
-**Le texte des onze bulles est écrit et livré** (issue #48) : il vient de la session design du 2026-08-10 et vit dans **`src/content/bubbles.ts`**, source unique. Ce tableau n'en garde pas de copie — deux endroits où lire la même phrase, c'est une phrase qui diverge. Les maquettes correspondantes sont `design/screens/*.html`, et un test verrouille le texte livré sur le leur.
+**Le texte des dix bulles est écrit et livré** (issue #48, réduit à dix par #113 — la lune parle désormais dans la visée du télescope, sa phrase vit dans `UI.telescope.moon`) : il vient de la session design du 2026-08-10 et vit dans **`src/content/bubbles.ts`**, source unique. Ce tableau n'en garde pas de copie — deux endroits où lire la même phrase, c'est une phrase qui diverge. Les maquettes correspondantes sont `design/screens/*.html`, et un test verrouille le texte livré sur le leur.
 
 **Implémentation des textes** (livrée — `src/scene/Bubble.tsx`, issues #47 et #48) :
 

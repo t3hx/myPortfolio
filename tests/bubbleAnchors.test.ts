@@ -2,6 +2,7 @@ import { readFileSync, readdirSync } from 'node:fs'
 import { BoxGeometry, Mesh, Object3D, PerspectiveCamera, Quaternion, Vector3 } from 'three'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { CAMERA_STOPS } from '@/config/cameraStops'
+import { UI } from '@/content/ui'
 import { BUBBLES, bubbleKicker } from '@/content/bubbles'
 import {
   DESIGN_ASPECT,
@@ -197,23 +198,30 @@ describe('BUBBLES', () => {
 
   it('reprend mot pour mot la copy des maquettes de la session design', () => {
     const dir = 'design/screens'
-    const mockups = readdirSync(dir)
-      .filter((f) => f.endsWith('.html'))
-      .flatMap((f) => {
-        const html = readFileSync(`${dir}/${f}`, 'utf8')
-        return (
-          [...html.matchAll(/<article[^>]*class="[^"]*\bbubble\b[^"]*"[\s\S]*?<\/article>/g)]
-            // Une bulle marquée `data-variant` documente un REPLI — le tiroir
-            // vide (#78) réutilise la bulle de la commode avec une autre phrase.
-            // Elle n'appartient à aucun arrêt, donc sa copy ne vit pas dans
-            // BUBBLES ; sans ce filtre elle passerait pour une douzième bulle.
-            .filter((article) => !/^<article[^>]*\bdata-variant=/.test(article[0]))
-            .flatMap((article) => [
-              ...article[0].matchAll(/<p class="bubble__text"[^>]*>([\s\S]*?)<\/p>/g),
-            ])
-            .map((m) => m[1].trim())
-        )
-      })
+    // `10-moon.html` est mis de côté, pas ignoré. La lune n'est plus un arrêt
+    // (#113), donc sa phrase n'est plus dans BUBBLES — mais elle est toujours
+    // affichée, dans la visée du télescope, et c'est TOUJOURS la copy de la
+    // session design. La retirer du test aurait supprimé le seul garde-fou
+    // contre sa dérive ; elle est simplement comparée à son nouveau domicile,
+    // plus bas.
+    const MOON_MOCKUP = '10-moon.html'
+    const textsOf = (f: string) => {
+      const html = readFileSync(`${dir}/${f}`, 'utf8')
+      return (
+        [...html.matchAll(/<article[^>]*class="[^"]*\bbubble\b[^"]*"[\s\S]*?<\/article>/g)]
+          // Une bulle marquée `data-variant` documente un REPLI — le tiroir
+          // vide (#78) réutilise la bulle de la commode avec une autre phrase.
+          // Elle n'appartient à aucun arrêt, donc sa copy ne vit pas dans
+          // BUBBLES ; sans ce filtre elle passerait pour une douzième bulle.
+          .filter((article) => !/^<article[^>]*\bdata-variant=/.test(article[0]))
+          .flatMap((article) => [
+            ...article[0].matchAll(/<p class="bubble__text"[^>]*>([\s\S]*?)<\/p>/g),
+          ])
+          .map((m) => m[1].trim())
+      )
+    }
+    const files = readdirSync(dir).filter((f) => f.endsWith('.html'))
+    const mockups = files.filter((f) => f !== MOON_MOCKUP).flatMap(textsOf)
 
     // Comparaison par ensemble : l'ordre du tour est une décision produit et
     // n'a pas à suivre l'ordre de capture des maquettes — le texte, si.
@@ -224,6 +232,10 @@ describe('BUBBLES', () => {
     // n'a pas de maquette et n'est pas verrouillé ici — l'absence de contrôle
     // est une décision, pas un trou à combler par une maquette inventée.
     expect([...BUBBLES.map((b) => b.text.fr)].sort()).toEqual([...mockups].sort())
+
+    // La lune : même exigence, autre domicile. Sa maquette ne contient qu'une
+    // bulle, et c'est la phrase que la visée affiche maintenant.
+    expect(textsOf(MOON_MOCKUP)).toEqual([UI.telescope.moon.fr])
 
     // Ce que l'anglais doit à ce test : exister et ne pas être vide. Une
     // traduction oubliée laisserait une bulle blanche, que rien ne dirait.
@@ -247,16 +259,16 @@ describe('BUBBLES', () => {
 describe('bubbleKicker', () => {
   it("numérote dans l'ordre du tour, home ne consommant pas de numéro", () => {
     expect(bubbleKicker(BUBBLES, 0, 'fr')).toBeUndefined() // home, variante inline
-    expect(bubbleKicker(BUBBLES, 1, 'fr')).toBe('01 — Le CV')
-    expect(bubbleKicker(BUBBLES, 2, 'fr')).toBe('02 — Le bureau')
-    expect(bubbleKicker(BUBBLES, BUBBLES.length - 1, 'fr')).toBe('10 — La lune')
+    expect(bubbleKicker(BUBBLES, 1, 'fr')).toBe('01 — Le bureau')
+    expect(bubbleKicker(BUBBLES, 2, 'fr')).toBe('02 — Le CV')
+    expect(bubbleKicker(BUBBLES, BUBBLES.length - 1, 'fr')).toBe('09 — La mappemonde')
     // Le numéro ne dépend pas de la langue, seul le sujet est traduit (#33).
-    expect(bubbleKicker(BUBBLES, 1, 'en')).toBe('01 — The résumé')
+    expect(bubbleKicker(BUBBLES, 1, 'en')).toBe('01 — The desk')
   })
 
   it('renumérote quand le tour est réordonné', () => {
     const swapped = [BUBBLES[0], BUBBLES[2], BUBBLES[1], ...BUBBLES.slice(3)]
-    expect(bubbleKicker(swapped, 1, 'fr')).toBe('01 — Le bureau')
-    expect(bubbleKicker(swapped, 2, 'fr')).toBe('02 — Le CV')
+    expect(bubbleKicker(swapped, 1, 'fr')).toBe('01 — Le CV')
+    expect(bubbleKicker(swapped, 2, 'fr')).toBe('02 — Le bureau')
   })
 })

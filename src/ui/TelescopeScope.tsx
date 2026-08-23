@@ -62,6 +62,14 @@ export function TelescopeScope() {
         <span className="scope__tick scope__tick--e" />
       </div>
 
+      {/* La phrase de la lune. Elle était la bulle du 11ᵉ arrêt tant que la lune
+          en était un ; elle se dit maintenant là où on regarde la lune (#113).
+          En BAS et centrée, jamais près du centre : le centre est le sujet.
+          Dans le cache, comme le rappel de sortie, pour fondre et se resserrer
+          avec lui — une phrase qui survivrait à la fermeture de l'ouverture
+          resterait seule sur l'écran noir. */}
+      <p className="scope__caption">{t(UI.telescope.moon, locale)}</p>
+
       {/* Le rappel de sortie. `Échap` est la SEULE issue de cette vue — un clic
           ailleurs ne fait rien — et personne ne devine une touche qu'on ne lui
           montre pas. Il reprend la touche capée de la fiche projet, qui dit

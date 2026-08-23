@@ -83,6 +83,17 @@ export const BUBBLES: BubbleContent[] = [
     },
   },
   {
+    stop: 'Desk',
+    objects: ['Desk_Merged'],
+    center: { x: 0.5, y: 0.8304 },
+    maxWidth: 460,
+    subject: { fr: 'Le bureau', en: 'The desk' },
+    text: {
+      fr: 'Deux écrans, un clavier bruyant, du café tiède : le poste de pilotage de tous mes projets.',
+      en: 'Two screens, a loud keyboard, lukewarm coffee: the cockpit of every project.',
+    },
+  },
+  {
     stop: 'CV',
     objects: ['Monitors_Screens'],
     center: { x: 0.1355, y: 0.2801 },
@@ -95,25 +106,16 @@ export const BUBBLES: BubbleContent[] = [
     tick: 'right',
   },
   {
-    stop: 'Desk',
-    objects: ['Desk_Merged'],
-    center: { x: 0.5, y: 0.8304 },
-    maxWidth: 460,
-    subject: { fr: 'Le bureau', en: 'The desk' },
+    stop: 'Cabinet',
+    // La commode est modélisée en pièces détachées : la coque suffit à situer
+    // sa profondeur, les tiroirs et poignées ne la déplaceraient pas.
+    objects: ['Cabinet_Back', 'Cabinet_Top', 'Cabinet_Bottom', 'Cabinet_LSide', 'Cabinet_RSide'],
+    center: { x: 0.1602, y: 0.8404 },
+    maxWidth: 300,
+    subject: { fr: 'La commode', en: 'The cabinet' },
     text: {
-      fr: 'Deux écrans, un clavier bruyant, du café tiède : le poste de pilotage de tous mes projets.',
-      en: 'Two screens, a loud keyboard, lukewarm coffee: the cockpit of every project.',
-    },
-  },
-  {
-    stop: 'Scoreboard',
-    objects: ['Map_Sheet'],
-    center: { x: 0.1628, y: 0.9004 },
-    maxWidth: 340,
-    subject: { fr: 'La mappemonde', en: 'The world map' },
-    text: {
-      fr: 'Punaises et fils rouges : chaque voyage part de la maison.',
-      en: 'Pins and red thread: every journey starts from home.',
+      fr: 'Les archives : diplômes, contrats, et quelques idées classées trop tôt.',
+      en: 'The archive: diplomas, contracts, and a few ideas filed away too early.',
     },
   },
   {
@@ -125,19 +127,6 @@ export const BUBBLES: BubbleContent[] = [
     text: {
       fr: 'Des classeurs de partitions et de méthodes — toute la théorie que je promets encore de finir un jour.',
       en: 'Binders of sheet music and method books — all the theory I still promise to finish.',
-    },
-  },
-  {
-    stop: 'Cabinet',
-    // La commode est modélisée en pièces détachées : la coque suffit à situer
-    // sa profondeur, les tiroirs et poignées ne la déplaceraient pas.
-    objects: ['Cabinet_Back', 'Cabinet_Top', 'Cabinet_Bottom', 'Cabinet_LSide', 'Cabinet_RSide'],
-    center: { x: 0.1602, y: 0.8404 },
-    maxWidth: 300,
-    subject: { fr: 'La commode', en: 'The cabinet' },
-    text: {
-      fr: 'Les archives : diplômes, contrats, et quelques idées classées trop tôt.',
-      en: 'The archive: diplomas, contracts, and a few ideas filed away too early.',
     },
   },
   {
@@ -188,14 +177,14 @@ export const BUBBLES: BubbleContent[] = [
     },
   },
   {
-    stop: 'Moon',
-    objects: ['Outside_Moon'],
-    center: { x: 0.1589, y: 0.9004 },
-    maxWidth: 330,
-    subject: { fr: 'La lune', en: 'The moon' },
+    stop: 'Scoreboard',
+    objects: ['Map_Sheet'],
+    center: { x: 0.1628, y: 0.9004 },
+    maxWidth: 340,
+    subject: { fr: 'La mappemonde', en: 'The world map' },
     text: {
-      fr: 'À 384 000 km, le seul sujet qui accepte de poser par nuit claire.',
-      en: 'At 384,000 km, the only subject that will pose on a clear night.',
+      fr: 'Punaises et fils rouges : chaque voyage part de la maison.',
+      en: 'Pins and red thread: every journey starts from home.',
     },
   },
 ]

@@ -11,7 +11,7 @@ Package manager is **pnpm** (see `pnpm-lock.yaml`).
 - `pnpm type-check` — `tsc --noEmit`.
 - `pnpm preview` — serve the production build locally.
 - `pnpm test` — Vitest, single run. `pnpm test:watch` for the loop.
-- `pnpm test:e2e` — Playwright: the render-comparison loop (11 stops vs `design/renders/refs/`). **Distinct from `test` on purpose** — Vitest's `include` only takes `tests/**/*.test.ts`, the Playwright specs are `.spec.ts` under `tests/e2e/`. Needs `pnpm exec playwright install chromium` once.
+- `pnpm test:e2e` — Playwright: the render-comparison loop (10 stops vs `design/renders/refs/`). **Distinct from `test` on purpose** — Vitest's `include` only takes `tests/**/*.test.ts`, the Playwright specs are `.spec.ts` under `tests/e2e/`. Needs `pnpm exec playwright install chromium` once.
 
 `tsconfig.json` includes `tests` and both config files, so `type-check` covers them too — it did not before, and a green type-check said nothing about the tests.
 
@@ -75,7 +75,7 @@ Output of the Claude Design session (2026-08-10), and the single source of truth
 
 - `docs/DESIGN.md` — direction ("Lueur": smoked glass + cold glow), tokens, bubble/menu anatomy, the **per-stop placement table**, motion budgets, and the implementation notes that were verified in a browser.
 - `src/styles/tokens.css` — the custom properties plus working `.bubble` / `.menu` components. Tokens, not utility classes.
-- `design/screens/*.html` — 15 standalone reference screens (11 stops + preselection + preloader + the project sheet and the empty drawer, added by #78), high-fidelity. Open them directly; they are prototypes to **recreate** in R3F, not code to paste.
+- `design/screens/*.html` — 15 standalone reference screens (the 10 tour stops + the moon, which #113 moved out of the tour and into the telescope viewfinder + preselection + preloader + the project sheet and the empty drawer, added by #78), high-fidelity. Open them directly; they are prototypes to **recreate** in R3F, not code to paste.
 
 Their backgrounds are the committed `design/renders/refs/*.png` — the same renders the comparison loop uses, so re-shooting a stop updates the mockups for free. The design session worked on 1920×1080 exports of those same framings; a second copy was deliberately not committed.
 
@@ -121,7 +121,13 @@ There is deliberately **no hardcoded pose table** any more: it existed only whil
 
 **The `Home` framing is deliberate** (product decision): it fills the frame with a monitor so the first screen reads as a flat 2D image; the first scroll pulls back and reveals the room in 3D. That reveal is the opening beat of the experience — never "fix" Home into a room overview.
 
-**All 11 stops come from the glb — re-verified against v13, 2026-08-10.** Every `CameraStop_*` node carries a real camera with its own authored focal length, spanning GuitarPoster 83.97° hfov (≈ 20 mm) to TelescopeMoon 7.63° (≈ 270 mm). **Four framings changed between v12 and v13** — Bookshelf 73.74° → 49.55°, MonitorVertical 38.19° → 26.99°, Scoreboard 61.93° → 55.79°, Home 54.43° → 53.13° — which is why every reference render was re-shot. Nothing in the code changed: deriving the horizontal field from `yfov × aspectRatio` absorbed both the new focals and the new aspect ratio on its own. An earlier note here claimed the export lacked the bookshelf and second-monitor framings and told you to add them to a `STOP_POSES` table — both were wrong, and that table was deliberately deleted. Design-doc tasks T6 and T7 are obsolete.
+**The tour is 10 stops, and its order is a product decision (2026-08-24).** `Home` → `Desk` → `CV` → `Cabinet` → `Bookshelf` → `Cat` → `Guitar` → `Posters` → `Telescope` → `Scoreboard`. The array _is_ the order, and the rank in it is also the bubble's number — `bubbleKicker()` reads nothing else, so reordering renumbers on its own and `tests/bubbleAnchors.test.ts` checks exactly that.
+
+**`CameraStop_TelescopeMoon` is the eleventh camera in the glb and is deliberately NOT a stop** (#113). The moon is a feature of the Telescope stop, reached by clicking the instrument; it used to be reachable by scrolling too, which let a visitor see the moon full-frame without ever learning that an instrument was showing it to them. Its pose is read by `readStopTransform()` — the same helper `extractStops()` uses, so the horizontal-field derivation exists once — and handed to `CameraRig` as the `moon` prop.
+
+That prop replaced `stops[stops.length - 1]`, and the replacement is the point: the excursion used to find the moon **by its rank in the tour**. It worked only while the moon closed the array, and reordering `CAMERA_STOPS` — a gesture `cameraStops.ts` explicitly invites — silently repointed a 1.6 s flight at whatever stop had become last. No error, no warning, a framing nobody authored. Its bubble moved with it: the phrase now lives in `UI.telescope.moon` and is drawn inside the viewfinder, still guarded against the design mockup by `tests/bubbleAnchors.test.ts`.
+
+**All 11 cameras come from the glb — re-verified against v13, 2026-08-10.** Every `CameraStop_*` node carries a real camera with its own authored focal length, spanning GuitarPoster 83.97° hfov (≈ 20 mm) to TelescopeMoon 7.63° (≈ 270 mm). **Four framings changed between v12 and v13** — Bookshelf 73.74° → 49.55°, MonitorVertical 38.19° → 26.99°, Scoreboard 61.93° → 55.79°, Home 54.43° → 53.13° — which is why every reference render was re-shot. Nothing in the code changed: deriving the horizontal field from `yfov × aspectRatio` absorbed both the new focals and the new aspect ratio on its own. An earlier note here claimed the export lacked the bookshelf and second-monitor framings and told you to add them to a `STOP_POSES` table — both were wrong, and that table was deliberately deleted. Design-doc tasks T6 and T7 are obsolete.
 
 A node named `CameraStop_X` that carries **no** camera (an Empty) is now skipped with an explicit warning. It used to fall through to `fov = 45`: the stop parked at the right spot, said nothing, and showed a framing nobody authored — plausible enough to read as a Blender decision. `tests/stops.test.ts` locks both this and the horizontal-fov derivation; the two are the only regressions this file has ever shipped, and neither was visible to the eye.
 
@@ -225,7 +231,7 @@ Material names are matched in FULL, never by substring: `Mat_Poster_Expanse` mus
 
 `window.__inkDebug` reports how many meshes were inked and which were skipped with which reason. It is an inventory of the WHOLE scene, taken once when `Outlines` mounts — not a per-stop reading, since the traversal has no idea what the camera is framing. An exclusion list nobody can re-read ends up holding entries nobody can justify. Current count: **174 inked, 32 skipped** (22 emitters, 5 too-fine, 3 too-dense, 2 deforming).
 
-`tests/e2e/renderComparison.ts` requests `&outline=off` explicitly: the references in `design/renders/refs/` are bare Blender renders with no Line Art, and that loop's job is to prove the _bake_ arrives intact. Ink is art direction laid on top at runtime; letting it in would diverge all eleven stops at once and drown the only signal the comparison can produce.
+`tests/e2e/renderComparison.ts` requests `&outline=off` explicitly: the references in `design/renders/refs/` are bare Blender renders with no Line Art, and that loop's job is to prove the _bake_ arrives intact. Ink is art direction laid on top at runtime; letting it in would diverge all ten stops at once and drown the only signal the comparison can produce.
 
 **The cost is fill, not draw calls, and it is only half-measured.** On Desk: 120 draws/frame at `off`, 239 at `hull`, 237 at `edges` (2.2 px), 473 at `both` — yet over the same window `hull` renders 46 frames and `edges` renders 9. Nearly identical draw counts, wildly different frame times: the fat lines are instanced quads and the bill is fragments. That measurement is **SwiftShader**, a software rasterizer that exaggerates precisely that cost, so it is a relative signal and not an fps prediction — and it was taken at 2.2 px, before the width dropped. **`edges` has not been profiled on a real GPU, and fill-bound is exactly what kills mobile** — do that before this reaches main (relevant to the KTX2 work, #39/#50/#51/#52). The load-time cost of building 146 `EdgesGeometry` is likewise **unmeasured**: the probe only isolated shader compilation.
 
@@ -245,7 +251,7 @@ One bubble per stop (issue #48). `BUBBLES` is the **single source of the copy** 
 
 **Numbering follows the tour, not the mockups** (product decision, 2026-08-18): `bubbleKicker()` numbers by rank among titled bubbles, so home stays unnumbered and reordering `CAMERA_STOPS` renumbers everything on its own. The mockups' numbers are their capture order (01 desk, 02 cv…) and are stale by construction; their _text_ is not.
 
-The eleven bubbles are all mounted at once in `Experience.tsx` and driven by `visible` alone — unmounting the one being left would take its exit fade with it. A bubble that is neither visible nor fading renders `null`.
+The ten bubbles are all mounted at once in `Experience.tsx` and driven by `visible` alone — unmounting the one being left would take its exit fade with it. A bubble that is neither visible nor fading renders `null`.
 
 ### The preloader (`src/ui/Preloader.tsx` + `src/state/loading.ts`)
 
@@ -299,7 +305,7 @@ Issue #33. The toggle in the menu bar is live; **every visitor-facing string goe
 - **The initial locale resolves at module load**, before the first render — a visible FR→EN flip on the first frame would be worse than no detection.
 - **`document.documentElement.lang` is written in exactly one place**, an effect in `App.tsx`. `index.html` ships `lang="fr"` and the store may resolve `en`; two writers of the same attribute drift, and it is the first paint that would be wrong — the one no test looks at.
 - **`Localized` is opt-in per field.** A plain `string` next to a `Localized` means _language-neutral by decision_, not a forgotten translation: tech names, periods, `C1`, and `B` (a French licence class with no English equivalent). `MaybeLocalized` + `tm()` cover fields that are sometimes one and sometimes the other — `Français / natif` translates, `Anglais / C1` does not, in the same field.
-- **Bubbles translate their `subject` and `text` only.** The anchor, the measured `center` and the `maxWidth` stay shared: they describe geometry measured on the scene and on the mockups, not text, and duplicating them per language would be two sources of truth for one thing. The design mockups are French, so `tests/bubbleAnchors.test.ts` guards **FR verbatim only** — English has no mockup and is deliberately unguarded beyond "exists and is non-empty". Measured after translating: all eleven EN bubbles stay inside the frame at 1280×720 and 1920×1080.
+- **Bubbles translate their `subject` and `text` only.** The anchor, the measured `center` and the `maxWidth` stay shared: they describe geometry measured on the scene and on the mockups, not text, and duplicating them per language would be two sources of truth for one thing. The design mockups are French, so `tests/bubbleAnchors.test.ts` guards **FR verbatim only** — English has no mockup and is deliberately unguarded beyond "exists and is non-empty". Measured after translating: all EN bubbles stay inside the frame at 1280×720 and 1920×1080.
 - **The FR/EN toggle is two `<button>`s**, so `tokens.css` resets `appearance`, `background`, `border` and `font` on them — a button does **not** inherit `font-family`, and that exact oversight is what once made the bar read as cheap. The active side stays rendered and clickable: disabling it would remove the indicator that says which language you are in.
 
 ### The preselection gate (`src/App.tsx` + `src/lib/experienceChoice.ts`)

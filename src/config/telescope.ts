@@ -74,3 +74,15 @@ export const TELESCOPE_FOV_PAD = 1.5
  * position où elle désigne l'objet au lieu de le survoler.
  */
 export const PING_RISE = 0.34
+
+/**
+ * La caméra du `.glb` qui cadre la lune au téléobjectif (7,63° de champ
+ * horizontal, ≈ 270 mm). Elle est **hors `CAMERA_STOPS`** depuis #113.
+ *
+ * Avant ça, l'excursion prenait sa pose par `stops[stops.length - 1]` — la
+ * dernière du tour. Ça marchait tant que la lune fermait le tableau, et ça
+ * repointait l'excursion sur un autre objet au premier réordonnancement, sans
+ * erreur ni avertissement : la caméra volait 1,6 s vers un mauvais cadrage que
+ * rien ne signalait. Nommer la caméra ici est ce qui rend le lien explicite.
+ */
+export const TELESCOPE_MOON_CAMERA = 'CameraStop_TelescopeMoon'
