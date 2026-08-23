@@ -81,9 +81,9 @@ Their backgrounds are the committed `design/renders/refs/*.png` — the same ren
 
 The UI is **two components only** — a vertical menu bar on the right edge and one text bubble per stop, anchored to the framed object. The 3D is the interface; the UI must not compete with it.
 
-### The asset (IMPORTANT — currently `docs/portfolio_v13.glb`, 2026-08-10)
+### The asset (IMPORTANT — export v13, 2026-08-10)
 
-`public/models/scene.glb` is a copy of the latest export. Blender is the source of truth and the `.glb` is gitignored — copy it into any fresh worktree. Current export: **3.0 MB, 146 meshes, 124 materials, 14 textures, ~162 MB texture VRAM**. It is **entirely pre-baked unlit**:
+`public/models/scene.glb` **is tracked by git** and is the runtime copy of the latest Blender export — it is there in every fresh worktree, nothing to copy. Blender remains the source of truth for the scene, but the `.glb` and the code that reads it are versioned **together**: a stop added to `CAMERA_STOPS` demands the export that contains it, and a CI checkout without the scene shipped an empty room while nothing failed to say so (#16). An earlier version of this paragraph said the `.glb` was gitignored and told you to copy it by hand; only the _working_ exports are ignored, wherever you drop them. Current export: **3.0 MB, 146 meshes, 124 materials, 14 textures, ~162 MB texture VRAM**. It is **entirely pre-baked unlit**:
 
 - **No lights and no animations in the file.** All lighting + AgX tone mapping is cooked into the textures.
 - The baked image of each material lives in its **emissive texture slot** (100 of the 124 materials have one). Any other slot is dead weight: an unlit pipeline ignores normal/AO/roughness maps.

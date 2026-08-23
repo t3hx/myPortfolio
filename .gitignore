@@ -20,8 +20,11 @@ node_modules/.tmp
 # deux sources de vérité pour une seule chose. 2,8 Mo qui bougent trois fois
 # par an, c'est le bon prix.
 #
-# Les exports de travail, eux, restent dehors :
-docs/*.glb
+# Les exports de travail, eux, restent dehors — et plus seulement ceux qu'on
+# posait dans `docs/`, qui ne contient plus que de la prose (#111). La règle est
+# maintenant « tout .glb sauf celui-là », donc elle vaut où que Blender exporte.
+*.glb
+!public/models/scene.glb
 
 # Sorties jetables. Les captures de la boucle de comparaison ont quitté `docs/`
 # avec #111 — c'était une SORTIE rangée dans un dossier d'entrées — pour
