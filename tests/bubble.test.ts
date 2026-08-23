@@ -11,7 +11,7 @@ import { BUBBLE_OUT_MS } from '@/scene/Bubble'
  */
 describe('bubble exit budget', () => {
   it('BUBBLE_OUT_MS matches --t-bubble-out in tokens.css', () => {
-    const css = readFileSync('docs/design/tokens.css', 'utf8')
+    const css = readFileSync('src/styles/tokens.css', 'utf8')
     const m = css.match(/--t-bubble-out:\s*(\d+)ms/)
     expect(m).not.toBeNull()
     expect(Number(m![1])).toBe(BUBBLE_OUT_MS)

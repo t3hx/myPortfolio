@@ -6,9 +6,9 @@ import { useLocale } from '@/state/locale'
 
 /**
  * Écran 0a — pré-sélection 3D / classique (issue #24). Recréé depuis la
- * maquette de référence `docs/design/screens/0a-preselection.html` ; les
+ * maquette de référence `design/screens/0a-preselection.html` ; les
  * styles `.presel*` vivent dans `styles.css`, les tokens et les composants
- * `.bubble__*` viennent de `docs/design/tokens.css`.
+ * `.bubble__*` viennent de `src/styles/tokens.css`.
  *
  * Pur DOM : aucun import de scène, aucun canvas — cet écran doit peser
  * quelques Ko là où l'expérience 3D en pèse des milliers.

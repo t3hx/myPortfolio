@@ -11,9 +11,9 @@ import type { Page } from '@playwright/test'
  * et **à partir de quel écart on parle de dérive**.
  */
 
-export const REFS_DIR = 'docs/renders/refs'
+export const REFS_DIR = 'design/renders/refs'
 /** Ignoré par git — les captures sont jetables (voir `.gitignore`). */
-export const ACTUAL_DIR = 'docs/renders/actual'
+export const ACTUAL_DIR = 'test-results/renders'
 
 /**
  * Les arrêts dont le fichier de référence ne porte PAS leur `label`.
@@ -31,7 +31,7 @@ export const ACTUAL_DIR = 'docs/renders/actual'
  * casserait forcément quelque chose de l'autre.
  *
  * `overview.png` n'est PAS un arrêt et n'a rien à faire ici — c'est un rendu de
- * la pièce entière, que la boucle ignore (voir `docs/renders/README.md`).
+ * la pièce entière, que la boucle ignore (voir `design/renders/README.md`).
  */
 export const REF_FILE: Record<string, string> = {
   CV: 'vertical_monitor',
@@ -56,7 +56,7 @@ export const PIXEL_THRESHOLD = 0.1
  * Part maximale de pixels différents avant qu'on parle de dérive.
  *
  * **Mesurée, pas devinée** (re-mesurée le 2026-08-20 sur les références
- * 1920 × 1080 — le tableau complet est dans `docs/renders/README.md`). Le pire
+ * 1920 × 1080 — le tableau complet est dans `design/renders/README.md`). Le pire
  * arrêt conforme est la guitare à 1,939 %, suivie du bureau à 1,503 % ; 2,5 %
  * laisse la marge d'une machine dont le rasteriseur crénelle un cheveu
  * autrement. Un seuil choisi a priori rend la CI rouge dès le premier jour, et
@@ -179,7 +179,7 @@ export async function captureStop(page: Page, label: string): Promise<Buffer> {
   // verrouille.
   await page.emulateMedia({ reducedMotion: 'reduce' })
   // `outline=off`, DEMANDÉ EXPLICITEMENT depuis que #41 a fait de `edges` le
-  // défaut. Les références de `docs/renders/refs/` sont des rendus Blender nus,
+  // défaut. Les références de `design/renders/refs/` sont des rendus Blender nus,
   // sans une ligne de Line Art : cette boucle vérifie que le CUIT arrive
   // intact à l'écran — les matériaux, les couleurs, le cadrage. L'encre est une
   // direction artistique posée par-dessus, au moteur ; la laisser entrer ici
@@ -229,7 +229,7 @@ function write(path: string, data: Buffer): void {
 
 /**
  * Compare une capture à sa référence Blender et écrit les deux sorties dans
- * `docs/renders/actual/` : la capture, et l'image de différence quand il y a
+ * `test-results/renders/` : la capture, et l'image de différence quand il y a
  * quelque chose à montrer.
  *
  * Un écart de dimensions n'est pas une dérive de rendu, c'est une erreur de

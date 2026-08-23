@@ -35,7 +35,7 @@ describe('menu socials', () => {
 })
 
 describe('la bascule de langue', () => {
-  const tokens = readFileSync('docs/design/tokens.css', 'utf8')
+  const tokens = readFileSync('src/styles/tokens.css', 'utf8')
   // Les COMMENTAIRES sont retirés : celui de cette règle explique justement
   // pourquoi `color` n'y est pas, et le mot y apparaît donc forcément.
   const reset = tokens

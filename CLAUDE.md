@@ -11,14 +11,14 @@ Package manager is **pnpm** (see `pnpm-lock.yaml`).
 - `pnpm type-check` — `tsc --noEmit`.
 - `pnpm preview` — serve the production build locally.
 - `pnpm test` — Vitest, single run. `pnpm test:watch` for the loop.
-- `pnpm test:e2e` — Playwright: the render-comparison loop (11 stops vs `docs/renders/refs/`). **Distinct from `test` on purpose** — Vitest's `include` only takes `tests/**/*.test.ts`, the Playwright specs are `.spec.ts` under `tests/e2e/`. Needs `pnpm exec playwright install chromium` once.
+- `pnpm test:e2e` — Playwright: the render-comparison loop (11 stops vs `design/renders/refs/`). **Distinct from `test` on purpose** — Vitest's `include` only takes `tests/**/*.test.ts`, the Playwright specs are `.spec.ts` under `tests/e2e/`. Needs `pnpm exec playwright install chromium` once.
 
 `tsconfig.json` includes `tests` and both config files, so `type-check` covers them too — it did not before, and a green type-check said nothing about the tests.
 
 - `pnpm lint` — ESLint **and** `prettier --check`. This is the script CI calls (`pnpm run --if-present lint`), so both must pass.
 - `pnpm format` — `prettier --write` then `eslint --fix`.
 
-The render-comparison loop shipped with #44/#45/#46 — see **`docs/renders/README.md`**, which holds the measured tolerance and the two known deviations. Three things about it are load-bearing:
+The render-comparison loop shipped with #44/#45/#46 — see **`design/renders/README.md`**, which holds the measured tolerance and the two known deviations. Three things about it are load-bearing:
 
 - **It reads the WebGL drawing buffer** (`canvas.toDataURL()`), it does not screenshot the page. The references are bare Blender renders; a page capture would carry the bubble, the menu bar and the CV, and the measured drift would be dominated by DOM nobody meant to compare — every new 2D element skewing it a little further, in silence. It also sidesteps Playwright's stability wait, which R3F's endless `rAF` loop never satisfies (that is the 5 s timeout noted on 2026-08-09).
 - **`?capture` exists only to turn on `preserveDrawingBuffer`.** Without it the image is black; permanently on, it costs a buffer copy per frame.
@@ -44,7 +44,7 @@ The lint rules are deliberately **not** type-aware (`tseslint.configs.recommende
 
 `eslint-plugin-react-hooks@7` ships the sixteen **React Compiler** rules in its `recommended` preset, and this repo enables only `rules-of-hooks` and `exhaustive-deps` from it. The compiler rules model pure React data flow; this app is an imperative react-three-fiber shell, where mutating a three.js material from an effect (`Outlines.tsx`) is the normal pattern, not a fault — and `set-state-in-effect` condemns the deferred unmount validated in #47. Adopting the React Compiler is a decision of its own, not a side effect of adding a linter.
 
-`docs/design/` is excluded from both tools: the mockups document committed captures, and `tokens.css` is written in the compact style the design session reviewed.
+`design/` is excluded from both tools, and `src/styles/tokens.css` from Prettier alone: the mockups document committed captures, and the design system is written in the compact style the design session reviewed. **The exclusion follows the file, and that is why it is named twice** — `tokens.css` moved into `src/` with #111 while keeping the style it was reviewed in; a `.prettierignore` still pointing at its old folder would let `pnpm format` rewrite 46 KB in one pass, inside the very commit that moved it.
 
 ## Architecture
 
@@ -52,15 +52,32 @@ This is a **React 19 + react-three-fiber v9** single-page portfolio that renders
 
 The reference design doc (product decisions, review reports, spike verdicts) lives at `~/.gstack/projects/t3hx-myPortfolio/tehx-fix-rendering-design-20260804-174239.md`. The interaction spec for the scene is `docs/PORTFOLIO_3D_INTERACTIONS.md` — **read it before touching scene behavior**; it lists every animation/interaction with exact object names.
 
-### The 2D UI design system (`docs/design/`)
+### Where things live (#111)
+
+Three top-level folders, and the line between them is **not** the subject — it is **who reads the file**:
+
+|           | Read by                                | Holds                                                                                                                                                                                |
+| --------- | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `src/`    | the browser                            | code, **including `src/styles/tokens.css`** — 46 KB of CSS served to the visitor                                                                                                     |
+| `design/` | the tests, and a designer in a browser | `screens/*.html` (the oracle of `cv.test.ts` and `bubbleAnchors.test.ts`), `renders/refs/*.png` (the oracle of the comparison loop, and the mockups' backgrounds), `renders/spikes/` |
+| `docs/`   | a human, only                          | prose — `DESIGN.md`, `PORTFOLIO_3D_INTERACTIONS.md`, the specs and the conventions                                                                                                   |
+
+**Nothing in the build or the test run reads `docs/`.** That is a property to preserve, not a coincidence: it is what lets `.dockerignore` exclude `docs` and `design` in one word each, and what lets `main` ship without the folder at all. The previous layout could not — `main.tsx` imported `../docs/design/tokens.css`, so the `.dockerignore` compensated with a list of extensions (`docs/**/*.png`…) that had to be extended every time a new format landed there.
+
+Two consequences worth knowing before moving anything back:
+
+- **The mockups are a test oracle, not illustrations.** `cv.test.ts` reads `02-cv.html` and `bubbleAnchors.test.ts` re-extracts its copy. In a folder `main` does not carry, CI on `main` could not run.
+- **An output never goes in an input folder.** `ACTUAL_DIR` used to be `docs/renders/actual` — throwaway captures inside the folder holding the ground truth. It is `test-results/renders` now, beside Playwright's own `outputDir`, which is named explicitly (`test-results/playwright`) because **Playwright wipes its output dir at the start of a run** and would otherwise take the captures with it.
+
+### The 2D UI design system (`design/` + `src/styles/tokens.css`)
 
 Output of the Claude Design session (2026-08-10), and the single source of truth for everything the DOM draws on top of the canvas — **read it before building any 2D UI**:
 
-- `docs/design/DESIGN.md` — direction ("Lueur": smoked glass + cold glow), tokens, bubble/menu anatomy, the **per-stop placement table**, motion budgets, and the implementation notes that were verified in a browser.
-- `docs/design/tokens.css` — the custom properties plus working `.bubble` / `.menu` components. Tokens, not utility classes.
-- `docs/design/screens/*.html` — 15 standalone reference screens (11 stops + preselection + preloader + the project sheet and the empty drawer, added by #78), high-fidelity. Open them directly; they are prototypes to **recreate** in R3F, not code to paste.
+- `docs/DESIGN.md` — direction ("Lueur": smoked glass + cold glow), tokens, bubble/menu anatomy, the **per-stop placement table**, motion budgets, and the implementation notes that were verified in a browser.
+- `src/styles/tokens.css` — the custom properties plus working `.bubble` / `.menu` components. Tokens, not utility classes.
+- `design/screens/*.html` — 15 standalone reference screens (11 stops + preselection + preloader + the project sheet and the empty drawer, added by #78), high-fidelity. Open them directly; they are prototypes to **recreate** in R3F, not code to paste.
 
-Their backgrounds are the committed `docs/renders/refs/*.png` — the same renders the comparison loop uses, so re-shooting a stop updates the mockups for free. The design session worked on 1920×1080 exports of those same framings; a second copy was deliberately not committed.
+Their backgrounds are the committed `design/renders/refs/*.png` — the same renders the comparison loop uses, so re-shooting a stop updates the mockups for free. The design session worked on 1920×1080 exports of those same framings; a second copy was deliberately not committed.
 
 The UI is **two components only** — a vertical menu bar on the right edge and one text bubble per stop, anchored to the framed object. The 3D is the interface; the UI must not compete with it.
 
@@ -208,13 +225,13 @@ Material names are matched in FULL, never by substring: `Mat_Poster_Expanse` mus
 
 `window.__inkDebug` reports how many meshes were inked and which were skipped with which reason. It is an inventory of the WHOLE scene, taken once when `Outlines` mounts — not a per-stop reading, since the traversal has no idea what the camera is framing. An exclusion list nobody can re-read ends up holding entries nobody can justify. Current count: **174 inked, 32 skipped** (22 emitters, 5 too-fine, 3 too-dense, 2 deforming).
 
-`tests/e2e/renderComparison.ts` requests `&outline=off` explicitly: the references in `docs/renders/refs/` are bare Blender renders with no Line Art, and that loop's job is to prove the _bake_ arrives intact. Ink is art direction laid on top at runtime; letting it in would diverge all eleven stops at once and drown the only signal the comparison can produce.
+`tests/e2e/renderComparison.ts` requests `&outline=off` explicitly: the references in `design/renders/refs/` are bare Blender renders with no Line Art, and that loop's job is to prove the _bake_ arrives intact. Ink is art direction laid on top at runtime; letting it in would diverge all eleven stops at once and drown the only signal the comparison can produce.
 
 **The cost is fill, not draw calls, and it is only half-measured.** On Desk: 120 draws/frame at `off`, 239 at `hull`, 237 at `edges` (2.2 px), 473 at `both` — yet over the same window `hull` renders 46 frames and `edges` renders 9. Nearly identical draw counts, wildly different frame times: the fat lines are instanced quads and the bill is fragments. That measurement is **SwiftShader**, a software rasterizer that exaggerates precisely that cost, so it is a relative signal and not an fps prediction — and it was taken at 2.2 px, before the width dropped. **`edges` has not been profiled on a real GPU, and fill-bound is exactly what kills mobile** — do that before this reaches main (relevant to the KTX2 work, #39/#50/#51/#52). The load-time cost of building 146 `EdgesGeometry` is likewise **unmeasured**: the probe only isolated shader compilation.
 
 ### The narrative bubble (`src/scene/Bubble.tsx`)
 
-The design system's `.bubble` made real (issue #47): a drei `<Html>` re-projects a world-space `anchor` every frame, so the bubble tracks the framed object through camera moves. Two things are load-bearing and commented in the file — the **explicit `portal` prop to App3D's `.bubble-layer`** (without it drei portals into the canvas container and the bubble inherits its stacking context) and the **hardcoded capped `zIndexRange`** (drei's default reaches ~16 million and would paint bubbles above the HUD at 200 and the panel at 300; the layer's z 100 fixes the floor). Prop contract: `visible` drives a 200 ms fade-then-unmount exit, omitting `kicker` switches the markup to the home "inline" variant, and `maxWidth` / `tick` / `tilt` / `className` carry the per-stop design variants. The CSS is split on purpose: anatomy and entry motion live in `docs/design/tokens.css`; `src/styles.css` adds only the projected-layer overrides (`.bubble-layer .bubble` — in-flow, content-box) and the `.bubble--out` exit fade, which beats `bubble-in` at equal specificity **only because `main.tsx` imports tokens.css before styles.css** — never reorder those imports. `BUBBLE_OUT_MS` must equal `--t-bubble-out`, and `tests/bubble.test.ts` is the only thing linking the two (it does not guard the import order). **The bubble is non-interactive by decision** (recorded in `docs/design/DESIGN.md`): purely narrative, opens nothing, `pointer-events: none` — wheel and clicks pass through to the rig. Accessibility is issue #49.
+The design system's `.bubble` made real (issue #47): a drei `<Html>` re-projects a world-space `anchor` every frame, so the bubble tracks the framed object through camera moves. Two things are load-bearing and commented in the file — the **explicit `portal` prop to App3D's `.bubble-layer`** (without it drei portals into the canvas container and the bubble inherits its stacking context) and the **hardcoded capped `zIndexRange`** (drei's default reaches ~16 million and would paint bubbles above the HUD at 200 and the panel at 300; the layer's z 100 fixes the floor). Prop contract: `visible` drives a 200 ms fade-then-unmount exit, omitting `kicker` switches the markup to the home "inline" variant, and `maxWidth` / `tick` / `tilt` / `className` carry the per-stop design variants. The CSS is split on purpose: anatomy and entry motion live in `src/styles/tokens.css`; `src/styles.css` adds only the projected-layer overrides (`.bubble-layer .bubble` — in-flow, content-box) and the `.bubble--out` exit fade, which beats `bubble-in` at equal specificity **only because `main.tsx` imports tokens.css before styles.css** — never reorder those imports. `BUBBLE_OUT_MS` must equal `--t-bubble-out`, and `tests/bubble.test.ts` is the only thing linking the two (it does not guard the import order). **The bubble is non-interactive by decision** (recorded in `docs/DESIGN.md`): purely narrative, opens nothing, `pointer-events: none` — wheel and clicks pass through to the rig. Accessibility is issue #49.
 
 ### Bubble content and anchors (`src/content/bubbles.ts` + `src/lib/bubbleAnchors.ts`)
 
@@ -262,7 +279,7 @@ Issue #93. Seven blocks that must read as being displayed **by** the scene's sec
 
 Corollary: **no layout rule may depend on a hover.** The previous attempt tuned a margin through `:has(.job:hover)`, which also fired on the **formations** — hovering a diploma, which opens nothing, moved the whole CV.
 
-Hovering a cartouche runs a **sweep** (700 ms, `--t-sweep`) — a cold sliver crossing it once. It promises nothing (the formations, which never open, have it too); it acknowledges the pointer. Gesture-triggered, so reduced motion **keeps** it. Section titles carry the cold accent while card titles stay muted cream: colour carries the hierarchy, no extra size or weight. `docs/design/screens/02-cv.html` is the reference and `docs/design/tokens.css` holds the anatomy — the app and the mockup share one definition, and the mockup's own `<style>` is empty on purpose.
+Hovering a cartouche runs a **sweep** (700 ms, `--t-sweep`) — a cold sliver crossing it once. It promises nothing (the formations, which never open, have it too); it acknowledges the pointer. Gesture-triggered, so reduced motion **keeps** it. Section titles carry the cold accent while card titles stay muted cream: colour carries the hierarchy, no extra size or weight. `design/screens/02-cv.html` is the reference and `src/styles/tokens.css` holds the anatomy — the app and the mockup share one definition, and the mockup's own `<style>` is empty on purpose.
 
 Four things are load-bearing:
 
@@ -287,7 +304,7 @@ Issue #33. The toggle in the menu bar is live; **every visitor-facing string goe
 
 ### The preselection gate (`src/App.tsx` + `src/lib/experienceChoice.ts`)
 
-`App.tsx` is a DOM-only router (issue #24): preselection screen → lazy-loaded `App3D` (the Canvas) or the classic placeholder. The lazy import is **load-bearing** — a static import path from the entry chunk would ship all of three/R3F/drei to every visitor, including the ones who pick classic. It used to be even more load-bearing: `RoomModel` fired `useGLTF.preload` at module scope, so importing it _at all_ started the 3 MB download. That preload is gone (#25) — `useLoader.preload` takes no `onProgress`, and being the call that actually started the fetch, it left the preloader's bar with no data to show. The load now starts on `RoomModel`'s first render, a few ms later. A stored `classic` choice (localStorage, `portfolio.experience`) is honoured without ever probing WebGL; a missing WebGL context auto-falls back to classic. Every dev URL param below bypasses the gate straight to 3D so the render-comparison loop stays deterministic. The screen recreates `docs/design/screens/0a-preselection.html`; `docs/design/tokens.css` is imported directly by `main.tsx` (single source of truth, no copy).
+`App.tsx` is a DOM-only router (issue #24): preselection screen → lazy-loaded `App3D` (the Canvas) or the classic placeholder. The lazy import is **load-bearing** — a static import path from the entry chunk would ship all of three/R3F/drei to every visitor, including the ones who pick classic. It used to be even more load-bearing: `RoomModel` fired `useGLTF.preload` at module scope, so importing it _at all_ started the 3 MB download. That preload is gone (#25) — `useLoader.preload` takes no `onProgress`, and being the call that actually started the fetch, it left the preloader's bar with no data to show. The load now starts on `RoomModel`'s first render, a few ms later. A stored `classic` choice (localStorage, `portfolio.experience`) is honoured without ever probing WebGL; a missing WebGL context auto-falls back to classic. Every dev URL param below bypasses the gate straight to 3D so the render-comparison loop stays deterministic. The screen recreates `design/screens/0a-preselection.html`; `src/styles/tokens.css` is imported directly by `main.tsx` (single source of truth, no copy).
 
 ### URL parameters (dev tooling — keep working)
 

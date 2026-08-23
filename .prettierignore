@@ -1,8 +1,14 @@
 dist
 pnpm-lock.yaml
 public/draco
-# Les fichiers de la session design sont des artefacts figés : les maquettes
-# documentent des captures, et le style compact de tokens.css (plusieurs
-# déclarations par ligne) est celui dans lequel le design system a été écrit et
-# relu. Les reformater les ferait diverger de ce que DESIGN.md décrit.
-docs/design
+
+# Les artefacts de la session design sont figés : les maquettes documentent des
+# captures, et le style compact de tokens.css (plusieurs déclarations par ligne)
+# est celui dans lequel le design system a été écrit et relu. Les reformater les
+# ferait diverger de ce que docs/DESIGN.md décrit.
+#
+# L'exclusion SUIT le fichier (#111) : tokens.css est du code servi au visiteur,
+# il vit donc dans src/ — mais il reste écrit dans le style de la session. Sans
+# la seconde ligne, `pnpm format` en réécrit les 46 ko d'un coup.
+design
+src/styles/tokens.css

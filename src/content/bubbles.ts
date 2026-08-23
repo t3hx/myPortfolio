@@ -5,7 +5,7 @@
  * `CameraStop` n'a plus de `caption`. Chaque entrée porte trois choses :
  *
  *  1. **la phrase et son sujet**, repris mot pour mot des maquettes validées
- *     (`docs/design/screens/*.html`, session design 2026-08-10) ;
+ *     (`design/screens/*.html`, session design 2026-08-10) ;
  *  2. **l'ancre monde**, décrite par les nœuds du `.glb` qui justifient la
  *     bulle : leur boîte englobante donne la PROFONDEUR de l'ancre, donc la
  *     parallaxe de la bulle quand la caméra quitte l'arrêt (voir

@@ -8,8 +8,8 @@ import { useInteraction } from '@/state/interaction'
 /**
  * La fiche projet plein écran (issue #83) — le deuxième clic, enfin fermé.
  *
- * Elle recrée `docs/design/screens/03b-project.html`, dont l'anatomie vit dans
- * `docs/design/tokens.css` avec celle de la bulle et de la barre : l'app et la
+ * Elle recrée `design/screens/03b-project.html`, dont l'anatomie vit dans
+ * `src/styles/tokens.css` avec celle de la bulle et de la barre : l'app et la
  * maquette partagent une seule définition, et rien ne peut diverger en silence.
  *
  * **La classe `panel` est load-bearing.** `CameraRig` ignore toute molette dont

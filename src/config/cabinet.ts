@@ -9,8 +9,8 @@
  *   caméra de l'arrêt z = -0.87       → l'ouverture se fait vers +Z
  *
  * L'amplitude de 0.28 est celle qui reproduit le rendu de référence Blender
- * (`docs/renders/refs/cabinet.png`), vérifiée en capture :
- * `docs/renders/spikes/cabinet-drawer-open.png`.
+ * (`design/renders/refs/cabinet.png`), vérifiée en capture :
+ * `design/renders/spikes/cabinet-drawer-open.png`.
  */
 
 /** `label` de l'arrêt qui commande l'ouverture — clé de `CAMERA_STOPS`. */
@@ -129,7 +129,7 @@ export const LABEL_INK = '#2B2418'
  *
  * Il monte **et** avance : au spike, un dossier qui monte seulement masque
  * complètement son voisin de derrière — le geste censé désigner une fiche en
- * cachait une autre (`docs/renders/spikes/cabinet-hover-label.png`).
+ * cachait une autre (`design/renders/spikes/cabinet-hover-label.png`).
  *
  * 0.05 en `y` suffit à dégager l'étiquette au-dessus de ses voisines ; le
  * couloir en Z garantit qu'il n'y a rien au-dessus pour l'arrêter.

@@ -15,8 +15,8 @@ import { clampToSafeArea } from '@/lib/bubbleAnchors'
  * Bulle narrative ancrée par projection écran (issue #47).
  *
  * L'anatomie visuelle (verre fumé, kicker, phrase Newsreader) vient de
- * docs/design/tokens.css — ce composant recrée le markup exact des maquettes
- * de docs/design/screens/ ; il n'apporte que le comportement :
+ * src/styles/tokens.css — ce composant recrée le markup exact des maquettes
+ * de design/screens/ ; il n'apporte que le comportement :
  *
  * - `<Html>` projette `anchor` (un point monde) à chaque frame : la bulle suit
  *   l'objet pendant les mouvements de caméra.

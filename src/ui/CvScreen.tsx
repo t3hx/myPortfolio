@@ -9,8 +9,8 @@ import { useInteraction } from '@/state/interaction'
 /**
  * Le CV « affiché par l'écran vertical » (issue #93).
  *
- * Il recrée `docs/design/screens/02-cv.html`, dont l'anatomie vit désormais
- * dans `docs/design/tokens.css` avec celle de la bulle, de la barre et de la
+ * Il recrée `design/screens/02-cv.html`, dont l'anatomie vit désormais
+ * dans `src/styles/tokens.css` avec celle de la bulle, de la barre et de la
  * fiche : l'app et la maquette partagent une seule définition, et rien ne peut
  * diverger en silence.
  *

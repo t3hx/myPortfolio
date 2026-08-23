@@ -9,7 +9,7 @@ import { Logo } from '@/ui/Logo'
 
 /**
  * La barre de menu persistante (issue #26), recréée depuis les maquettes de
- * `docs/design/screens/` — son anatomie vit dans `docs/design/tokens.css`.
+ * `design/screens/` — son anatomie vit dans `src/styles/tokens.css`.
  *
  * Elle est atteignable depuis n'importe quel point du tour parce qu'elle n'est
  * jamais démontée : le repos à 40 % d'opacité est ce qui lui permet d'être là

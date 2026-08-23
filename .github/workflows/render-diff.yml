@@ -63,6 +63,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: render-diff
-          path: docs/renders/actual/
+          path: test-results/renders/
           retention-days: 14
           if-no-files-found: error
