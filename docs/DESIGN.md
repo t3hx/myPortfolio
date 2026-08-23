@@ -16,17 +16,17 @@ La scène porte la personnalité ; l'UI se contente d'un seul matériau et d'un 
 
 Fichier prêt à l'emploi : `tokens.css` (custom properties + composants). Résumé :
 
-| Token | Valeur | Usage |
-|---|---|---|
-| --ink-glass | rgb(24 17 12) à .5–.74 | fond bulle/barre |
-| --cream | #EFE5D3 | texte, icônes |
-| --glow | #8FDBE4 | accent (points, logo, FR actif) |
-| --glow-deep | #6FD8E6 | halo survol |
-| --font-voice | Newsreader italique 19/28,5 | phrase des bulles |
-| --font-ui | Space Grotesk 11/caps/+0.2em | kicker, menu |
-| Espace | 4 · 8 · 12 · 16 · 24 · 32 · 48 | |
-| Rayons | 10 (bulle) · 18 (item) · 26 (barre) | |
-| Z | canvas 0 < bulles 100 < barre 200 < panneaux 300 | contrainte code |
+| Token        | Valeur                                           | Usage                           |
+| ------------ | ------------------------------------------------ | ------------------------------- |
+| --ink-glass  | rgb(24 17 12) à .5–.74                           | fond bulle/barre                |
+| --cream      | #EFE5D3                                          | texte, icônes                   |
+| --glow       | #8FDBE4                                          | accent (points, logo, FR actif) |
+| --glow-deep  | #6FD8E6                                          | halo survol                     |
+| --font-voice | Newsreader italique 19/28,5                      | phrase des bulles               |
+| --font-ui    | Space Grotesk 11/caps/+0.2em                     | kicker, menu                    |
+| Espace       | 4 · 8 · 12 · 16 · 24 · 32 · 48                   |                                 |
+| Rayons       | 10 (bulle) · 18 (item) · 26 (barre)              |                                 |
+| Z            | canvas 0 < bulles 100 < barre 200 < panneaux 300 | contrainte code                 |
 
 ## Anatomie — bulle
 
@@ -43,19 +43,19 @@ Un emplacement, pas une forme de BD : panneau de verre, pas de queue.
 
 ### Placement par arrêt (ancré au sujet, marges safe-area, jamais en px absolus)
 
-| Écran | Position (repère 1280×720) | Largeur max | Note |
-|---|---|---|---|
-| home | centrée, top 85 % | libre (nowrap) | sans titre, point seul |
-| 01 desk | centrée, top 75 % | 460 | deux lignes |
-| 02 cv | left 1,6 %, top 20 % | 260 | centrée dans la marge (écran : x 24,5→75,3 %) ; tick → |
-| 03 cabinet | left 2,5 %, top 76 % | 300 | coin bas-gauche |
-| 04 bookshelf | left 2 %, top 55 % | 240 | alignée sur la séparation d'étagère |
-| 05 cat | left 4 %, top 7 % | 340 | fond quasi noir : le verre suffit |
-| 06 guitar | left 52,5 %, top 31,5 % | 380 | rotation −11,15°, parallèle à l'ampli |
-| 07 scoreboard | left 1,2 %, top 82 % | 340 | sur l'océan |
-| 08 posters | left 2,5 %, top 38 % | 330 | hors halo du spot ; tick → |
-| 09 telescope | left 62 %, top 3,5 % | 340 | coin haut-droit, dans le ciel |
-| 10 moon | left 1,2 %, top 82 % | 330 | coin bas-gauche, hors lune |
+| Écran         | Position (repère 1280×720) | Largeur max    | Note                                                   |
+| ------------- | -------------------------- | -------------- | ------------------------------------------------------ |
+| home          | centrée, top 85 %          | libre (nowrap) | sans titre, point seul                                 |
+| 01 desk       | centrée, top 75 %          | 460            | deux lignes                                            |
+| 02 cv         | left 1,6 %, top 20 %       | 260            | centrée dans la marge (écran : x 24,5→75,3 %) ; tick → |
+| 03 cabinet    | left 2,5 %, top 76 %       | 300            | coin bas-gauche                                        |
+| 04 bookshelf  | left 2 %, top 55 %         | 240            | alignée sur la séparation d'étagère                    |
+| 05 cat        | left 4 %, top 7 %          | 340            | fond quasi noir : le verre suffit                      |
+| 06 guitar     | left 52,5 %, top 31,5 %    | 380            | rotation −11,15°, parallèle à l'ampli                  |
+| 07 scoreboard | left 1,2 %, top 82 %       | 340            | sur l'océan                                            |
+| 08 posters    | left 2,5 %, top 38 %       | 330            | hors halo du spot ; tick →                             |
+| 09 telescope  | left 62 %, top 3,5 %       | 340            | coin haut-droit, dans le ciel                          |
+| 10 moon       | left 1,2 %, top 82 %       | 330            | coin bas-gauche, hors lune                             |
 
 **Numérotation — tranchée avec #48 (2026-08-18) : c'est l'ordre du TOUR qui numérote, pas celui des maquettes.** Les écrans ci-dessus ont été capturés dans leur propre ordre (01 bureau, 02 CV…) alors que le tour, lui, va Accueil → CV → bureau → mappemonde → étagère → commode → chat → guitare → posters → télescope → lune. Le kicker se calcule donc à l'exécution depuis `CAMERA_STOPS` (accueil non numéroté) : réordonner la visite renumérote tout seul, et les numéros gravés dans les maquettes sont périmés par construction — leur texte, lui, fait toujours foi (`tests/bubbleAnchors.test.ts` le vérifie mot pour mot).
 
@@ -127,13 +127,13 @@ Le seul texte du projet qui vive dans une **texture** et non dans le DOM
 (exception tranchée le 2026-08-18 : c'est une affordance, comme l'icône d'un
 bouton, et le nom existe aussi dans la fiche accessible).
 
-| Point | Valeur | Pourquoi |
-|---|---|---|
-| Fonte | `--font-ui` (Space Grotesk) 600 | les micro-étiquettes sont déjà son travail |
-| Casse | **phrase, sans interlettrage** | les caps à +0.2em mangeraient la largeur : 430 px utiles seulement |
-| Encre | `#2B2418` | brun chaud sur carton crème ; `--ink` est un fond d'écran, il virerait au trou noir sur du papier |
-| Corps | 66 px dans une texture de 512, **réduit jusqu'à ce que ça entre** | mesuré : « Portfolio » (9 signes) tient à 78 px, « myPortfolio » (11) déborde ; un compte de signes reste un proxy |
-| Visibilité | **permanente**, pas au survol | c'est ce qui rend le tiroir lisible d'un coup d'œil, et le survol sert déjà à désigner |
+| Point      | Valeur                                                            | Pourquoi                                                                                                           |
+| ---------- | ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| Fonte      | `--font-ui` (Space Grotesk) 600                                   | les micro-étiquettes sont déjà son travail                                                                         |
+| Casse      | **phrase, sans interlettrage**                                    | les caps à +0.2em mangeraient la largeur : 430 px utiles seulement                                                 |
+| Encre      | `#2B2418`                                                         | brun chaud sur carton crème ; `--ink` est un fond d'écran, il virerait au trou noir sur du papier                  |
+| Corps      | 66 px dans une texture de 512, **réduit jusqu'à ce que ça entre** | mesuré : « Portfolio » (9 signes) tient à 78 px, « myPortfolio » (11) déborde ; un compte de signes reste un proxy |
+| Visibilité | **permanente**, pas au survol                                     | c'est ce qui rend le tiroir lisible d'un coup d'œil, et le survol sert déjà à désigner                             |
 
 ## Écrans hors visite
 
@@ -155,7 +155,7 @@ bouton, et le nom existe aussi dans la fiche accessible).
 
   **Le survol d'une cartouche déclenche un balayage** (700 ms, `--t-sweep`) : un liseré froid la traverse une fois. Il n'annonce pas une ouverture — les formations l'ont aussi, elles qui ne s'ouvrent pas — il accuse réception du pointeur. Déclenché par un geste, il est donc **conservé** sous mouvement réduit.
 
-  **Le haut du CV ne bouge jamais.** Il n'est donc **pas centré** : centré, tout ce qui le fait grandir le fait remonter — c'est de l'arithmétique, la moitié de ce qu'un accordéon ajoute est reprise en haut, et aucune réserve ne corrige ça exactement puisque les quatre accordéons n'ont pas la même hauteur (78 à 91 px). Il est ancré en haut, sous une **entretoise incompressible** (`.cv::before`, `flex: 0 0 auto`, `min(13vh, 220px)`) qui lui donne l'air centré au repos. Le mot qui compte est *incompressible* : une entretoise en `0 1 auto` tient tant que rien ne déborde puis cède — mesuré, 9 px rendus au premier accordéon à 1512 × 945, où le CV déborde déjà au repos, et une seconde entretoise en bas n'y change rien puisqu'à cette taille elle est déjà à zéro. **Mesuré après : 0 px sur les huit cartouches, à 1795 × 1300, 1512 × 945 et 1280 × 720.** Le prix est une entretoise qui reste en place quand ça défile : on défile un peu plus longtemps, mais rien ne saute sous le curseur.
+  **Le haut du CV ne bouge jamais.** Il n'est donc **pas centré** : centré, tout ce qui le fait grandir le fait remonter — c'est de l'arithmétique, la moitié de ce qu'un accordéon ajoute est reprise en haut, et aucune réserve ne corrige ça exactement puisque les quatre accordéons n'ont pas la même hauteur (78 à 91 px). Il est ancré en haut, sous une **entretoise incompressible** (`.cv::before`, `flex: 0 0 auto`, `min(13vh, 220px)`) qui lui donne l'air centré au repos. Le mot qui compte est _incompressible_ : une entretoise en `0 1 auto` tient tant que rien ne déborde puis cède — mesuré, 9 px rendus au premier accordéon à 1512 × 945, où le CV déborde déjà au repos, et une seconde entretoise en bas n'y change rien puisqu'à cette taille elle est déjà à zéro. **Mesuré après : 0 px sur les huit cartouches, à 1795 × 1300, 1512 × 945 et 1280 × 720.** Le prix est une entretoise qui reste en place quand ça défile : on défile un peu plus longtemps, mais rien ne saute sous le curseur.
 
   Corollaire : **plus aucune règle de mise en page ne dépend d'un survol.** La tentative précédente réglait une marge via `:has(.job:hover)`, qui se déclenchait aussi sur les **formations** — survoler un diplôme, qui n'ouvre rien, déplaçait tout le CV.
 
