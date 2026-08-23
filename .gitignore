@@ -36,9 +36,5 @@ node_modules/.tmp
 test-results/
 playwright-report/
 
-# Captures manuelles de session — jamais suivies, laissées ignorées pour ne pas
-# faire surgir 67 Mo dans un `git status` sur un poste qui en garde.
-docs/renders/captures/
-
 # Playwright MCP session artifacts (snapshots, console logs)
 .playwright-mcp/
