@@ -150,3 +150,32 @@ export function applyProgress(cam: PerspectiveCamera, stops: StopTransform[], p:
   cam.fov = verticalFov(a.hfov + (b.hfov - a.hfov) * t, cam.aspect)
   cam.updateProjectionMatrix()
 }
+
+/**
+ * L'index visé par un PAS du tour, dans la direction donnée.
+ *
+ * Deux décisions produit tiennent dans cette fonction, et aucune ne survit à
+ * une « simplification » en modulo (2026-08-24) :
+ *
+ *  - **Le tour boucle en avant, du dernier arrêt vers le PREMIER ARRÊT**, pas
+ *    vers l'accueil. L'accueil est le seuil du parcours : son cadrage remplit
+ *    l'image d'un écran pour que la première vue se lise comme une image plate,
+ *    et le premier défilement recule et révèle la pièce. Rejouer cette
+ *    révélation à chaque tour la viderait de son effet.
+ *  - **Il ne boucle pas en arrière.** Reculer depuis l'accueil ne fait rien —
+ *    on y retourne en reculant depuis le premier arrêt, ou par la barre de
+ *    menu, jamais en avançant.
+ *
+ * `null` quand le pas ne mène nulle part.
+ */
+export function nextStopIndex(from: number, dir: 1 | -1, count: number): number | null {
+  if (count <= 0) return null
+  const last = count - 1
+  const next = from + dir
+  if (next < 0) return null
+  if (next > last) return last >= LOOP_FIRST ? LOOP_FIRST : null
+  return next
+}
+
+/** Le premier arrêt du tour, celui sur lequel on boucle. L'accueil est 0. */
+export const LOOP_FIRST = 1

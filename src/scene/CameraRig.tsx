@@ -2,7 +2,7 @@ import { useFrame, useThree } from '@react-three/fiber'
 import gsap from 'gsap'
 import { useEffect, useRef } from 'react'
 import { PerspectiveCamera, Quaternion, Vector3 } from 'three'
-import { applyProgress, verticalFov, type StopTransform } from '@/lib/stops'
+import { applyProgress, nextStopIndex, verticalFov, type StopTransform } from '@/lib/stops'
 import { stopParamIndex } from '@/lib/viewMode'
 import { useInteraction } from '@/state/interaction'
 import {
@@ -185,6 +185,26 @@ export function CameraRig({ stops, moon }: CameraRigProps) {
     })
   }
 
+  /**
+   * Un PAS dans le tour, dans la direction donnée.
+   *
+   * Deux mouvements différents sortent d'ici, et c'est voulu. Un pas vers un
+   * arrêt voisin suit le parcours (`goToIndex`) — sur un segment, la polyligne
+   * EST la droite. Le bouclage du dernier arrêt vers le premier, lui, n'est pas
+   * un pas voisin : passé par `pos.p`, il rembobinerait toute la pièce à
+   * l'envers, ce qui est précisément le mouvement illisible qu'un saut de menu
+   * a cessé de produire. Il part donc en vol direct.
+   */
+  function stepBy(dir: 1 | -1) {
+    const from = targetIndex.current
+    const next = nextStopIndex(from, dir, stops.length)
+    if (next === null) return
+    // Un pas vers un arrêt VOISIN suit le parcours ; le bouclage, lui, n'est
+    // pas voisin et part en vol direct.
+    if (Math.abs(next - from) === 1) goToIndex(next)
+    else jumpToIndex(next)
+  }
+
   // --- Input: owned wheel with gesture detection + keyboard ---------------------------
   useEffect(() => {
     if (stops.length === 0) return
@@ -250,7 +270,7 @@ export function CameraRig({ stops, moon }: CameraRigProps) {
 
       acc.current += delta
       if (Math.abs(acc.current) >= GESTURE_THRESHOLD_PX) {
-        goToIndex(targetIndex.current + Math.sign(acc.current))
+        stepBy(Math.sign(acc.current) as 1 | -1)
         acc.current = 0
         armed.current = false
       }
@@ -272,7 +292,7 @@ export function CameraRig({ stops, moon }: CameraRigProps) {
       const backward = ['ArrowUp', 'ArrowLeft', 'PageUp'].includes(e.key)
       if (!forward && !backward) return
       e.preventDefault()
-      goToIndex(targetIndex.current + (forward ? 1 : -1))
+      stepBy(forward ? 1 : -1)
     }
 
     stage.addEventListener('wheel', onWheel as EventListener, { passive: false })
@@ -426,19 +446,25 @@ export function CameraRig({ stops, moon }: CameraRigProps) {
       jumpToIndex(requested)
     }
 
-    // PANEL_OPEN / TELESCOPE own the camera (frozen or excursion tween).
-    if (phase === 'panel' || phase === 'telescope' || returning.current || flying.current) return
-
-    applyProgress(camera, stops, pos.p)
-
+    // La sonde est écrite AVANT les sorties anticipées, sinon elle se fige à
+    // l'état d'avant pendant tout ce qui ne passe pas par la boucle du tour —
+    // un vol direct, une excursion — et raconte que rien ne bouge au moment
+    // précis où on la lit pour savoir ce qui bouge. Mesuré : elle annonçait
+    // encore l'arrêt de départ pendant les 1,6 s d'un saut.
     if (import.meta.env.DEV) {
       ;(window as unknown as Record<string, unknown>).__rigDebug = {
         p: pos.p,
         target: targetIndex.current,
         phase,
         stroking: !!stroke.current,
+        flying: flying.current,
       }
     }
+
+    // PANEL_OPEN / TELESCOPE own the camera (frozen or excursion tween).
+    if (phase === 'panel' || phase === 'telescope' || returning.current || flying.current) return
+
+    applyProgress(camera, stops, pos.p)
   })
 
   return null

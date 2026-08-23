@@ -1,6 +1,6 @@
 import { Object3D, PerspectiveCamera } from 'three'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { applyProgress, extractStops, orderedStops, verticalFov } from '@/lib/stops'
+import { applyProgress, extractStops, nextStopIndex, orderedStops, verticalFov } from '@/lib/stops'
 
 /**
  * `src/lib/stops.ts` porte le cadrage de toute la visite, et s'est déjà trompé
@@ -247,5 +247,30 @@ describe('applyProgress', () => {
 
     expect(cam.fov).toBe(50)
     expect(cam.position.toArray()).toEqual([1, 2, 3])
+  })
+})
+
+describe('nextStopIndex', () => {
+  it('avance d’un arrêt au suivant', () => {
+    expect(nextStopIndex(0, 1, 10)).toBe(1)
+    expect(nextStopIndex(4, 1, 10)).toBe(5)
+  })
+
+  it('boucle du dernier arrêt vers le PREMIER ARRÊT, jamais vers l’accueil', () => {
+    // La décision produit du 2026-08-24 : l'accueil est le seuil du parcours,
+    // pas une étape de la boucle. Un modulo rendrait 0 et rejouerait la
+    // révélation de la pièce à chaque tour.
+    expect(nextStopIndex(9, 1, 10)).toBe(1)
+    expect(nextStopIndex(9, 1, 10)).not.toBe(0)
+  })
+
+  it('recule jusqu’à l’accueil, et s’y arrête', () => {
+    expect(nextStopIndex(1, -1, 10)).toBe(0)
+    expect(nextStopIndex(0, -1, 10)).toBeNull()
+  })
+
+  it('ne boucle pas sur un tour qui n’a que l’accueil', () => {
+    expect(nextStopIndex(0, 1, 1)).toBeNull()
+    expect(nextStopIndex(0, 1, 0)).toBeNull()
   })
 })
