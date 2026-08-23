@@ -792,16 +792,17 @@
   color: rgba(var(--cream-rgb), .55);
 }
 
-/* La phrase de la lune (#113). En bas et centrée : la moitié haute du cadre est
-   occupée par le sujet, et `--scope-moon` mesure justement son rayon apparent.
-   Largeur bornée pour qu'elle tienne sur deux lignes au plus — au-delà, elle
-   commencerait à concurrencer ce qu'on est venu regarder. */
-.scope__caption {
-  position: absolute; left: 50%; bottom: 34px; transform: translateX(-50%);
-  margin: 0; max-width: min(44ch, 62vw); text-align: center;
-  font-family: var(--font-voice); font-style: italic; font-size: var(--fs-body);
-  line-height: 1.45; color: rgba(var(--cream-rgb), .82);
-  text-shadow: 0 1px 12px rgba(0, 0, 0, .55);
+/* L'encadré de la lune (#113) : `.bubble` fait tout le travail — verre fumé,
+   rayon, typo, entrée. Cette règle ne fait que le POSER, en bas à droite de la
+   vignette, là où il ne recouvre ni le sujet ni le rappel de sortie (coin
+   opposé). `position: absolute` dans `.scope`, donc il se resserre avec
+   l'ouverture au lieu de rester seul sur l'écran noir. */
+.scope__bubble {
+  /* 12 px de marge de la barre + ses 52 px de large + 18 px d'air. Mesuré :
+     à 42 px, le bord droit tombait à 1238 pour une barre qui commence à 1216,
+     et la bulle passait DESSOUS — elle est à `--z-bubble`, la barre à
+     `--z-bar`. Rien ne cassait, mais ça se voyait. */
+  right: 82px; bottom: 42px; max-width: 330px;
 }
 
 /* Déclaré APRÈS `.scope` : à spécificité égale, le dernier gagne, et la sortie

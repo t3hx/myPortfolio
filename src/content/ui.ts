@@ -78,6 +78,12 @@ export const UI = {
      * dans l'instrument. Texte repris mot pour mot de `BUBBLES`, les deux
      * langues comprises : le sujet n'a pas changé, seulement l'endroit.
      */
+    /**
+     * Le titre de l'encadré. C'était le `subject` de la bulle du tour ; il la
+     * suit dans la visée. Sans numéro : la numérotation suit le RANG dans le
+     * tour, et la lune n'y est plus.
+     */
+    subject: { fr: 'La lune', en: 'The moon' } as Localized,
     moon: {
       fr: 'À 384 000 km, le seul sujet qui accepte de poser par nuit claire.',
       en: 'At 384,000 km, the only subject that will pose on a clear night.',
