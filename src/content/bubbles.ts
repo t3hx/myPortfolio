@@ -171,13 +171,9 @@ export const BUBBLES: BubbleContent[] = [
     center: { x: 0.7708, y: 0.1154 },
     maxWidth: 340,
     subject: { fr: 'Le télescope', en: 'The telescope' },
-    // « la suite au prochain arrêt » était vrai tant que la lune était l'arrêt
-    // suivant. Elle n'est plus une étape (#113) : la phrase envoyait le
-    // visiteur défiler vers le tableau d'affichage en lui promettant la lune.
-    // Elle désigne maintenant le geste qui y mène vraiment — le clic.
     text: {
-      fr: 'Le télescope pointe la fenêtre — approchez l’œil, la lune est déjà cadrée.',
-      en: 'The telescope is aimed at the window — lean in, the moon is already framed.',
+      fr: 'Le télescope pointe la fenêtre — la suite au prochain arrêt.',
+      en: 'The telescope is aimed at the window — the rest at the next stop.',
     },
   },
   {
