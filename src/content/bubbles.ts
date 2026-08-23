@@ -172,8 +172,8 @@ export const BUBBLES: BubbleContent[] = [
     maxWidth: 340,
     subject: { fr: 'Le télescope', en: 'The telescope' },
     text: {
-      fr: 'Le télescope pointe la fenêtre — la suite au prochain arrêt.',
-      en: 'The telescope is aimed at the window — the rest at the next stop.',
+      fr: 'Le télescope pointe la fenêtre, approchez l’œil pour voir la lune.',
+      en: 'The telescope is aimed at the window, lean in to see the moon.',
     },
   },
   {
