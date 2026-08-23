@@ -22,8 +22,8 @@ import { LOCALES, t, tm } from '@/lib/locale'
  * maquette et attendent la plume de leur auteur.
  */
 
-const tokens = readFileSync('docs/design/tokens.css', 'utf8')
-const mockup = readFileSync('docs/design/screens/02-cv.html', 'utf8')
+const tokens = readFileSync('src/styles/tokens.css', 'utf8')
+const mockup = readFileSync('design/screens/02-cv.html', 'utf8')
 const component = readFileSync('src/ui/CvScreen.tsx', 'utf8')
 
 describe("l'arrêt du CV", () => {

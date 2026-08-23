@@ -8,7 +8,7 @@ import { SCOPE_OUT_MS } from '@/ui/TelescopeScope'
  * rattraperait, et une décision de composition qu'un refactor défera.
  */
 
-const tokens = readFileSync('docs/design/tokens.css', 'utf8')
+const tokens = readFileSync('src/styles/tokens.css', 'utf8')
 const component = readFileSync('src/ui/TelescopeScope.tsx', 'utf8')
 /** Les COMMENTAIRES sont retirés partout dans ce fichier : ils expliquent
  *  justement ce qu'on interdit, et le mot interdit y figure donc forcément. */

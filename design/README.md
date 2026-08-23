@@ -40,10 +40,15 @@ Anatomie détaillée des deux composants, placements par arrêt, états et varia
 Tout est dans `tokens.css` (custom properties commentées) et résumé en tables dans DESIGN.md : palette pipette (#18110C verre, #EFE5D3 crème, #8FDBE4 accent, #6FD8E6 halo), échelle 4→48, rayons 10/18/26, z 0/100/200/300, budgets motion 140→1200 ms.
 
 ## Assets
-Les fonds sont les rendus Blender déjà versionnés dans **`docs/renders/refs/`** (11 arrêts, 1280×720, calibrés comme le rendu WebGL) — la session design travaillait sur des exports 1920×1080 des mêmes cadrages, repointés ici pour qu'un seul jeu de rendus fasse foi. Les maquettes les posent en `center / cover`, donc la résolution est indifférente ; re-shooter `refs/` après un nouvel export Blender met les maquettes à jour toutes seules. Dans l'app réelle, le canvas WebGL remplace ces fonds. La photo du CV est un placeholder (encart hachuré) à remplacer.
+Les fonds sont les rendus Blender déjà versionnés dans **`design/renders/refs/`** (11 arrêts, 1280×720, calibrés comme le rendu WebGL) — la session design travaillait sur des exports 1920×1080 des mêmes cadrages, repointés ici pour qu'un seul jeu de rendus fasse foi. Les maquettes les posent en `center / cover`, donc la résolution est indifférente ; re-shooter `refs/` après un nouvel export Blender met les maquettes à jour toutes seules. Dans l'app réelle, le canvas WebGL remplace ces fonds. La photo du CV est un placeholder (encart hachuré) à remplacer.
 
 ## Files
-- `DESIGN.md` — direction, tokens, anatomie, placements, budgets motion (source de vérité)
-- `tokens.css` — tokens + composants .bubble / .menu (CSS main, prêt à adapter)
-- `screens/*.html` — 13 écrans de référence autonomes
-- fonds : `../renders/refs/*.png` (versionnés, partagés avec la boucle de comparaison)
+
+Le rendu de la session est rangé **par nature depuis #111**, pas par sujet : ce
+que le navigateur sert est du code, ce que les tests lisent est une entrée, le
+reste est de la prose.
+
+- `screens/*.html` — 15 écrans de référence autonomes, **ici**
+- `renders/refs/*.png` — les fonds, **ici** ; versionnés, partagés avec la boucle de comparaison
+- `../src/styles/tokens.css` — tokens + composants `.bubble` / `.menu`. **Ce n'est pas une maquette** : c'est le CSS que l'app importe, servi au visiteur. Les maquettes le chargent depuis là, donc une seule définition dans les deux sens.
+- `../docs/DESIGN.md` — direction, tokens, anatomie, placements, budgets motion (source de vérité)

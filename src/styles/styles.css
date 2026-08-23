@@ -1,5 +1,5 @@
 /* Spike-grade styling (HUD, panel). La bulle et la pré-sélection portent le
-   vrai design system — tokens et composants dans docs/design/tokens.css,
+   vrai design system — tokens et composants dans src/styles/tokens.css,
    importé AVANT ce fichier (voir main.tsx). */
 
 * {
@@ -212,7 +212,7 @@ body,
   overflow: hidden;
 }
 
-/* --- Bulle (issue #47) — anatomie et tokens : docs/design/tokens.css --------------- */
+/* --- Bulle (issue #47) — anatomie et tokens : src/styles/tokens.css --------------- */
 /* Dans la couche projetée, l'ancre drei (un div 0×0 dont le translate3d est
    recalculé chaque frame) fait tout le positionnement : la bulle redevient un
    bloc en flux pour que `center` la centre réellement sur le point projeté —
@@ -258,8 +258,8 @@ body,
 }
 
 /* --- Écran 0a : pré-sélection 3D / classique (issue #24) --------------------------- */
-/* Porté depuis docs/design/screens/0a-preselection.html — la maquette de référence.
-   Tokens et composants .bubble__* : docs/design/tokens.css. */
+/* Porté depuis design/screens/0a-preselection.html — la maquette de référence.
+   Tokens et composants .bubble__* : src/styles/tokens.css. */
 .presel {
   position: absolute;
   inset: 0;

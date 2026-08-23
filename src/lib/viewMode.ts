@@ -56,7 +56,7 @@ export const outlineMode: OutlineMode = (() => {
  * tampon de dessin dès qu'il l'a composité.
  *
  * Pourquoi lire le tampon plutôt que capturer la page : les références de
- * `docs/renders/refs/` sont des rendus Blender NUS, sans une ligne d'interface.
+ * `design/renders/refs/` sont des rendus Blender NUS, sans une ligne d'interface.
  * Une capture de page contient la bulle, la barre de menu et, depuis #93, le
  * CV — l'écart mesuré serait dominé par du DOM qu'on n'a jamais voulu comparer,
  * et chaque nouvel élément 2D le fausserait un peu plus, en silence. Le tampon
@@ -71,7 +71,7 @@ export const captureMode: boolean =
 /**
  * Optional `?stop=<label>` deep-link — snaps the camera to that stop on load.
  * Used by the Playwright render-comparison loop (deterministic framing vs
- * docs/renders/refs/) and shareable URLs. Matches the friendly label,
+ * design/renders/refs/) and shareable URLs. Matches the friendly label,
  * case-insensitive, prefix allowed ('bookshelf' → 'BookshelfPlant').
  * Returns the stop index, or null.
  */

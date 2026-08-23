@@ -20,15 +20,19 @@ node_modules/.tmp
 # deux sources de vérité pour une seule chose. 2,8 Mo qui bougent trois fois
 # par an, c'est le bon prix.
 #
-# Les exports de travail, eux, restent dehors :
-docs/*.glb
+# Les exports de travail, eux, restent dehors — et plus seulement ceux qu'on
+# posait dans `docs/`, qui ne contient plus que de la prose (#111). La règle est
+# maintenant « tout .glb sauf celui-là », donc elle vaut où que Blender exporte.
+*.glb
+!public/models/scene.glb
 
-# Throwaway WebGL captures from the render-comparison loop
-docs/renders/actual/
-docs/renders/captures/
-
-# Playwright: browsers' own output. Ce qu'on veut garder d'une exécution est
-# dans docs/renders/actual/, publié en artefact par render-diff.yml.
+# Sorties jetables. Les captures de la boucle de comparaison ont quitté `docs/`
+# avec #111 — c'était une SORTIE rangée dans un dossier d'entrées — pour
+# `test-results/renders/`. Playwright garde les siennes à côté, sous un
+# `outputDir` explicite (playwright.config.ts) : il NETTOIE son dossier au
+# démarrage, et sans cette séparation il emporterait les captures avec lui.
+# Ce qu'on veut garder d'une exécution est publié en artefact par
+# render-diff.yml.
 test-results/
 playwright-report/
 

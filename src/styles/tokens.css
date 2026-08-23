@@ -394,7 +394,7 @@
 
 /* ===== CV « affiché par l'écran » (#93) =====
    Le moniteur vertical occupe x 24,5 % → 75,3 % du cadre (mesuré sur
-   `docs/renders/refs/cv.png`) ; le bloc s'y encastre à 27,5 % sur 44,8 %, avec
+   `design/renders/refs/cv.png`) ; le bloc s'y encastre à 27,5 % sur 44,8 %, avec
    la marge qui fait croire que c'est l'écran qui l'affiche.
 
    Ces fractions sont HORIZONTALES, donc valables à tout ratio : le tour ajuste

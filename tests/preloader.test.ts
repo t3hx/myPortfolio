@@ -11,7 +11,7 @@ import { useLoading } from '@/state/loading'
  */
 describe('preloader exit budget', () => {
   it('PRELOAD_OUT_MS matches --t-preload-out in tokens.css', () => {
-    const css = readFileSync('docs/design/tokens.css', 'utf8')
+    const css = readFileSync('src/styles/tokens.css', 'utf8')
     const m = css.match(/--t-preload-out:\s*(\d+)ms/)
     expect(m).not.toBeNull()
     expect(Number(m![1])).toBe(PRELOAD_OUT_MS)

@@ -176,7 +176,7 @@ export const GENERIC_COVER_SRC = '/images/projects/cover-generique.svg'
  * qu'un seul bloc de texte visible à la fois.
  *
  * Tranché en session design (#78) ; la maquette
- * `docs/design/screens/03c-project-empty.html` fait foi pour la copy.
+ * `design/screens/03c-project-empty.html` fait foi pour la copy.
  */
 export const PROJECTS_EMPTY: Localized = {
   fr: "Le tiroir est vide pour l'instant. Les projets arrivent — le reste de la pièce se visite déjà.",

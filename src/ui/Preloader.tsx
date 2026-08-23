@@ -8,8 +8,8 @@ import { useLocale } from '@/state/locale'
 
 /**
  * L'écran 0b du design system, recréé depuis
- * `docs/design/screens/0b-preloader.html` (issue #25). L'anatomie vit dans
- * `docs/design/tokens.css` — ce composant n'apporte que les deux signaux.
+ * `design/screens/0b-preloader.html` (issue #25). L'anatomie vit dans
+ * `src/styles/tokens.css` — ce composant n'apporte que les deux signaux.
  *
  * Ils sont DEUX, et c'est le cœur du sujet :
  *

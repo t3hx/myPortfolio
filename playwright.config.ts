@@ -13,6 +13,12 @@ import { defineConfig } from '@playwright/test'
  */
 export default defineConfig({
   testDir: 'tests/e2e',
+  // Playwright NETTOIE son `outputDir` au démarrage de la série. Le sien est
+  // donc nommé explicitement, pour qu'il ne soit pas `test-results/` tout court
+  // — là où `ACTUAL_DIR` dépose maintenant les captures de la comparaison
+  // (#111). Sans cette ligne, le runner effacerait les captures de la série
+  // précédente au moment même où on veut les comparer.
+  outputDir: 'test-results/playwright',
   // Onze scènes de 3 Mo décodées par un rasteriseur logiciel : le temps ne
   // vient pas du test, il vient du chargement.
   timeout: 90_000,
@@ -26,7 +32,7 @@ export default defineConfig({
 
   use: {
     baseURL: 'http://localhost:4173',
-    // Le cadre des références de `docs/renders/refs/` — 1920×1080 depuis leur
+    // Le cadre des références de `design/renders/refs/` — 1920×1080 depuis leur
     // re-rendu du 2026-08-20 (#99). C'est le RATIO qui décide du cadrage, le
     // tour ajustant son champ HORIZONTALEMENT (`src/lib/stops.ts`) : rester en
     // 16:9 conserve l'image, changer de ratio la changerait. La définition,

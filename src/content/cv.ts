@@ -6,7 +6,7 @@
  * Le déploiement est le bouton « enregistrer ».
  *
  * ⚠️ **Les textes ci-dessous sont les placeholders de la maquette**
- * (`docs/design/screens/02-cv.html`, session design 2026-08-10) : Studio Nova,
+ * (`design/screens/02-cv.html`, session design 2026-08-10) : Studio Nova,
  * Atelier K, Freelance. Ils tiennent la FORME, pas les faits. Un parcours
  * professionnel inventé sur le portfolio d'une personne réelle serait pire
  * qu'un écran vide — c'est à l'auteur de les remplacer, comme pour `PROJECTS`.

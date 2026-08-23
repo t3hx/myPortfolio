@@ -13,7 +13,13 @@ Two directories:
   le nom de fichier suit l'export Blender. Déclarer la correspondance coûte une
   ligne ; renommer d'un côté ou de l'autre casse forcément quelque chose.
 
-- **`actual/`** — Playwright captures from the live WebGL view. Used for side-by-side comparison. **Gitignored** — captures are throwaway.
+- **`test-results/renders/`** — Playwright captures from the live WebGL view, at the repo root. Used for side-by-side comparison. **Gitignored** — captures are throwaway.
+
+  Elles ont quitté ce dossier avec **#111** : une sortie jetable rangée à côté
+  de la vérité terrain finit par se confondre avec elle. Elles sont maintenant
+  dans `test-results/`, avec les autres sorties de test — mais **pas** dans le
+  dossier de Playwright, qui a le sien (`outputDir: test-results/playwright`)
+  parce qu'il le NETTOIE au démarrage d'une série.
 
 `overview.png` sits beside them: a whole-room render that is **not** a camera stop. It exists to make the space legible; the comparison loop ignores it.
 
@@ -140,7 +146,7 @@ d'échec ne permet pas de voir une dérive s'installer sous le seuil.
 1. `pnpm dev`
 2. Ouvrir `localhost:5173/?stop=<label>` — un saut déterministe vers cet arrêt,
    c'est ce qui rend les captures reproductibles.
-3. Capturer en **1920×1080** dans `actual/<fichier>.png` — le nom du fichier, pas toujours celui de l'arrêt : voir `REF_FILE`.
+3. Capturer en **1920×1080** dans `test-results/renders/<fichier>.png` — le nom du fichier, pas toujours celui de l'arrêt : voir `REF_FILE`.
 4. Comparer à `refs/<stop>.png`.
 
 **If the colors are wrong, the bake is wrong.** Le runtime est non éclairé par

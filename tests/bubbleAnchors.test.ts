@@ -196,7 +196,7 @@ describe('BUBBLES', () => {
   })
 
   it('reprend mot pour mot la copy des maquettes de la session design', () => {
-    const dir = 'docs/design/screens'
+    const dir = 'design/screens'
     const mockups = readdirSync(dir)
       .filter((f) => f.endsWith('.html'))
       .flatMap((f) => {

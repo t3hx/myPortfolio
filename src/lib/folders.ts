@@ -18,7 +18,7 @@ import { labelTexture } from '@/lib/folderLabel'
  * C'est le nombre de dossiers qui fabrique la cible du deuxième clic — mesuré,
  * un dossier seul au fond du tiroir n'occupe que quelques pour cent de la
  * hauteur du cadre, alors que cinq échelonnés remplissent le tiroir et donnent
- * des onglets de ~100 × 50 px (`docs/renders/spikes/cabinet-folders-x5.png`).
+ * des onglets de ~100 × 50 px (`design/renders/spikes/cabinet-folders-x5.png`).
  */
 export interface FolderHandle {
   /** La fiche que ce dossier ouvre. */

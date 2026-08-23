@@ -199,11 +199,11 @@ La caméra se déplace entre des **points d'arrêt prédéfinis** (`CameraStop_*
 
 Chaque stop caméra affiche un texte descriptif (overlay HTML piloté par le stop actif — composant livré : `src/scene/Bubble.tsx`, issue #47).
 
-**Le texte des onze bulles est écrit et livré** (issue #48) : il vient de la session design du 2026-08-10 et vit dans **`src/content/bubbles.ts`**, source unique. Ce tableau n'en garde pas de copie — deux endroits où lire la même phrase, c'est une phrase qui diverge. Les maquettes correspondantes sont `docs/design/screens/*.html`, et un test verrouille le texte livré sur le leur.
+**Le texte des onze bulles est écrit et livré** (issue #48) : il vient de la session design du 2026-08-10 et vit dans **`src/content/bubbles.ts`**, source unique. Ce tableau n'en garde pas de copie — deux endroits où lire la même phrase, c'est une phrase qui diverge. Les maquettes correspondantes sont `design/screens/*.html`, et un test verrouille le texte livré sur le leur.
 
 **Implémentation des textes** (livrée — `src/scene/Bubble.tsx`, issues #47 et #48) :
 
-- Overlay HTML ancré par projection écran (pas du texte 3D) ; anatomie et motion dans `docs/design/tokens.css` (in : reveal 480 ms, out : fondu 200 ms).
+- Overlay HTML ancré par projection écran (pas du texte 3D) ; anatomie et motion dans `src/styles/tokens.css` (in : reveal 480 ms, out : fondu 200 ms).
 - Affichage piloté par le stop actif en phase `parked` (machine à états `src/state/interaction.ts`) — jamais indexé sur le scroll (décision DESIGN.md).
 - Un seul bloc de texte visible à la fois. L'ancre monde est dé-projetée depuis le placement du design ; l'objet visé (`Cat_Merged`, `Map_Sheet`, `Outside_Moon`…) donne la profondeur, donc la parallaxe au départ de la caméra — `src/lib/bubbleAnchors.ts`.
 - Reste ouvert : accessibilité des bulles (#49), bilingue FR/EN (#33).

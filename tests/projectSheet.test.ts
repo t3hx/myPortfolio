@@ -15,7 +15,7 @@ import { LOCALES, t } from '@/lib/locale'
  *      écran — sans dossier à cliquer, aucune fiche ne s'ouvre jamais.
  */
 
-const tokens = readFileSync('docs/design/tokens.css', 'utf8')
+const tokens = readFileSync('src/styles/tokens.css', 'utf8')
 
 describe('la sortie de la fiche', () => {
   it('dure exactement ce que le CSS annonce', () => {

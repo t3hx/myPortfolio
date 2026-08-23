@@ -48,7 +48,7 @@ Inspiration principale : <https://guillaumegouessan.com/>
 
 - Tendance **2,5D** (2D + 3D) : contours projetés et aplats de couleur simples, proche du cell-shading.
 - Les contours projetés de Blender (Line Art / Freestyle) sont la cible visuelle mais **ne s'exportent pas dans un `.glb`** : gros chantier pour les reproduire fidèlement en post-processing Three.js (outline pass, edge detection, ou autre technique à évaluer).
-- Le matching colorimétrique Blender EEVEE → WebGL est déjà calibré dans le prototype (`src/config/blenderMatch.ts` : AgX tone mapping, exposition, multiplicateur d'intensité lumineuse ×0.01, bloom). Ces valeurs et la boucle de comparaison (`docs/renders/refs/` vs captures) sont à transposer telles quelles.
+- Le matching colorimétrique Blender EEVEE → WebGL est déjà calibré dans le prototype (`src/config/blenderMatch.ts` : AgX tone mapping, exposition, multiplicateur d'intensité lumineuse ×0.01, bloom). Ces valeurs et la boucle de comparaison (`design/renders/refs/` vs captures) sont à transposer telles quelles.
 - ⚠️ **Périmé (2026-08-09)** : `blenderMatch.ts` a été supprimé avec l'export lit. L'export v12 est **entièrement pré-baké unlit** — l'AgX est cuit dans les textures, le rendu tourne en `NoToneMapping`, zéro lumière. Le pipeline courant est `src/config/renderPipeline.ts`. Seule la boucle de comparaison aux renders reste valable.
 
 ## Architecture
@@ -78,7 +78,7 @@ Les acquis du prototype à transposer : extraction des transforms des caméras `
 ### Outillage IA
 
 - Framework **Gstack + Gbrain** (garry-tan) : `/office-hours` pour discuter, reviews croisées, sous-agents pour tâches spécifiques. <https://github.com/garrytan/gstack>
-- **Claude Design** interviendra sur la partie visuelle (UI hors 3D) une fois le topo produit ; l'UI est minimale, le clou du spectacle étant la 3D interactive. → **La session a eu lieu et son rendu est `docs/design/`** (DESIGN.md, tokens.css, 13 maquettes). Le brief d'entrée qui l'avait alimentée a été retiré une fois son rendu livré : deux fichiers revendiquant l'autorité design, c'est la panne à deux sources de vérité. Il reste consultable dans l'historique git.
+- **Claude Design** interviendra sur la partie visuelle (UI hors 3D) une fois le topo produit ; l'UI est minimale, le clou du spectacle étant la 3D interactive. → **La session a eu lieu ; son rendu est réparti par nature depuis #111** — `docs/DESIGN.md` (la direction), `src/styles/tokens.css` (le code servi au visiteur), `design/screens/` (15 maquettes). Le brief d'entrée qui l'avait alimentée a été retiré une fois son rendu livré : deux fichiers revendiquant l'autorité design, c'est la panne à deux sources de vérité. Il reste consultable dans l'historique git.
 
 ## Guidelines de coding
 
