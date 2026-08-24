@@ -1,15 +1,11 @@
 import { Html } from '@react-three/drei'
-import {
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-  type CSSProperties,
-  type ReactNode,
-  type RefObject,
-} from 'react'
+import { useCallback, useEffect, useRef, useState, type CSSProperties, type RefObject } from 'react'
 import { Vector3, type Camera, type Object3D } from 'three'
 import { clampToSafeArea } from '@/lib/bubbleAnchors'
+import { useNow } from '@/lib/clock'
+import { typedLength } from '@/lib/typewriter'
+import { useInteraction } from '@/state/interaction'
+import { Typed } from '@/ui/Typed'
 
 /**
  * Bulle narrative ancrée par projection écran (issue #47).
@@ -64,8 +60,19 @@ export interface BubbleProps {
   tilt?: number
   /** Classes supplémentaires ajoutées à `.bubble`. */
   className?: string
-  /** La phrase — une seule, voix Newsreader italique. */
-  children: ReactNode
+  /**
+   * Il reste une page après celle-ci. Affiche le chevron « la suite » — mais
+   * seulement une fois la frappe finie : tant que le texte s'écrit, la suite
+   * n'est pas encore la question, et l'annoncer inviterait à couper la phrase
+   * qu'on est en train de lire.
+   */
+  hasNext?: boolean
+  /**
+   * La phrase à écrire. **Une chaîne, pas un `ReactNode`** depuis #121 : la
+   * machine à écrire a besoin des caractères, et un nœud React ne se coupe pas
+   * en deux à la lettre près.
+   */
+  children: string
 }
 
 export function Bubble({
@@ -77,6 +84,7 @@ export function Bubble({
   tick,
   tilt,
   className,
+  hasNext = false,
   children,
 }: BubbleProps) {
   // Démontage différé : `visible` à false lance le fondu (.bubble--out), le
@@ -91,6 +99,36 @@ export function Bubble({
     const timer = window.setTimeout(() => setMounted(false), BUBBLE_OUT_MS)
     return () => window.clearTimeout(timer)
   }, [visible])
+
+  /**
+   * La frappe. Elle lit la MÊME origine que l'arbitrage des gestes — l'instant
+   * où la page a commencé — au lieu d'avoir son horloge et de publier son état.
+   * C'est ce qui rend le clic fiable : la bulle et l'entrée ne peuvent pas être
+   * d'avis différents sur « est-ce que ça écrit encore », puisque ni l'une ni
+   * l'autre ne le décide.
+   */
+  const startedAt = useInteraction((st) => st.dialogueStartedAt)
+  const done = useInteraction((st) => st.dialogueDone)
+  const revealed = useInteraction((st) => st.revealed)
+  // La durée vient du STORE, pas d'un `typeDuration(children)` recalculé ici.
+  // Recalculée, elle ignorait le « mouvement réduit » — que l'appelant exprime
+  // par des durées nulles — et la bulle écrivait quand même.
+  const duration = useInteraction((st) => st.dialogueDurations[st.dialoguePage] ?? 0)
+
+  // Le minuteur est le seul signal de fin, et il se recale sur `startedAt` :
+  // c'est la seule clé qui change à CHAQUE page, y compris entre deux pages de
+  // longueur identique — où la durée, elle, ne bougerait pas.
+  const [finished, setFinished] = useState(false)
+  useEffect(() => {
+    setFinished(duration <= 0)
+    if (duration <= 0) return
+    const timer = window.setTimeout(() => setFinished(true), duration)
+    return () => window.clearTimeout(timer)
+  }, [startedAt, duration])
+
+  const now = useNow(visible && revealed && !done && !finished)
+  const shown =
+    done || finished ? children.length : typedLength(children, now - startedAt, duration)
 
   // La taille rendue de la bulle, relevée aux seuls changements de taille : la
   // lire à chaque frame forcerait un calcul de mise en page par frame.
@@ -136,7 +174,10 @@ export function Bubble({
   // conteneur du canvas`) et ne se re-parente jamais si le ref se remplit
   // après. Aujourd'hui le Suspense du glb garantit l'ordre ; ce garde le
   // garantit par le code (un montage trop tôt attend le re-render suivant).
-  if (!mounted || !portal.current) return null
+  // Tant que le préchargeur couvre l'écran, la bulle n'existe pas : une frappe
+  // lancée derrière lui s'écrit sans spectateur, et la phrase était déjà à
+  // moitié faite quand elle devenait visible (mesuré : 42 caractères sur 69).
+  if (!mounted || !revealed || !portal.current) return null
 
   const cls = [
     'bubble',
@@ -168,6 +209,13 @@ export function Bubble({
       {/* Markup des maquettes : kicker (point + étiquette) puis phrase, ou
           variante « sans titre » point + phrase sur une ligne (home). */}
       <article ref={measureBox} className={cls} role="note" style={style}>
+        {/* Le chevron « la suite ». Une bulle qui a fini de parler et une bulle
+            qui attend qu'on tourne la page se ressemblent trait pour trait —
+            rien, dans le texte, ne dit qu'il en reste. C'est la seule chose
+            qu'on ajoute au dialogue, et c'est un signe, pas une phrase. */}
+        {hasNext && shown >= children.length && (
+          <span className="bubble__next" aria-hidden="true" />
+        )}
         {tick && <span className={`bubble__tick bubble__tick--${tick}`} aria-hidden="true" />}
         {kicker ? (
           <>
@@ -175,12 +223,16 @@ export function Bubble({
               <span className="bubble__dot" />
               <span className="bubble__label">{kicker}</span>
             </header>
-            <p className="bubble__text">{children}</p>
+            <p className="bubble__text">
+              <Typed text={children} shown={shown} />
+            </p>
           </>
         ) : (
           <div className="bubble__inline">
             <span className="bubble__dot" />
-            <p className="bubble__text">{children}</p>
+            <p className="bubble__text">
+              <Typed text={children} shown={shown} />
+            </p>
           </div>
         )}
       </article>

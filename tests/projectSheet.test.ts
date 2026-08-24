@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
-import { BUBBLES, bubbleText } from '@/content/bubbles'
+import { BUBBLES, bubblePages } from '@/content/bubbles'
 import { PROJECTS, PROJECTS_EMPTY } from '@/content/projects'
 import { SHEET_OUT_MS } from '@/ui/ProjectSheet'
 import { LOCALES, t } from '@/lib/locale'
@@ -39,20 +39,24 @@ describe('le repli du tiroir vide', () => {
 
   it('remplace la phrase de la commode quand il n’y a aucun projet', () => {
     for (const locale of LOCALES) {
-      expect(bubbleText(cabinet, 0, locale), locale).toBe(t(PROJECTS_EMPTY, locale))
+      // Le repli remplace le dialogue ENTIER et n'a qu'un temps : ce n'est
+      // pas une page de plus, c'est une autre chose à dire.
+      expect(bubblePages(cabinet, 0, locale), locale).toEqual([t(PROJECTS_EMPTY, locale)])
     }
   })
 
   it('laisse la narration intacte dès qu’il y a un projet', () => {
-    expect(bubbleText(cabinet, 1, 'fr')).toBe(cabinet.text.fr)
-    expect(bubbleText(cabinet, PROJECTS.length, 'fr')).toBe(cabinet.text.fr)
+    expect(bubblePages(cabinet, 1, 'fr')).toEqual([cabinet.text[0].fr])
+    expect(bubblePages(cabinet, PROJECTS.length, 'fr')).toEqual([cabinet.text[0].fr])
   })
 
   it('ne touche à aucun autre arrêt, même à zéro projet', () => {
     for (const bubble of BUBBLES) {
       if (bubble.stop === 'Cabinet') continue
       for (const locale of LOCALES) {
-        expect(bubbleText(bubble, 0, locale), bubble.stop).toBe(t(bubble.text, locale))
+        expect(bubblePages(bubble, 0, locale), bubble.stop).toEqual(
+          bubble.text.map((p) => t(p, locale)),
+        )
       }
     }
   })

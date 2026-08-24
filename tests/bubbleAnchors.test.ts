@@ -231,7 +231,11 @@ describe('BUBBLES', () => {
     // une référence, donc la seule qui puisse dériver en silence. L'anglais
     // n'a pas de maquette et n'est pas verrouillé ici — l'absence de contrôle
     // est une décision, pas un trou à combler par une maquette inventée.
-    expect([...BUBBLES.map((b) => b.text.fr)].sort()).toEqual([...mockups].sort())
+    // La PREMIÈRE page seulement : c'est elle que la session design a écrite.
+    // Les pages suivantes sont de la copy neuve (#32) et n'ont pas de maquette
+    // à laquelle se comparer — les garder hors de cette égalité est ce qui
+    // permet d'en ajouter sans rendre le test faux.
+    expect([...BUBBLES.map((b) => b.text[0].fr)].sort()).toEqual([...mockups].sort())
 
     // La lune : même exigence, autre domicile. Sa maquette ne contient qu'une
     // bulle, et c'est la phrase que la visée affiche maintenant.
@@ -240,8 +244,22 @@ describe('BUBBLES', () => {
     // Ce que l'anglais doit à ce test : exister et ne pas être vide. Une
     // traduction oubliée laisserait une bulle blanche, que rien ne dirait.
     for (const bubble of BUBBLES) {
-      expect(bubble.text.en.trim(), bubble.stop).not.toBe('')
+      for (const [i, page] of bubble.text.entries()) {
+        expect(page.en.trim(), `${bubble.stop} page ${i}`).not.toBe('')
+        expect(page.fr.trim(), `${bubble.stop} page ${i}`).not.toBe('')
+      }
       if (bubble.subject) expect(bubble.subject.en.trim(), bubble.stop).not.toBe('')
+    }
+  })
+
+  it('n’a aucun arrêt muet', () => {
+    // Le type interdit déjà la suite vide, et c'est lui qui garantit AUSSI que
+    // les deux langues ont le même nombre de temps : une page porte son
+    // français et son anglais ensemble, donc elles ne peuvent pas diverger.
+    // Ce test couvre ce que le type ne voit pas — un tableau construit
+    // dynamiquement un jour, ou une page ajoutée sans texte.
+    for (const bubble of BUBBLES) {
+      expect(bubble.text.length, bubble.stop).toBeGreaterThan(0)
     }
   })
 

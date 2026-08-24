@@ -37,6 +37,19 @@ interface InteractionState {
   /** True once the .glb is loaded and stop transforms are extracted. */
   ready: boolean
   /**
+   * L'écran est DÉCOUVERT : le préchargeur a fini de s'effacer et le visiteur
+   * voit la pièce.
+   *
+   * Distinct de `ready`, qui dit seulement que la scène est prête — entre les
+   * deux, il s'écoule le fondu du préchargeur, et pendant ce temps React rend
+   * déjà les bulles sans que personne ne les voie. Une frappe démarrée là
+   * s'écrit derrière l'écran de chargement : à l'arrivée par lien profond, la
+   * phrase était déjà à moitié faite quand elle devenait visible (mesuré : 42
+   * caractères sur 69 pour l'accueil), et sur une machine rapide elle serait
+   * entièrement passée.
+   */
+  revealed: boolean
+  /**
    * L'excursion du télescope est ARRIVÉE — la caméra est derrière l'oculaire.
    *
    * Distinct de `phase === 'telescope'`, qui est vrai dès le clic : la visée
@@ -44,6 +57,23 @@ interface InteractionState {
    * circulaire se poser sur une pièce qui défile encore, et on regarde dans un
    * télescope avant d'y être arrivé.
    */
+  /**
+   * LE DIALOGUE (#122). Un seul arrêt parle à la fois, donc un seul état.
+   *
+   * **Tout se déduit du TEMPS, et d'une seule origine.** La première version
+   * demandait à la bulle de publier « je suis en train d'écrire » ; ça passait
+   * par un effet React, donc avec une image de retard, et un clic tombé dans
+   * cette fenêtre était arbitré sur un état périmé — il tournait la page d'une
+   * phrase encore en cours d'écriture. Un retard qu'on réduit reste un retard :
+   * ici il n'y en a plus, parce qu'il n'y a plus de message à faire circuler.
+   */
+  dialoguePage: number
+  /** La durée de frappe de chaque page, en ms. Vide = pas de dialogue. */
+  dialogueDurations: number[]
+  /** Quand la page courante a commencé à s'écrire (`performance.now()`). */
+  dialogueStartedAt: number
+  /** La frappe de la page courante a été achevée d'un geste. */
+  dialogueDone: boolean
   telescopeSettled: boolean
   /**
    * La lune est arrivée : le second temps de l'excursion (le grossissement)
@@ -88,6 +118,8 @@ interface InteractionState {
   setPhase: (phase: Phase) => void
   setStopIndex: (index: number) => void
   setReady: () => void
+  /** Appelé par le préchargeur au moment où il se démonte. */
+  setRevealed: () => void
   setCabinet: (state: CabinetState) => void
   selectProject: (slug: string | null) => void
   requestStop: (index: number) => void
@@ -99,6 +131,32 @@ interface InteractionState {
   settleTelescope: () => void
   revealMoon: () => void
   hoverTelescope: (hovered: boolean) => void
+  /**
+   * Un objet interactif est sous le curseur — le télescope, ou un dossier de
+   * la commode. C'est ce qui donne au clic sa règle : **la scène d'abord, le
+   * dialogue sinon**.
+   */
+  folderHovered: boolean
+  hoverFolder: (hovered: boolean) => void
+  /**
+   * Remet le dialogue au premier temps. Appelé à l'arrivée sur un arrêt, et
+   * seulement une fois l'écran découvert — une frappe lancée derrière le
+   * préchargeur s'écrit sans spectateur.
+   *
+   * Les durées viennent de l'appelant : sous `prefers-reduced-motion` elles
+   * valent zéro, ce qui dit exactement ce qu'on veut dire — la frappe ne dure
+   * pas — et évite au store d'avoir son propre avis sur le mouvement réduit.
+   */
+  startDialogue: (durations: number[], now?: number) => void
+  /**
+   * Un geste sur le dialogue. Rend ce qu'il en a fait :
+   *
+   *   `typed`     — la frappe était en cours, ce geste l'achève et rien d'autre
+   *   `paged`     — page suivante
+   *   `exhausted` — c'était la dernière page : l'appelant enchaîne sur l'arrêt
+   *                 suivant, et c'est ce qui fait N phrases = N gestes
+   */
+  advanceDialogue: (now?: number) => 'typed' | 'paged' | 'exhausted'
   /** Appelé par `CameraRig` à la fin du retour, jamais à la touche `Échap`. */
   showDetailedMoon: (shown: boolean) => void
   exitTelescope: () => void
@@ -108,6 +166,12 @@ export const useInteraction = create<InteractionState>((set, get) => ({
   phase: 'touring',
   stopIndex: 0,
   ready: false,
+  revealed: false,
+  dialoguePage: 0,
+  dialogueDurations: [],
+  dialogueStartedAt: 0,
+  dialogueDone: true,
+  folderHovered: false,
   telescopeSettled: false,
   moonRevealed: false,
   telescopeHovered: false,
@@ -121,6 +185,7 @@ export const useInteraction = create<InteractionState>((set, get) => ({
     if (get().stopIndex !== stopIndex) set({ stopIndex })
   },
   setReady: () => set({ ready: true }),
+  setRevealed: () => set({ revealed: true }),
   setCabinet: (cabinet) => {
     if (get().cabinet !== cabinet) set({ cabinet })
   },
@@ -170,6 +235,36 @@ export const useInteraction = create<InteractionState>((set, get) => ({
   showDetailedMoon: (moonDetailed) => {
     if (get().moonDetailed !== moonDetailed) set({ moonDetailed })
   },
+  hoverFolder: (folderHovered) => {
+    if (get().folderHovered !== folderHovered) set({ folderHovered })
+  },
+  startDialogue: (dialogueDurations, now = performance.now()) =>
+    set({
+      dialogueDurations,
+      dialoguePage: 0,
+      dialogueStartedAt: now,
+      dialogueDone: dialogueDurations.length === 0,
+    }),
+
+  advanceDialogue: (now = performance.now()) => {
+    const { dialoguePage, dialogueDurations, dialogueStartedAt, dialogueDone } = get()
+    const durée = dialogueDurations[dialoguePage] ?? 0
+
+    // A (arbitrage du 2026-08-24) : un geste reçu pendant la frappe l'achève,
+    // et ne fait QUE ça. La question se répond par une soustraction, sur
+    // l'horloge du geste lui-même — il n'y a rien à publier, donc rien qui
+    // puisse être en retard.
+    if (!dialogueDone && now - dialogueStartedAt < durée) {
+      set({ dialogueDone: true })
+      return 'typed'
+    }
+    if (dialoguePage + 1 < dialogueDurations.length) {
+      set({ dialoguePage: dialoguePage + 1, dialogueStartedAt: now, dialogueDone: false })
+      return 'paged'
+    }
+    return 'exhausted'
+  },
+
   hoverTelescope: (telescopeHovered) => {
     if (get().telescopeHovered !== telescopeHovered) set({ telescopeHovered })
   },

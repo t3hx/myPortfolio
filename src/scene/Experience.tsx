@@ -1,10 +1,12 @@
-import { useCallback, useState, type RefObject } from 'react'
+import { useCallback, useEffect, useState, type RefObject } from 'react'
 import type { Object3D, Vector3 } from 'three'
 import { CAMERA_STOPS } from '@/config/cameraStops'
-import { BUBBLES, bubbleKicker, bubbleText } from '@/content/bubbles'
+import { BUBBLES, bubbleKicker, bubblePages } from '@/content/bubbles'
 import { PROJECTS } from '@/content/projects'
 import { resolveBubbleAnchors } from '@/lib/bubbleAnchors'
 import { useLocale } from '@/state/locale'
+import { reducedMotion } from '@/lib/clock'
+import { typeDuration } from '@/lib/typewriter'
 import { readStopTransform, type StopTransform } from '@/lib/stops'
 import { TELESCOPE_MOON_CAMERA } from '@/config/telescope'
 import { Bubble } from '@/scene/Bubble'
@@ -50,6 +52,9 @@ export function Experience({ bubbleLayer }: ExperienceProps) {
   const phase = useInteraction((s) => s.phase)
   const stopIndex = useInteraction((s) => s.stopIndex)
   const setReady = useInteraction((s) => s.setReady)
+  const dialoguePage = useInteraction((s) => s.dialoguePage)
+  const startDialogue = useInteraction((s) => s.startDialogue)
+  const revealed = useInteraction((s) => s.revealed)
   const locale = useLocale((s) => s.locale)
 
   const onReady = useCallback(
@@ -66,6 +71,25 @@ export function Experience({ bubbleLayer }: ExperienceProps) {
   )
 
   const parkedStop = phase === 'parked' ? CAMERA_STOPS[stopIndex]?.label : undefined
+
+  /**
+   * Le dialogue repart au premier temps à CHAQUE arrivée (#122). Les dix
+   * bulles restent montées ensemble — les démonter emporterait leur fondu de
+   * sortie — donc rien ne remet leur pagination à zéro tout seul : une bulle
+   * revisitée rouvrirait sur sa dernière page.
+   */
+  useEffect(() => {
+    if (!parkedStop || !revealed) return
+    const bubble = BUBBLES.find((b) => b.stop === parkedStop)
+    if (!bubble) return
+    // Sous « mouvement réduit », des durées nulles : ça dit exactement ce qu'on
+    // veut dire — la frappe ne dure pas — et le store n'a pas à avoir son
+    // propre avis sur le mouvement.
+    const pages = bubblePages(bubble, PROJECTS.length, locale)
+    startDialogue(reducedMotion() ? pages.map(() => 0) : pages.map(typeDuration))
+    // `revealed` est une dépendance : le dialogue ne part QU'UNE FOIS l'écran
+    // découvert, sinon la première phrase s'écrit derrière le préchargeur.
+  }, [parkedStop, locale, revealed, startDialogue])
 
   return (
     <>
@@ -116,6 +140,7 @@ export function Experience({ bubbleLayer }: ExperienceProps) {
       {BUBBLES.map((bubble, i) => {
         const anchor = anchors[i]
         if (!anchor) return null
+        const pages = bubblePages(bubble, PROJECTS.length, locale)
         return (
           <Bubble
             key={bubble.stop}
@@ -126,10 +151,17 @@ export function Experience({ bubbleLayer }: ExperienceProps) {
             maxWidth={bubble.maxWidth}
             tick={bubble.tick}
             tilt={bubble.tilt}
+            hasNext={parkedStop === bubble.stop && dialoguePage + 1 < pages.length}
           >
             {/* Le tiroir vide n'ouvre aucune fiche : son repli passe par la
-                bulle de la commode, pas par un écran (#78). */}
-            {bubbleText(bubble, PROJECTS.length, locale)}
+                bulle de la commode, pas par un écran (#78).
+
+                La page courante du dialogue (#122). Une seule bulle est
+                visible à la fois, donc un seul index suffit ; les neuf autres
+                le reçoivent aussi mais ne rendent rien. Le `min` protège
+                l'instant où l'arrêt a changé et où le nombre de pages n'a pas
+                encore été republié. */}
+            {pages[Math.min(dialoguePage, pages.length - 1)]}
           </Bubble>
         )
       })}
