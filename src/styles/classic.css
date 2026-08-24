@@ -52,6 +52,12 @@
      `tests/classic.test.ts` est la seule chose qui relie les deux. */
   --t-classic-decrypt: 1700ms;
   --t-classic-reveal: 850ms;
+  /* Le balayage de l'accueil. Deux régimes pour un seul effet : l'accroche
+     n'est traversée qu'une fois, lentement — c'est une phrase qu'on lit ;
+     « défiler » l'est en boucle et vite, parce que c'est une consigne qui doit
+     rester repérable tant qu'on ne l'a pas suivie. */
+  --t-classic-cue-pass: 2600ms;
+  --t-classic-cue-loop: 1800ms;
   --ease-classic-reveal: cubic-bezier(0.2, 0.7, 0.2, 1);
   /* L'accélération du glissement prénom/nom : forte au départ, forte à
      l'arrivée. Ce n'est pas l'ease des révélations — celles-ci se posent, le nom
@@ -128,25 +134,62 @@
   text-shadow: 0 1px 10px rgba(0, 0, 0, 0.7);
 }
 
+/* Les deux langues, côte à côte, séparées d'un filet — la paire EST la liste.
+   Le cadre entoure les deux : c'est lui qui dit « ceci est un choix », là où un
+   bouton isolé laissait croire à une étiquette. */
 .classic-lang {
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 5px 8px;
+  gap: 7px;
+  padding: 5px 9px;
   border: 1px solid rgba(var(--glow-rgb), 0.4);
   border-radius: var(--r-bubble);
-  background: none;
-  font-family: var(--font-mono);
-  font-size: 11px;
-  letter-spacing: 0.1em;
-  color: var(--glow);
-  cursor: pointer;
   transition: border-color 180ms var(--ease-out);
 }
 
 .classic-lang:hover,
-.classic-lang:focus-visible {
+.classic-lang:focus-within {
   border-color: rgba(var(--glow-rgb), 0.9);
+}
+
+/* Les deux côtés sont des `<button>`, et un bouton n'hérite NI de la police NI
+   de la graisse : sans ces remises à zéro la bascule repasse en Helvetica au
+   milieu d'une barre en chasse fixe. C'est cet oubli exact qui avait fait
+   paraître la barre de la scène bon marché. */
+.classic-lang button {
+  appearance: none;
+  padding: 0;
+  border: 0;
+  background: none;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  transition: color 180ms var(--ease-out);
+}
+
+.classic-lang__on {
+  color: var(--glow);
+  /* Cliquable quand même : le désactiver ferait disparaître l'indicateur, or
+     c'est lui qui dit dans quelle langue on se trouve. */
+  cursor: default;
+}
+
+.classic-lang__off {
+  color: rgba(var(--cream-rgb), 0.45);
+  cursor: pointer;
+}
+
+.classic-lang__off:hover,
+.classic-lang__off:focus-visible {
+  color: var(--cream);
+  outline: none;
+}
+
+.classic-lang__rule {
+  width: 1px;
+  height: 10px;
+  background: rgba(var(--cream-rgb), 0.25);
 }
 
 /* --- Le mini-nom (spec §8) --------------------------------------------------------- */
@@ -547,6 +590,58 @@
     opacity: 1;
     transform: none;
   }
+}
+
+/* --- La consigne, portée sur l'accueil (#131) -------------------------------------- */
+/* Reprise de `.bubble__cue` : la pièce marque de la même façon partout ce qui
+   demande quelque chose au visiteur. La RECETTE est recopiée — six lignes de
+   dégradé — mais le MOUVEMENT ne l'est pas : les keyframes `cue-laser` vivent
+   dans `tokens.css` et sont les mêmes, parce que c'est le mouvement qui a été
+   mesuré et arbitré, pas le dégradé. `tests/classic.test.ts` vérifie que les
+   deux dégradés n'ont pas divergé.
+
+   Le laser est un dégradé DÉCOUPÉ sur le texte et déplacé, jamais un calque
+   posé par-dessus : un calque demanderait la géométrie exacte des mots, qui
+   change à chaque retour à la ligne et à chaque traduction. */
+.classic-cue {
+  color: var(--glow);
+  background-image: linear-gradient(
+    90deg,
+    var(--glow) 0%,
+    var(--glow) 34%,
+    #fff 50%,
+    var(--glow) 66%,
+    var(--glow) 100%
+  );
+  background-size: 220% 100%;
+  background-position: 130% 0;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* UN passage, lent, et il ne revient pas. La traversée occupe toute la durée —
+   ce ne sont donc PAS les keyframes de la bulle, qui traversent en 22 % puis
+   attendent : cette attente n'a de sens qu'en boucle. `both` retient la
+   position finale, où le texte est entièrement dans l'accent. */
+.classic-cue--pass {
+  animation: classic-cue-pass var(--t-classic-cue-pass) linear var(--cue-delay, 0ms) 1 both;
+}
+
+@keyframes classic-cue-pass {
+  from {
+    background-position: 130% 0;
+  }
+  to {
+    background-position: -30% 0;
+  }
+}
+
+/* En boucle, avec la forme exacte de la bulle — traverser vite, puis attendre —
+   simplement sur un cycle plus court. C'est un reflet qui repasse, pas une
+   pulsation : à cadence régulière, la consigne clignoterait. */
+.classic-cue--loop {
+  animation: cue-laser var(--t-classic-cue-loop) linear var(--cue-delay, 0ms) infinite;
 }
 
 /* --- Les sections ------------------------------------------------------------------ */
@@ -992,6 +1087,16 @@
   .classic-mark__cube .classic-cube,
   .classic-caret {
     animation: none;
+  }
+
+  /* Le balayage part, la COULEUR reste : une boucle de deux secondes est le cas
+     d'école de ce que « mouvement réduit » vise, alors que l'accent porte une
+     information — ceci vous demande quelque chose — qu'on ne peut pas retirer
+     sans appauvrir la phrase. Même arbitrage que `.bubble__cue`. */
+  .classic-cue {
+    animation: none;
+    background-image: none;
+    -webkit-text-fill-color: var(--glow);
   }
 }
 

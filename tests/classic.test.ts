@@ -27,6 +27,7 @@ import { DECRYPT_CHARSET_CODE } from '@/ui/Scrambled'
  */
 
 const css = readFileSync('src/styles/classic.css', 'utf8')
+const tokens = readFileSync('src/styles/tokens.css', 'utf8')
 const app = readFileSync('src/App.tsx', 'utf8')
 const page = readFileSync('src/ui/ClassicApp.tsx', 'utf8')
 
@@ -204,6 +205,95 @@ describe('le halo de braise', () => {
     for (let i = 0; i < 400; i++) cur = approach(cur, 1, 0.02)
     expect(cur).toBeGreaterThan(0.99)
     expect(cur).toBeLessThanOrEqual(1)
+  })
+})
+
+describe('les groupes de révélation ne s’imbriquent pas', () => {
+  /**
+   * **Le défaut qui se lit comme une absence d'animation.** Le CSS révèle par
+   * `[data-revealed='true'] .classic-reveal`, un sélecteur de DESCENDANCE : un
+   * groupe placé à l'intérieur d'un autre s'allume avec lui, quel que soit son
+   * propre observateur. Le CV l'a vécu — ses trois blocs partaient mille cinq
+   * cents pixels trop tôt, et le symptôme n'était pas « ça s'allume trop tôt »
+   * mais « il n'y a aucune animation », parce qu'on arrivait après.
+   */
+  it("la section du CV n'est pas elle-même un groupe", () => {
+    const section = page.slice(
+      page.indexOf('function CvSection'),
+      page.indexOf('function Projects'),
+    )
+    expect(section).toContain('<section className="classic-section">')
+    expect(section).not.toMatch(/<section[^>]*data-revealed/)
+  })
+
+  it('le défaut est signalé en développement, pas seulement commenté', () => {
+    // Il ne se voit pas dans le DOM : il ne se voit qu'en défilant, au moment
+    // où il est trop tard pour le remarquer.
+    const hook = readFileSync('src/ui/classic/useReveal.ts', 'utf8')
+    expect(hook).toContain("querySelector('[data-revealed]')")
+    expect(hook).toContain('import.meta.env.DEV')
+  })
+})
+
+describe('le balayage de consigne', () => {
+  /** Le MOUVEMENT n'est pas recopié — `cue-laser` vit dans `tokens.css` et les
+   *  deux pages l'utilisent. C'est lui qui a été mesuré et arbitré (#131). */
+  it('réutilise les keyframes de la bulle pour sa boucle', () => {
+    expect(tokens).toContain('@keyframes cue-laser')
+    expect(css).toMatch(/\.classic-cue--loop[\s\S]{0,120}animation: cue-laser/)
+  })
+
+  it('ne traverse qu’une fois sur l’accroche, et sur toute la durée', () => {
+    // Les keyframes de la bulle traversent en 22 % puis attendent : cette
+    // attente n'a de sens qu'en boucle. Un seul passage doit occuper sa durée.
+    expect(css).toMatch(/\.classic-cue--pass[\s\S]{0,140}animation: classic-cue-pass/)
+    expect(css).toMatch(/@keyframes classic-cue-pass[\s\S]{0,160}from[\s\S]{0,60}130%/)
+    expect(css).toMatch(/\.classic-cue--pass[\s\S]{0,140}1 both/)
+  })
+
+  it('peint le même dégradé que la bulle', () => {
+    // La recette est recopiée (six lignes) ; ce test est ce qui l'empêche de
+    // diverger le jour où l'une des deux est retouchée.
+    const stops = (block: string) =>
+      block
+        .match(/linear-gradient\(([\s\S]*?)\);/)![1]
+        .replace(/\s+/g, ' ')
+        .trim()
+    const bubble = tokens.slice(tokens.indexOf('.bubble__cue {'))
+    const classic = css.slice(css.indexOf('.classic-cue {'))
+    expect(stops(classic)).toBe(stops(bubble))
+  })
+
+  it('perd son balayage sous mouvement réduit, jamais sa couleur', () => {
+    // L'accent porte une information — ceci vous demande quelque chose — qu'on
+    // ne peut pas retirer sans appauvrir la phrase. Même arbitrage que la bulle.
+    const reduced = css.slice(css.indexOf('@media (prefers-reduced-motion: reduce)'))
+    expect(reduced).toMatch(/\.classic-cue \{[\s\S]{0,160}animation: none/)
+    expect(reduced).toMatch(/\.classic-cue \{[\s\S]{0,160}text-fill-color: var\(--glow\)/)
+  })
+})
+
+describe('la bascule de langue', () => {
+  it('montre les deux langues, pas seulement l’autre', () => {
+    // Un bouton isolé marqué « EN » se lit aussi bien « vous êtes en anglais »
+    // que « passer en anglais » — deux lectures exactement contraires — et il
+    // ne dit pas quelles langues existent. La paire EST la liste.
+    const toggle = page.slice(
+      page.indexOf('function LangToggle'),
+      page.indexOf('export function ClassicApp'),
+    )
+    expect(toggle).toContain('LOCALES.map')
+    expect(toggle).toContain("aria-current={code === locale ? 'true' : undefined}")
+  })
+
+  it('garde le côté actif cliquable', () => {
+    // Le désactiver ferait disparaître l'indicateur, or c'est lui qui répond à
+    // « dans quelle langue suis-je ». Même arbitrage que la barre de la scène.
+    const toggle = page.slice(
+      page.indexOf('function LangToggle'),
+      page.indexOf('export function ClassicApp'),
+    )
+    expect(toggle).not.toContain('disabled')
   })
 })
 

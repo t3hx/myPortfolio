@@ -16,7 +16,7 @@ import { t, tm, type Locale } from '@/lib/locale'
 import { useDecryptClock } from '@/lib/decrypt'
 import { DECRYPT_CHARSET_CODE, Scrambled } from '@/ui/Scrambled'
 import { WireCube } from '@/ui/classic/WireCube'
-import { ignite } from '@/ui/classic/useReveal'
+import { cueDelay, ignite } from '@/ui/classic/useReveal'
 
 /**
  * L'accueil : le nom qui se déchiffre, le cube qui tourne, la pièce qui
@@ -161,8 +161,14 @@ export function Hero({ locale }: { locale: Locale }) {
           </span>
         </h1>
 
+        {/* L'accroche porte le balayage des bulles (#131), UNE fois et lentement.
+            Le retard le fait partir quand le fondu d'allumage est fini — sinon
+            le laser traverse un texte encore transparent, et le seul passage
+            qu'il y avait est perdu. */}
         <p className="classic-hero__tagline classic-ignite" style={ignite(1400, 2000)}>
-          {t(UI.classic.tagline, locale)}
+          <span className="classic-cue classic-cue--pass" style={cueDelay(3400)}>
+            {t(UI.classic.tagline, locale)}
+          </span>
         </p>
 
         {/* La ligne de méta est DÉRIVÉE de `CV.facts` — la même source que le CV
@@ -189,7 +195,12 @@ export function Hero({ locale }: { locale: Locale }) {
         style={ignite(1600, 3000)}
         aria-hidden="true"
       >
-        <span>{t(UI.classic.scroll, locale)}</span>
+        {/* « Défiler » est une CONSIGNE — le seul mot de la page qui demande
+            quelque chose — donc il porte l'accent en permanence et le balayage
+            repasse, tant qu'on ne l'a pas suivi. */}
+        <span className="classic-cue classic-cue--loop" style={cueDelay(4600)}>
+          {t(UI.classic.scroll, locale)}
+        </span>
         <i />
       </div>
     </section>

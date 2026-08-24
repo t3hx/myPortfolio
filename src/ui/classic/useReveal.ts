@@ -19,6 +19,15 @@ import { REVEAL_ROOT_MARGIN } from '@/config/classic'
  * Le drapeau ressort en `data-revealed`, jamais en classe : c'est le CSS qui
  * porte l'animation (`.classic-reveal`), et une classe ajoutée en JS ferait
  * exister deux endroits où l'on décide si un élément est visible.
+ *
+ * **Un groupe ne doit jamais en contenir un autre.** Le CSS révèle par
+ * `[data-revealed='true'] .classic-reveal`, un sélecteur de DESCENDANCE : un
+ * groupe imbriqué s'allume donc avec son parent, quel que soit son propre
+ * observateur. C'est arrivé au CV, dont les trois blocs partaient mille cinq
+ * cents pixels trop tôt — et le symptôme n'est pas « ça s'allume trop tôt »,
+ * c'est « il n'y a aucune animation », parce qu'on arrive après. Rien dans le
+ * DOM ne le montre, seul le défilement le révèle, d'où l'avertissement
+ * ci-dessous plutôt qu'un commentaire.
  */
 export function useReveal<T extends HTMLElement>(): [RefObject<T | null>, boolean] {
   const ref = useRef<T>(null)
@@ -44,6 +53,18 @@ export function useReveal<T extends HTMLElement>(): [RefObject<T | null>, boolea
       { rootMargin: REVEAL_ROOT_MARGIN },
     )
     io.observe(el)
+
+    // Développement seulement : Vite remplace `import.meta.env.DEV` par une
+    // constante et le bloc disparaît du bundle de production.
+    if (import.meta.env.DEV && el.querySelector('[data-revealed]')) {
+      console.warn(
+        '[classic] Un groupe de révélation en contient un autre. Le CSS révèle ' +
+          'par descendance : le groupe interne s’allumera avec celui-ci, bien ' +
+          'avant qu’on l’atteigne, et la cascade paraîtra absente.',
+        el,
+      )
+    }
+
     return () => io.disconnect()
   }, [])
 
@@ -69,4 +90,16 @@ export function ignite(durationMs: number, delayMs: number): CSSProperties {
     '--ignite-dur': `${durationMs}ms`,
     '--ignite-delay': `${delayMs}ms`,
   } as CSSProperties
+}
+
+/**
+ * Le retard d'un balayage de consigne.
+ *
+ * Il compte plus qu'il n'en a l'air sur l'accroche : elle ne reçoit qu'UN
+ * passage, et un laser qui traverse pendant que le fondu d'allumage court
+ * encore traverse un texte transparent. Le seul passage qu'il y avait est
+ * alors perdu, et rien ne le rejoue.
+ */
+export function cueDelay(ms: number): CSSProperties {
+  return { '--cue-delay': `${ms}ms` } as CSSProperties
 }

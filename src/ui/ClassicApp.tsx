@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { Fragment, useEffect, useRef, useState } from 'react'
 import {
   REVEAL_BODY_MS,
   REVEAL_CHIP_BASE_MS,
@@ -181,17 +181,38 @@ function Traits({ locale }: { locale: Locale }) {
   )
 }
 
+/**
+ * Le CV, et le seul écran de la page qui compte QUATRE groupes de révélation.
+ *
+ * **La `<section>` n'en est pas un, et c'est la correction du 2026-08-24.**
+ * Elle l'a été, et le résultat était qu'on ne voyait plus aucune cascade : le
+ * CSS révèle par `[data-revealed='true'] .classic-reveal`, un sélecteur de
+ * DESCENDANCE, qui traverse donc les groupes imbriqués. Les cartouches, les
+ * vignettes et les puces s'allumaient toutes avec l'en-tête, mille cinq cents
+ * pixels avant qu'on les atteigne — mesuré : au moment où on y arrivait, tout
+ * était joué depuis longtemps.
+ *
+ * **Un groupe de révélation ne doit jamais en contenir un autre.**
+ * `useReveal` le signale en développement plutôt que de laisser le défaut
+ * réapparaître en silence : il ne se voit pas dans le DOM, il ne se voit qu'en
+ * défilant, et une cascade qu'on rate se lit comme une absence d'animation, pas
+ * comme un bug.
+ */
 function CvSection({ locale }: { locale: Locale }) {
-  const [ref, revealed] = useReveal<HTMLElement>()
+  const [ref, revealed] = useReveal<HTMLDivElement>()
   return (
-    <section className="classic-section" ref={ref} data-revealed={revealed}>
-      <SectionHead kicker={t(UI.classic.cvKicker, locale)} title={t(UI.classic.cvTitle, locale)} />
-      {/* L'en-tête est un groupe, les trois blocs qui suivent en sont trois
-          autres : ils occupent trois hauteurs d'écran et n'ont aucune raison de
-          s'allumer ensemble. Chacun porte donc son propre observateur. */}
-      <div className="classic-sub classic-reveal" style={revealDelay(REVEAL_BODY_MS)}>
-        {t(CV.jobsTitle, locale)}
+    <section className="classic-section">
+      <div ref={ref} data-revealed={revealed}>
+        <SectionHead
+          kicker={t(UI.classic.cvKicker, locale)}
+          title={t(UI.classic.cvTitle, locale)}
+        />
+        <div className="classic-sub classic-reveal" style={revealDelay(REVEAL_BODY_MS)}>
+          {t(CV.jobsTitle, locale)}
+        </div>
       </div>
+      {/* Trois groupes frères, et frères par nécessité : ils occupent trois
+          hauteurs d'écran et chacun doit s'allumer quand on l'atteint. */}
       <ExperienceCards locale={locale} />
       <Skills locale={locale} />
       <Traits locale={locale} />
@@ -309,20 +330,44 @@ function MiniName({ locale }: { locale: Locale }) {
   )
 }
 
-/** La bascule FR/EN. Deux lettres, la langue courante et l'autre — un seul
- *  bouton qui dit où il mène, comme dans les maquettes. */
+/**
+ * La bascule FR/EN — **les deux langues affichées, les deux cliquables**.
+ *
+ * Elle a d'abord montré une seule étiquette, celle de l'autre langue : en
+ * français, un bouton marqué « EN ». Illisible, et pour deux raisons qui se
+ * cumulent. Un bouton isolé ne dit pas s'il ÉTIQUETTE l'état courant ou s'il
+ * ANNONCE sa destination — « EN » se lit aussi bien « vous êtes en anglais »
+ * que « passer en anglais », et les deux lectures sont exactement contraires.
+ * Et il ne dit pas non plus quelles langues existent : on ne peut pas choisir
+ * dans une liste qu'on ne voit pas.
+ *
+ * Afficher les deux règle les deux d'un coup : la paire est la liste, et le
+ * contraste dit laquelle est active. C'est déjà l'anatomie de la barre de la
+ * scène (`.menu__lang`) — même décision, deux mises en page.
+ *
+ * **Le côté actif reste un bouton, et reste cliquable.** Le désactiver ferait
+ * disparaître l'indicateur, or c'est lui qui répond à « dans quelle langue
+ * suis-je ». Même arbitrage que dans la barre.
+ */
 function LangToggle({ locale }: { locale: Locale }) {
   const setLocale = useLocale((s) => s.setLocale)
-  const other = LOCALES.find((l) => l !== locale) ?? 'en'
   return (
-    <button
-      type="button"
-      className="classic-lang"
-      onClick={() => setLocale(other)}
-      title={t(UI.menu.switchTo, other)}
-    >
-      {other.toUpperCase()}
-    </button>
+    <div className="classic-lang" role="group" aria-label={t(UI.menu.switchTo, locale)}>
+      {LOCALES.map((code, i) => (
+        <Fragment key={code}>
+          {i > 0 && <span className="classic-lang__rule" aria-hidden="true" />}
+          <button
+            type="button"
+            className={code === locale ? 'classic-lang__on' : 'classic-lang__off'}
+            aria-current={code === locale ? 'true' : undefined}
+            title={t(UI.menu.switchTo, code)}
+            onClick={() => setLocale(code)}
+          >
+            {code.toUpperCase()}
+          </button>
+        </Fragment>
+      ))}
+    </div>
   )
 }
 
