@@ -56,6 +56,7 @@
   --t-cascade: 420ms;     /* déchiffrement d'un titre — voir CASCADE_MS */
   /* Le balayage d'une consigne : il traverse vite, puis attend. */
   --t-cue-laser: 3200ms;
+  --t-beam: 1800ms;      /* le faisceau qui TRAVERSE une phrase, une fois */
   --t-ping: 1500ms;       /* le tapotement de la main qui désigne un objet */
   --t-scope-in: 620ms;    /* ouverture de la visée du télescope */
   --t-scope-out: 260ms;   /* fermeture — voir SCOPE_OUT_MS */
@@ -279,12 +280,17 @@
      de pixels et haut d'une ligne, une bande inclinée traverse surtout par le
      haut et par le bas, et le blanc n'atteint jamais franchement les lettres.
      Mesuré : à 100deg, le mot restait cyan au sommet du balayage. */
+  /* La bande claire est ÉTROITE (43 → 57 %), pas large (34 → 66 % au premier
+     jet). Étalé sur un tiers du dégradé, le blanc arrivait par une montée si
+     douce qu'on ne voyait pas passer un reflet : on voyait le mot s'éclaircir
+     puis s'assombrir. Resserrée, la transition a un bord, et un bord est ce
+     qui se lit comme un objet qui traverse. */
   background-image: linear-gradient(
     90deg,
     var(--glow) 0%,
-    var(--glow) 34%,
+    var(--glow) 43%,
     #fff 50%,
-    var(--glow) 66%,
+    var(--glow) 57%,
     var(--glow) 100%
   );
   background-size: 220% 100%;
@@ -292,7 +298,39 @@
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
-  animation: cue-laser var(--t-cue-laser) linear infinite;
+  /* DEUX animations, exactement synchrones parce qu'elles partagent leur durée.
+     Le dégradé seul ne pouvait pas se démarquer davantage : son point le plus
+     clair est déjà #fff, et sur un fond de verre fumé le blanc pur ne se
+     distingue pas tant du cyan. Ce qui manquait n'était pas de la clarté mais
+     de la LUEUR — le halo est ce qui fait lire « allumé » plutôt que
+     « plus clair ». Il déborde les lettres, donc il se voit là où la couleur
+     ne peut plus rien. */
+  animation:
+    cue-laser var(--t-cue-laser) linear infinite,
+    cue-bloom var(--t-cue-laser) linear infinite;
+}
+
+/* La lueur ne dure QUE la traversée (0 → 22 %), et son sommet tombe au milieu,
+   là où la bande claire est sur le mot. Au-delà, plus rien : une lueur qui
+   resterait ferait du mot un néon, alors qu'il doit redevenir du texte.
+
+   Elle a DEUX couches, et chacune fait un travail que l'autre ne peut pas.
+   Serrée et blanche, elle détache les lettres de ce qu'il y a derrière — un
+   halo cyan autour d'un mot cyan ne fait que l'épaissir, mesuré : on ne voyait
+   rien passer. Large et cyan, elle donne la lueur, celle qui déborde le mot et
+   se voit là où la couleur des lettres ne peut plus rien.
+
+   Le blanc seul ne suffisait pas non plus : sur le verre fumé d'une bulle, un
+   halo blanc de 9 px se perd dans le panneau, alors qu'il éclate sur le fond
+   d'encre de l'accueil. Il fallait les deux pour que le même effet se voie
+   dans les deux décors. */
+@keyframes cue-bloom {
+  0%, 22%, 100% { filter: none; }
+  11% {
+    filter:
+      drop-shadow(0 0 3px rgba(255, 255, 255, .9))
+      drop-shadow(0 0 11px rgba(var(--glow-rgb), .85));
+  }
 }
 
 /* Le balayage traverse VITE et attend longtemps : c'est un reflet qui passe,
@@ -313,6 +351,71 @@
     animation: none;
     background-image: none;
     -webkit-text-fill-color: var(--glow);
+    filter: none;
+  }
+}
+
+/* LE FAISCEAU (#29). Le pendant de la consigne, et son exact contraire.
+
+   Une consigne PORTE l'accent : la couleur est de l'information, elle dit
+   « ceci vous demande quelque chose ». Un faisceau ne fait que TRAVERSER un
+   texte qui, lui, garde sa couleur — il souligne sans requalifier. C'est ce qui
+   permet de le poser sur une phrase d'auteur ou sur une ligne technique sans
+   leur faire dire qu'elles réclament un geste.
+
+   Le dégradé est donc l'inverse de celui d'une consigne : la couleur du texte
+   aux extrémités, l'accent au cœur. Elle est lue en `currentColor` plutôt
+   qu'écrite : le faisceau sert des textes de couleurs différentes — la crème
+   pleine de l'accroche, la crème à 50 % d'une méta — et une valeur en dur
+   repeindrait le texte au lieu de le traverser.
+
+   Il ne PASSE QU'UNE FOIS. Rejouer se fait en retirant puis remettant la
+   classe, ce que React fait tout seul quand la carte survolée change ; une
+   boucle en ferait une consigne, ce qu'il n'est pas. */
+.beam {
+  background-image: linear-gradient(
+    90deg,
+    currentColor 0%,
+    currentColor 43%,
+    var(--glow-deep) 50%,
+    currentColor 57%,
+    currentColor 100%
+  );
+  background-size: 220% 100%;
+  background-position: 130% 0;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation:
+    beam-pass var(--t-beam) linear var(--beam-delay, 0ms) 1 both,
+    beam-bloom var(--t-beam) linear var(--beam-delay, 0ms) 1 both;
+}
+
+/* La traversée occupe TOUTE la durée : les keyframes d'une consigne traversent
+   en 22 % puis attendent, et cette attente n'a de sens qu'en boucle. `both`
+   retient la position finale, hors du texte, où la phrase a repris sa couleur. */
+@keyframes beam-pass {
+  from { background-position: 130% 0; }
+  to   { background-position: -30% 0; }
+}
+
+/* La lueur suit le faisceau : elle monte, culmine au milieu de la traversée et
+   s'éteint avec lui. Cyan, ici, parce que c'est le faisceau qui est cyan — à
+   l'inverse de la consigne, dont la lueur est blanche pour trancher sur un mot
+   déjà cyan. */
+@keyframes beam-bloom {
+  0%, 100% { filter: none; }
+  50%      { filter: drop-shadow(0 0 8px rgba(var(--glow-deep-rgb), .85)); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* Rien à garder : la couleur du texte est déjà la bonne, le faisceau n'était
+     que du mouvement. On rend la phrase au texte simple. */
+  .beam {
+    animation: none;
+    background-image: none;
+    -webkit-text-fill-color: inherit;
+    filter: none;
   }
 }
 
@@ -334,6 +437,38 @@
   from { opacity: 0; transform: translateY(10px); clip-path: inset(0 0 100% 0); }
   to   { opacity: 1; transform: translateY(0);    clip-path: inset(-35%); }
 }
+
+/* ===== Bascule de langue (horizontale) =====
+   Les deux langues côte à côte, séparées d'un filet : la paire EST la liste, et
+   le cadre autour dit « ceci est un choix », là où un bouton isolé laissait
+   croire à une étiquette. Elle sert la PRÉ-SÉLECTION et le site classique — la
+   langue se choisit avant l'expérience, et `useLocale` étant global et
+   mémorisé, la décision vaut ensuite pour les deux portfolios.
+
+   La réglette verticale de la barre de la scène (`.menu__lang`, plus bas) est
+   la même décision dans une autre mise en page. */
+.lang {
+  display: flex; align-items: center; gap: 7px;
+  padding: 5px 9px;
+  border: 1px solid rgba(var(--glow-rgb), .4); border-radius: var(--r-bubble);
+  transition: border-color var(--t-halo) var(--ease-out);
+}
+.lang:hover, .lang:focus-within { border-color: rgba(var(--glow-rgb), .9); }
+/* Un `<button>` n'hérite NI de la police NI de la graisse : sans ces remises à
+   zéro la bascule repasse en Helvetica au milieu d'une barre en chasse fixe.
+   C'est cet oubli exact qui avait fait paraître la barre de la scène bon marché. */
+.lang button {
+  appearance: none; padding: 0; border: 0; background: none;
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 11px; font-weight: 500; letter-spacing: .1em;
+  transition: color var(--t-halo) var(--ease-out);
+}
+/* Cliquable quand même : le désactiver ferait disparaître l'indicateur, or
+   c'est lui qui dit dans quelle langue on se trouve. */
+.lang__on  { color: var(--glow); cursor: default; }
+.lang__off { color: rgba(var(--cream-rgb), .45); cursor: pointer; }
+.lang__off:hover, .lang__off:focus-visible { color: var(--cream); outline: none; }
+.lang__rule { width: 1px; height: 10px; background: rgba(var(--cream-rgb), .25); }
 
 /* ===== Logo =====
    Un seul logo dans le produit : le triangle pointe en bas (2026-08-10, en

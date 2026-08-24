@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!--
+    La favicon du portfolio : LE triangle, celui de `src/ui/Logo.tsx`.
+
+    Même géométrie, mise à l'échelle. Le logo est tracé dans une boîte de 16 et
+    celle-ci en fait 32, d'où les coordonnées doublées et le trait de 3 au lieu
+    de 1,5. C'est la seule copie de la forme dans le produit, et elle existe
+    parce qu'un onglet ne peut pas rendre un composant React : le SVG doit être
+    un fichier servi tel quel, avant que la moindre ligne de JavaScript
+    s'exécute. Les deux expériences la partagent, c'est le même portfolio.
+
+    Les couleurs sont écrites en dur, jamais en custom property : ce fichier est
+    chargé par le navigateur HORS de la page, et `tokens.css` n'y arrive jamais.
+    `#8FDBE4` est l'accent du design system, `#0E0B08` son fond d'encre.
+
+    ⚠ Pas de double tiret dans ce commentaire : c'est du XML, et un double tiret
+    y est interdit à l'intérieur d'un commentaire. Nommer le jeton d'accent par
+    son écriture CSS a suffi à rendre le fichier illisible, et le navigateur
+    n'affiche alors pas une icône cassée mais une PAGE d'erreur XML dans
+    l'onglet.
+
+    Le fond est plein plutôt que transparent : sur l'onglet clair d'un
+    navigateur en thème jour, un trait cyan sans fond disparaît presque. Arrondi
+    comme les tuiles du design system.
+  -->
+  <rect width="32" height="32" rx="7" fill="#0E0B08"/>
+  <!-- La lueur du logo, obtenue en `drop-shadow` dans la page ; ici un second
+       tracé flou, faute de filtre CSS hors du document. -->
+  <path d="M6 7 H26 L16 26 Z" fill="none" stroke="#8FDBE4" stroke-width="5"
+        stroke-linejoin="round" opacity=".28" filter="url(#glow)"/>
+  <path d="M6 7 H26 L16 26 Z" fill="none" stroke="#8FDBE4" stroke-width="3"
+        stroke-linejoin="round"/>
+  <defs>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="2"/>
+    </filter>
+  </defs>
+</svg>

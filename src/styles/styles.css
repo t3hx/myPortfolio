@@ -347,12 +347,27 @@ body,
   outline: none;
 }
 
-/* Aucun halo au repos : il s'allume sur la carte survolée (ou focusée) et
-   respire au même rythme que le logo du preloader (2,6 s ease-in-out).
-   Au relâchement, l'animation s'arrête et la transition de la règle de base
-   ramène l'ombre en 200 ms. */
-.presel-card:hover,
-.presel-card:focus-visible {
+/* Le halo est porté par UNE classe, jamais par `:hover` et `:focus-visible`
+   (2026-08-25). Ces deux pseudo-classes sont indépendantes : `autoFocus` posant
+   le focus sur la carte 3D dès le chargement, survoler la seconde en allumait
+   deux — un écran qui pose une question en montrant deux réponses cochées. Deux
+   règles ne peuvent pas s'exclure ; une variable d'état, si, et c'est
+   `Preselection` qui la tient.
+
+   Il respire au même rythme que le logo du preloader (2,6 s ease-in-out). Au
+   relâchement, l'animation s'arrête et la transition de la règle de base ramène
+   l'ombre en 200 ms. */
+/* En haut à droite, là où le site classique la pose aussi : deux écrans, une
+   seule habitude. Fixe et hors de `.presel`, qui est centré — l'y mettre
+   l'aurait fait entrer dans la colonne et pousser le titre. */
+.presel__lang {
+  position: fixed;
+  top: 14px;
+  right: 16px;
+  z-index: var(--z-bar);
+}
+
+.presel-card--lit {
   border-color: rgba(var(--glow-deep-rgb), 0.55);
   animation: presel-halo 2.6s ease-in-out infinite;
 }
@@ -376,8 +391,7 @@ body,
 /* Mouvement réduit : la boucle est neutralisée (critère d'autonomie de
    tokens.css), le halo reste — statique — car il répond à un geste. */
 @media (prefers-reduced-motion: reduce) {
-  .presel-card:hover,
-  .presel-card:focus-visible {
+  .presel-card--lit {
     animation: none;
     box-shadow:
       0 0 0 1.5px rgba(var(--glow-deep-rgb), 0.3),

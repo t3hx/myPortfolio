@@ -23,35 +23,102 @@ export const UI = {
     copy: { fr: 'On allume les lampes…', en: 'Turning the lamps on…' } as Localized,
   },
   preselection: {
+    /**
+     * L'accroche. Elle nommait « la visite d'une pièce » — ce qui n'a jamais
+     * décrit que la BRANCHE 3D, et le devenait faux à mesure que la version
+     * classique cessait d'être un échafaudage (#29). Elle décrit maintenant
+     * l'écran : deux portes, un seul contenu derrière. Sa promesse compte
+     * autant que sa justesse — c'est elle qui autorise à prendre la version
+     * légère sans craindre de rater quelque chose.
+     */
     eyebrow: {
-      fr: "Portfolio — la visite d'une pièce",
-      en: 'Portfolio — a tour of one room',
+      fr: 'Portfolio — deux entrées, une même histoire',
+      en: 'Portfolio — two ways in, one story',
     } as Localized,
     title: {
       fr: 'Comment souhaitez-vous visiter ?',
       en: 'How would you like to visit?',
     } as Localized,
     three: { fr: 'Expérience 3D', en: '3D experience' } as Localized,
+    /**
+     * Ce que promet chaque carte. **Ces deux phrases vivaient en dur dans le
+     * JSX** — elles n'ont jamais basculé en anglais depuis #33, et rien ne
+     * pouvait le signaler : une chaîne oubliée dans un composant ne se voit pas
+     * manquer, elle reste simplement en français quand tout le reste change.
+     */
+    threeBody: {
+      fr: "Entrez dans la pièce — la caméra vous guide d'objet en objet, au fil de la molette.",
+      en: 'Step into the room — the camera walks you from object to object, one scroll at a time.',
+    } as Localized,
     threeMeta: {
       fr: 'WebGL · ~3 Mo · souris, tactile ou clavier',
       en: 'WebGL · ~3 MB · mouse, touch or keyboard',
     } as Localized,
     classic: { fr: 'Expérience classique', en: 'Classic experience' } as Localized,
+    classicBody: {
+      fr: "La même histoire, en une page légère — idéale en déplacement ou au lecteur d'écran.",
+      en: 'The same story, in one light page — at its best on the move or in a screen reader.',
+    } as Localized,
     classicMeta: {
       fr: 'HTML · instantané · accessible',
       en: 'HTML · instant · accessible',
     } as Localized,
+    /** Le rappel du bas. Il désamorce la seule crainte que cet écran puisse
+     *  produire : celle de s'engager. */
+    note: {
+      fr: 'votre choix est mémorisé — modifiable à tout moment depuis le menu',
+      en: 'your choice is remembered — changeable at any time from the menu',
+    } as Localized,
   },
+  /**
+   * Le site classique (#29) — la page une-page servie à qui choisit « sans
+   * 3D », et à qui n'a pas de WebGL.
+   *
+   * **Ce qui est ici est ce que la scène n'a pas** : une accroche, une ligne
+   * de méta, des intitulés de section, un pied de page. Tout le reste — le
+   * parcours, les projets, les savoir-faire — vient de `cv.ts` et
+   * `projects.ts`, que les deux expériences partagent (arbitrage du
+   * 2026-08-24). C'est la raison pour laquelle il n'y a ici aucun poste,
+   * aucune école et aucun projet : les recopier aurait créé un second
+   * parcours, qui se serait mis à mentir au premier changement de date.
+   *
+   * Les numéros des sections (`01 —`, `02 —`…) sont ÉCRITS, contrairement à
+   * ceux des bulles du tour, que `bubbleKicker()` calcule. Le tour se
+   * réordonne — c'est même une gestuelle que `cameraStops.ts` invite — alors
+   * qu'une page une-page a l'ordre de son défilement, et rien d'autre ne peut
+   * le changer qu'une réécriture de cette page.
+   */
   classic: {
-    eyebrow: {
-      fr: 'Portfolio — expérience classique',
-      en: 'Portfolio — classic experience',
+    kicker: {
+      fr: 'Portfolio — Développeur front créatif',
+      en: 'Portfolio — Creative front-end developer',
     } as Localized,
-    title: { fr: 'La version légère arrive.', en: 'The light version is coming.' } as Localized,
-    body: {
-      fr: 'Cette page racontera la même histoire que la pièce en 3D — projets, CV, contact — en HTML léger et accessible. Elle est en construction.',
-      en: 'This page will tell the same story as the 3D room — projects, résumé, contact — in light, accessible HTML. It is under construction.',
+    /** La voix, en Newsreader italique : la seule phrase que la page « dit ». */
+    tagline: {
+      fr: '« Donner de la vie aux interfaces : le mouvement, la matière, l’interaction. »',
+      en: '“Bringing interfaces to life: motion, texture, interaction.”',
     } as Localized,
+    scroll: { fr: 'défiler', en: 'scroll' } as Localized,
+    capKicker: { fr: '01 — Projet professionnel', en: '01 — Professional goal' } as Localized,
+    cvKicker: { fr: '02 — CV', en: '02 — Resume' } as Localized,
+    cvTitle: { fr: 'Parcours', en: 'Background' } as Localized,
+    projKicker: { fr: '03 — Projets persos', en: '03 — Side projects' } as Localized,
+    projTitle: { fr: 'Projets persos', en: 'Side projects' } as Localized,
+    formKicker: { fr: '04 — Formations', en: '04 — Education' } as Localized,
+    /** L'étiquette du cadre hachuré, tant qu'une fiche n'a pas de couverture. */
+    coverLabel: {
+      fr: 'visuel projet — à fournir',
+      en: 'project visual — to be provided',
+    } as Localized,
+    footNote: {
+      fr: '© 2026 Thibault Dubois — conçu et développé à la main',
+      en: '© 2026 Thibault Dubois — designed & built by hand',
+    } as Localized,
+    /**
+     * `aria-label` du lien vers l'accueil de la page. Le mini-nom collant est
+     * décoratif à l'œil mais reste le seul repère de position en haut d'écran.
+     */
+    region: { fr: 'Portfolio', en: 'Portfolio' } as Localized,
     noWebgl: {
       fr: "WebGL n'est pas disponible sur cet appareil — vous avez été orienté ici automatiquement.",
       en: 'WebGL is unavailable on this device — you were routed here automatically.',

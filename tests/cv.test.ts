@@ -25,6 +25,16 @@ import { LOCALES, t, tm } from '@/lib/locale'
 const tokens = readFileSync('src/styles/tokens.css', 'utf8')
 const mockup = readFileSync('design/screens/02-cv.html', 'utf8')
 const component = readFileSync('src/ui/CvScreen.tsx', 'utf8')
+// Le déchiffrage a déménagé dans un module partagé avec le site classique
+// (#29). **La garde suit le fichier** : ces trois règles — figement de
+// gauche à droite, espaces jamais brouillés, tirage déterministe — sont ce
+// qui fait qu'un nom se résout au lieu de scintiller, et elles protègent
+// maintenant les deux expériences d'un coup.
+const decrypt = readFileSync('src/ui/Scrambled.tsx', 'utf8')
+// L'horloge est dans un module à part : un fichier qui exporte un composant
+// ET un crochet perd le Fast Refresh. C'est elle qui porte la coupure sous
+// mouvement réduit.
+const decryptClock = readFileSync('src/lib/decrypt.ts', 'utf8')
 
 describe("l'arrêt du CV", () => {
   it('existe encore dans le tour', () => {
@@ -58,13 +68,13 @@ describe('le nom déchiffré', () => {
   it('est neutralisé par `prefers-reduced-motion`', () => {
     // Le critère du design system est l'autonomie : cette animation part toute
     // seule, elle doit donc être coupée — pas seulement raccourcie.
-    expect(component).toContain("matchMedia('(prefers-reduced-motion: reduce)')")
+    expect(decryptClock).toContain("matchMedia('(prefers-reduced-motion: reduce)')")
   })
 
   it('ne tire jamais un espace au sort', () => {
     // Ce sont les espaces qui gardent la silhouette du nom pendant le
     // brouillage ; un espace dans le jeu de glyphes ouvrirait des trous.
-    const charset = component.match(/DECRYPT_CHARSET = '([^']+)'/)
+    const charset = decrypt.match(/DECRYPT_CHARSET = '([^']+)'/)
     expect(charset, 'DECRYPT_CHARSET introuvable').not.toBeNull()
     expect(charset![1]).not.toContain(' ')
     expect(charset![1].length).toBeGreaterThan(10)
@@ -84,10 +94,7 @@ describe('la cascade de déchiffrement', () => {
     // par titre, c'est quinze rendus React par image à côté d'une scène 3D.
     // `Scrambled` doit donc rester PUR : il dérive son texte du temps qu'on
     // lui passe, il ne le mesure pas.
-    const body = component.slice(
-      component.indexOf('function Scrambled'),
-      component.indexOf('function CvName'),
-    )
+    const body = decrypt.slice(decrypt.indexOf('export function Scrambled'), decrypt.length)
     expect(body).not.toContain('useState')
     expect(body).not.toContain('useEffect')
     expect(body).not.toContain('requestAnimationFrame')
@@ -98,10 +105,7 @@ describe('la cascade de déchiffrement', () => {
     // pur y donnerait un texte différent à chaque re-rendu déclenché par autre
     // chose que l'horloge. On regarde le CORPS de la fonction, pas le fichier :
     // son commentaire, lui, a le droit de nommer ce qu'on évite.
-    const body = component.slice(
-      component.indexOf('function Scrambled'),
-      component.indexOf('function CvName'),
-    )
+    const body = decrypt.slice(decrypt.indexOf('export function Scrambled'), decrypt.length)
     expect(body).not.toContain('Math.random')
   })
 

@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
 import { CAMERA_STOPS } from '@/config/cameraStops'
-import { CV, CV_JOBS_EMPTY, type CvGlyph } from '@/content/cv'
+import { CV, CV_JOBS_EMPTY, glyphMark, type CvGlyph } from '@/content/cv'
 import { UI } from '@/content/ui'
 import { type Locale, t, tm } from '@/lib/locale'
 import { useLocale } from '@/state/locale'
 import { useInteraction } from '@/state/interaction'
+import { useDecryptClock } from '@/lib/decrypt'
+import { Scrambled } from '@/ui/Scrambled'
 
 /**
  * Le CV « affiché par l'écran vertical » (issue #93).
@@ -42,90 +44,23 @@ export const DECRYPT_MS = 1600
 export const CASCADE_MS = 420
 export const CASCADE_STEP_MS = 60
 
-/** Les glyphes tirés au sort. Majuscules, chiffres et symboles : de quoi lire
- *  « du code », sans caractère assez large pour déformer une chasse fixe. */
-const DECRYPT_CHARSET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789#@%&$*/<>'
+/*
+ * Le déchiffrage vit dans `src/ui/Scrambled.tsx` depuis #29 : le site
+ * classique affiche le même effet sur son nom d'accueil, et deux copies d'une
+ * animation identitaire finissent par diverger. La règle (figement de gauche à
+ * droite, espaces jamais brouillés, tirage déterministe) est là-bas, avec les
+ * gardes de `tests/cv.test.ts` qui la vérifient.
+ */
 
 /**
- * L'horloge de la cascade — **une seule pour tout le CV**.
+ * Un titre de la cascade : `Scrambled` avec la durée de cet écran.
  *
- * Une quinzaine de titres se déchiffrent en même temps. Leur donner chacun sa
- * boucle `requestAnimationFrame` et son état, c'est quinze rendus React par
- * image, à côté d'une scène 3D qui a déjà besoin des seize millisecondes. Ici
- * un seul `rAF` publie le temps écoulé et tout le monde en dérive son texte :
- * un rendu par image, quel que soit le nombre de titres.
- *
- * Retourne `null` quand il n'y a rien à animer — fin de la cascade, ou
- * `prefers-reduced-motion`. Les composants lisent ce `null` comme « affiche le
- * texte final », ce qui neutralise l'animation au lieu de la raccourcir : le
- * critère du design system est l'autonomie, et celle-ci part toute seule.
+ * Elle est déclarée ici, une fois, plutôt que recopiée sur les huit appels —
+ * `CASCADE_MS` est un réglage du CV, pas une propriété du déchiffrage, et le
+ * module partagé n'a pas à en avoir un avis par défaut.
  */
-function useCascadeClock(active: boolean, total: number): number | null {
-  const [elapsed, setElapsed] = useState<number | null>(null)
-
-  useEffect(() => {
-    if (!active) return
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
-    let frame = 0
-    const started = performance.now()
-    const tick = (now: number) => {
-      const dt = now - started
-      if (dt >= total) {
-        setElapsed(null)
-        return
-      }
-      setElapsed(dt)
-      frame = requestAnimationFrame(tick)
-    }
-    frame = requestAnimationFrame(tick)
-    return () => cancelAnimationFrame(frame)
-  }, [active, total])
-
-  return elapsed
-}
-
-/**
- * Un texte déchiffré : les caractères se figent de gauche à droite, ceux qui
- * restent tirent un glyphe au sort.
- *
- * **Les espaces ne sont jamais brouillés** : ce sont eux qui gardent la
- * silhouette du mot pendant toute l'animation, sans quoi on ne lit qu'un bloc
- * de bruit.
- *
- * Le tirage est **déterministe**, dérivé de l'image et de la position, et non
- * de `Math.random()` : ce composant est rendu pendant la phase de rendu de
- * React, où un appel non pur donnerait un résultat différent à chaque re-rendu
- * déclenché par autre chose que l'horloge.
- */
-function Scrambled({
-  text,
-  elapsed,
-  delay = 0,
-  duration = CASCADE_MS,
-}: {
-  text: string
-  elapsed: number | null
-  delay?: number
-  duration?: number
-}) {
-  if (elapsed === null || elapsed >= delay + duration) return <>{text}</>
-
-  const progress = Math.max((elapsed - delay) / duration, 0)
-  const settled = Math.floor(progress * text.length)
-  const frame = Math.floor(elapsed / 40)
-
-  return (
-    <>
-      {text
-        .split('')
-        .map((char, i) => {
-          if (i < settled || char === ' ') return char
-          const n = (i * 2654435761 + frame * 40503) >>> 0
-          return DECRYPT_CHARSET[n % DECRYPT_CHARSET.length]
-        })
-        .join('')}
-    </>
-  )
+function CascadeTitle(props: { text: string; elapsed: number | null; delay?: number }) {
+  return <Scrambled {...props} duration={CASCADE_MS} />
 }
 
 /**
@@ -177,7 +112,7 @@ function CvTiles({
         return (
           <div className="cv__tile" key={name}>
             <span className="cv__tile-mark" aria-hidden="true">
-              {item.icon ? <img src={item.icon} alt="" /> : name.slice(0, 1)}
+              {item.icon ? <img src={item.icon} alt="" /> : glyphMark(item, locale)}
             </span>
             <span className="cv__tile-label">{name}</span>
           </div>
@@ -200,7 +135,7 @@ export function CvScreen() {
   // marche — d'où le total, qui arrête l'horloge.
   const cue = (rank: number) => rank * CASCADE_STEP_MS
   const lastRank = 7 + CV.jobs.length + CV.formations.length
-  const elapsed = useCascadeClock(visible, Math.max(DECRYPT_MS, cue(lastRank) + CASCADE_MS))
+  const elapsed = useDecryptClock(visible, Math.max(DECRYPT_MS, cue(lastRank) + CASCADE_MS))
 
   // Démontage différé, comme la bulle et la fiche : `visible` à false lance le
   // fondu (.cv--out), le démontage suit une fois le fondu fini. Démonter tout
@@ -269,14 +204,14 @@ export function CvScreen() {
             trois cartes de largeur égale, la photo donnant la hauteur. */}
         <div className="cv__card cv__card--traits">
           <h2 className="cv__card-title">
-            <Scrambled text={t(CV.traitsTitle, locale)} elapsed={elapsed} delay={cue(1)} />
+            <CascadeTitle text={t(CV.traitsTitle, locale)} elapsed={elapsed} delay={cue(1)} />
           </h2>
           <CvTiles items={CV.traits} variant="traits" locale={locale} />
         </div>
 
         <div className="cv__card">
           <h2 className="cv__card-title">
-            <Scrambled text={t(CV.factsTitle, locale)} elapsed={elapsed} delay={cue(2)} />
+            <CascadeTitle text={t(CV.factsTitle, locale)} elapsed={elapsed} delay={cue(2)} />
           </h2>
           {CV.facts.map((fact) => (
             <div className="cv__fact" key={fact.label.fr}>
@@ -289,7 +224,7 @@ export function CvScreen() {
 
       <div className="cv__card">
         <h2 className="cv__card-title">
-          <Scrambled text={t(CV.skillsTitle, locale)} elapsed={elapsed} delay={cue(3)} />
+          <CascadeTitle text={t(CV.skillsTitle, locale)} elapsed={elapsed} delay={cue(3)} />
         </h2>
         <CvTiles items={CV.skills} variant="skills" locale={locale} />
       </div>
@@ -303,14 +238,14 @@ export function CvScreen() {
           section à part entière, au même rang qu'Expériences et Formations, et
           la marge du titre est ce qui la détache du savoir-faire au-dessus. */}
       <h2 className="cv__section-title">
-        <Scrambled text={t(CV.outlookTitle, locale)} elapsed={elapsed} delay={cue(4)} />
+        <CascadeTitle text={t(CV.outlookTitle, locale)} elapsed={elapsed} delay={cue(4)} />
       </h2>
       <div className="cv__card">
         <p className="cv__outlook-text">{t(CV.outlook, locale)}</p>
       </div>
 
       <h2 className="cv__section-title">
-        <Scrambled text={t(CV.jobsTitle, locale)} elapsed={elapsed} delay={cue(5)} />
+        <CascadeTitle text={t(CV.jobsTitle, locale)} elapsed={elapsed} delay={cue(5)} />
       </h2>
 
       {/* Aucun poste : une phrase, jamais un écran vide. L'identité et les
@@ -322,7 +257,7 @@ export function CvScreen() {
           <div className="job" key={`${job.company}-${job.period}`} tabIndex={0}>
             <div className="job__head">
               <span className="job__title">
-                <Scrambled text={t(job.title, locale)} elapsed={elapsed} delay={cue(6 + i)} />
+                <CascadeTitle text={t(job.title, locale)} elapsed={elapsed} delay={cue(6 + i)} />
               </span>
               <span className="job__company">{job.company}</span>
               <span className="job__period">{job.period}</span>
@@ -342,7 +277,7 @@ export function CvScreen() {
       )}
 
       <h2 className="cv__section-title">
-        <Scrambled
+        <CascadeTitle
           text={t(CV.formationsTitle, locale)}
           elapsed={elapsed}
           delay={cue(6 + CV.jobs.length)}
@@ -356,7 +291,7 @@ export function CvScreen() {
         <div className="job job--static" key={`${formation.school}-${formation.period}`}>
           <div className="job__head">
             <span className="job__title">
-              <Scrambled
+              <CascadeTitle
                 text={t(formation.title, locale)}
                 elapsed={elapsed}
                 delay={cue(7 + CV.jobs.length + i)}
