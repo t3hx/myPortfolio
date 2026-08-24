@@ -131,6 +131,16 @@ export const UI = {
     role: { fr: 'Rôle', en: 'Role' } as Localized,
     close: { fr: 'Fermer la fiche', en: 'Close the sheet' } as Localized,
     escape: { fr: 'Échap', en: 'Esc' } as Localized,
+    /**
+     * Ce que la touche fait — affiché partout où la touche l'est (#136).
+     *
+     * Elle vivait dans `UI.telescope`, parce que la visée était le seul écran à
+     * la dire. La fiche projet, elle, montrait la touche SANS la phrase : deux
+     * surfaces qui se ferment de la même façon et ne le disent pas pareil. Elle
+     * a donc déménagé ici, à côté de `escape`, puisque c'est déjà là que vit la
+     * touche et que `.sheet__key` est déjà partagée par les deux.
+     */
+    exit: { fr: 'pour revenir', en: 'to go back' } as Localized,
     cover: { fr: 'illustration', en: 'illustration' } as Localized,
   },
   cv: {
@@ -161,9 +171,6 @@ export const UI = {
       fr: 'À 384 000 km, le seul sujet qui accepte de poser par nuit claire.',
       en: 'At 384,000 km, the only subject that will pose on a clear night.',
     } as Localized,
-    /** Le rappel de sortie, affiché dans la visée. Rien d'autre n'en sort :
-     *  un clic ailleurs ne fait rien, et personne ne devine `Échap` seul. */
-    exit: { fr: 'pour revenir', en: 'to go back' } as Localized,
   },
   menu: {
     region: { fr: 'Menu', en: 'Menu' } as Localized,

@@ -722,6 +722,11 @@
   font-family: ui-monospace, monospace; font-size: 10.5px; color: rgba(var(--cream-rgb), .5);
   border: 1px solid rgba(var(--cream-rgb), .18); border-radius: 5px; padding: 3px 7px;
 }
+/* La phrase à côté de la touche (#136). Même graisse et même teinte que la
+   méta de la visée : c'est le même indice, dit au même endroit du regard. */
+.sheet__exit {
+  font-size: var(--fs-meta); letter-spacing: .04em; color: rgba(var(--cream-rgb), .55);
+}
 .sheet__close-btn {
   appearance: none; background: rgba(var(--cream-rgb), .07); border: 1px solid rgba(var(--cream-rgb), .14);
   border-radius: 50%; width: 36px; height: 36px; color: var(--cream);

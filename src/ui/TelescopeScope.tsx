@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { type CSSProperties, useEffect, useState } from 'react'
 import { UI } from '@/content/ui'
 import { t } from '@/lib/locale'
 import { reducedMotion, useTyping } from '@/lib/clock'
@@ -103,7 +103,14 @@ export function TelescopeScope() {
           déjà exactement la même chose ailleurs. */}
       <p className="scope__exit">
         <span className="sheet__key">{t(UI.sheet.escape, locale)}</span>
-        {t(UI.telescope.exit, locale)}
+        {/* Le faisceau traverse la PHRASE, pas la touche : la pastille de
+            `Échap` a un fond et une bordure, et `background-clip: text` la
+            viderait de son cadre. Le retard le fait partir après l'ouverture de
+            la visée, sinon il traverse un texte encore transparent et l'unique
+            passage est perdu. */}
+        <span className="beam" style={{ '--beam-delay': 'var(--t-scope-in)' } as CSSProperties}>
+          {t(UI.sheet.exit, locale)}
+        </span>
       </p>
     </div>
   )

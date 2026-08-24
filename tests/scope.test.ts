@@ -287,8 +287,29 @@ describe('le rappel de sortie', () => {
     // et personne ne devine une touche qu'on ne lui montre pas.
     expect(component).toContain('scope__exit')
     expect(component).toContain('UI.sheet.escape')
-    expect(component).toContain('UI.telescope.exit')
+    expect(component).toContain('UI.sheet.exit')
     expect(tokens).toContain('.scope__exit')
+  })
+
+  it('le dit avec les mêmes mots que la fiche projet', () => {
+    // Deux surfaces se ferment par `Échap` et une seule le DISAIT (#136) : la
+    // fiche montrait la touche sans dire ce qu'elle fait. La phrase vit donc
+    // à côté de la touche, dans `UI.sheet`, et non chez l'une des deux.
+    const sheet = readFileSync('src/ui/ProjectSheet.tsx', 'utf8')
+    expect(sheet).toContain('UI.sheet.exit')
+    expect(sheet).toContain('UI.sheet.escape')
+    // Une seule définition : deux endroits finiraient par en dire deux.
+    const ui = readFileSync('src/content/ui.ts', 'utf8')
+    expect(ui.match(/exit: \{ fr: 'pour revenir'/g)?.length ?? 0).toBe(1)
+  })
+
+  it('est traversé une fois, après l’ouverture du panneau', () => {
+    // `.beam` ne passe QU'UNE fois : parti pendant le fondu d'entrée, il
+    // traverse un texte encore transparent et l'unique passage est perdu —
+    // exactement le défaut déjà corrigé sur l'accroche du site classique.
+    const sheet = readFileSync('src/ui/ProjectSheet.tsx', 'utf8')
+    expect(component).toMatch(/className="beam"[\s\S]{0,120}--t-scope-in/)
+    expect(sheet).toMatch(/beam"[\s\S]{0,120}--t-sheet-in/)
   })
 
   it('vit DANS le cache, pour partir avec lui', () => {
