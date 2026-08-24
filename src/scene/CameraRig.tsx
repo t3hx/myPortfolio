@@ -159,6 +159,30 @@ export function CameraRig({ stops, moon }: CameraRigProps) {
    * l'envers, ce qui est précisément le mouvement illisible qu'un saut de menu
    * a cessé de produire. Il part donc en vol direct.
    */
+  /**
+   * Un geste vers l'AVANT : le dialogue d'abord, le tour ensuite (#122).
+   *
+   * C'est ici que « N phrases = N gestes » se joue. `advanceDialogue` rend
+   * `exhausted` quand il n'avait plus rien à dire, et c'est le MÊME geste qui
+   * enchaîne alors sur l'arrêt suivant — pas le suivant. Sans ça, un arrêt
+   * d'une seule phrase, comme l'accueil, coûterait deux gestes pour être
+   * quitté, et ce serait la première impression du site.
+   *
+   * Seulement vers l'avant : reculer est une intention de retour, pas de
+   * lecture, et doit rendre la main au tour tout de suite.
+   *
+   * Seulement à l'ARRÊT : pendant une course, on est déjà en train de presser
+   * le pas, et arbitrer le dialogue d'un arrêt où l'on n'est pas encore n'aurait
+   * pas de sens.
+   */
+  function advanceOrStep() {
+    if (useInteraction.getState().phase !== 'parked') {
+      stepBy(1)
+      return
+    }
+    if (useInteraction.getState().advanceDialogue() === 'exhausted') stepBy(1)
+  }
+
   function stepBy(dir: 1 | -1) {
     const next = nextStopIndex(targetIndex.current, dir, stops.length)
     if (next === null) return
@@ -195,7 +219,8 @@ export function CameraRig({ stops, moon }: CameraRigProps) {
         if (w.__wheelLog.length > 50) w.__wheelLog.shift()
       }
 
-      if (out.step !== 0) stepBy(out.step)
+      if (out.step === 1) advanceOrStep()
+      else if (out.step === -1) stepBy(-1)
     }
 
     const onKeyDown = (e: KeyboardEvent) => {
@@ -217,9 +242,30 @@ export function CameraRig({ stops, moon }: CameraRigProps) {
       stepBy(forward ? 1 : -1)
     }
 
+    /**
+     * **La scène d'abord, le dialogue sinon.** Un clic qui vise un objet
+     * interactif lui appartient — le télescope décolle, un dossier s'envole —
+     * et n'avance rien. Partout ailleurs, il fait parler l'arrêt.
+     *
+     * Les deux survols sont déjà calculés par ceux qui en ont besoin
+     * (`telescopeHovered` par un raycast par mouvement de pointeur,
+     * `folderHovered` par la commode) : on les LIT, on ne les recalcule pas.
+     * Refaire le raycast ici, ce serait deux réponses possibles à « qu'y a-t-il
+     * sous le curseur », et un clic qui ferait les deux choses ou aucune.
+     */
+    const onClick = (e: MouseEvent) => {
+      if (e.target instanceof Element && e.target.closest('.panel, .menu')) return
+      const { phase, telescopeHovered, folderHovered } = store()
+      if (phase !== 'touring' && phase !== 'parked') return
+      if (telescopeHovered || folderHovered) return
+      advanceOrStep()
+    }
+
+    stage.addEventListener('click', onClick as EventListener)
     stage.addEventListener('wheel', onWheel as EventListener, { passive: false })
     window.addEventListener('keydown', onKeyDown)
     return () => {
+      stage.removeEventListener('click', onClick as EventListener)
       stage.removeEventListener('wheel', onWheel as EventListener)
       window.removeEventListener('keydown', onKeyDown)
     }

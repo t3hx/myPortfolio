@@ -4,6 +4,7 @@ import { Vector3, type Camera, type Object3D } from 'three'
 import { clampToSafeArea } from '@/lib/bubbleAnchors'
 import { useElapsed } from '@/lib/clock'
 import { typeDuration, typedLength } from '@/lib/typewriter'
+import { useInteraction } from '@/state/interaction'
 
 /**
  * Bulle narrative ancrée par projection écran (issue #47).
@@ -99,7 +100,28 @@ export function Bubble({
    * l'autonomie de l'animation, pas sa durée.
    */
   const elapsed = useElapsed(visible, typeDuration(children), children)
-  const shown = typedLength(children, elapsed)
+
+  // Un geste reçu pendant la frappe l'achève (#122, arbitrage A). Le store
+  // transmet un COMPTEUR et non un booléen : ce qui passe est un événement
+  // (« achève »), pas un état — un booléen demanderait d'être rabaissé après
+  // coup, et deux gestes rapprochés ne se distingueraient pas.
+  //
+  // La bulle retient la valeur du jeton AU DÉBUT de la page ; tout incrément
+  // postérieur veut dire « celle-ci, achève-la ». Repartir de la valeur
+  // courante à chaque changement de texte est ce qui empêche un achèvement de
+  // déborder sur la page suivante.
+  const skip = useInteraction((st) => st.dialogueSkip)
+  const [skipBase, setSkipBase] = useState(skip)
+  useEffect(() => setSkipBase(useInteraction.getState().dialogueSkip), [children])
+  const shown = skip > skipBase ? children.length : typedLength(children, elapsed)
+
+  // La frappe en cours est publiée pour que l'entrée sache si un geste doit
+  // l'achever ou tourner la page. C'est le seul état que la bulle expose.
+  const setDialogueTyping = useInteraction((st) => st.setDialogueTyping)
+  const typing = visible && shown < children.length
+  useEffect(() => {
+    if (visible) setDialogueTyping(typing)
+  }, [visible, typing, setDialogueTyping])
   // La taille rendue de la bulle, relevée aux seuls changements de taille : la
   // lire à chaque frame forcerait un calcul de mise en page par frame.
   //

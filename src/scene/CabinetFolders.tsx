@@ -146,6 +146,9 @@ export function CabinetFolders({ folders }: CabinetFoldersProps) {
 
   function setHovered(next: number | null) {
     if (hovered.current === next) return
+    // Publié pour le dialogue (#122) : un clic appartient à la SCÈNE quand un
+    // objet est visé, au dialogue sinon.
+    useInteraction.getState().hoverFolder(next !== null)
 
     if (hovered.current !== null) {
       showOutline(hovered.current, false)

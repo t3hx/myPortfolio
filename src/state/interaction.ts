@@ -44,6 +44,26 @@ interface InteractionState {
    * circulaire se poser sur une pièce qui défile encore, et on regarde dans un
    * télescope avant d'y être arrivé.
    */
+  /**
+   * LE DIALOGUE (#122). Un seul arrêt parle à la fois, donc un seul état
+   * suffit — il est remis à zéro à chaque arrivée, ce qui fait qu'une bulle
+   * revisitée reparle depuis le début.
+   */
+  dialoguePage: number
+  /** Combien de temps a l'arrêt courant. Publié par `Experience`. */
+  dialoguePages: number
+  /** La page courante est encore en train de s'écrire. Publié par `Bubble`. */
+  dialogueTyping: boolean
+  /**
+   * Jeton d'achèvement de la frappe. Il s'incrémente quand un geste tombe
+   * PENDANT la frappe : la bulle le lit et affiche sa phrase d'un coup.
+   *
+   * Un compteur et non un booléen, parce que ce qu'on transmet est un
+   * ÉVÉNEMENT (« achève »), pas un état. Avec un booléen il faudrait le
+   * rabaisser après coup, et deux gestes rapprochés sur la même page ne se
+   * distingueraient pas.
+   */
+  dialogueSkip: number
   telescopeSettled: boolean
   /**
    * La lune est arrivée : le second temps de l'excursion (le grossissement)
@@ -99,6 +119,25 @@ interface InteractionState {
   settleTelescope: () => void
   revealMoon: () => void
   hoverTelescope: (hovered: boolean) => void
+  /**
+   * Un objet interactif est sous le curseur — le télescope, ou un dossier de
+   * la commode. C'est ce qui donne au clic sa règle : **la scène d'abord, le
+   * dialogue sinon**.
+   */
+  folderHovered: boolean
+  hoverFolder: (hovered: boolean) => void
+  /** Remet le dialogue au premier temps. Appelé à l'arrivée sur un arrêt. */
+  startDialogue: (pages: number) => void
+  setDialogueTyping: (typing: boolean) => void
+  /**
+   * Un geste sur le dialogue. Rend ce qu'il en a fait :
+   *
+   *   `typed`     — la frappe était en cours, ce geste l'achève et rien d'autre
+   *   `paged`     — page suivante
+   *   `exhausted` — c'était la dernière page : l'appelant enchaîne sur l'arrêt
+   *                 suivant, et c'est ce qui fait N phrases = N gestes
+   */
+  advanceDialogue: () => 'typed' | 'paged' | 'exhausted'
   /** Appelé par `CameraRig` à la fin du retour, jamais à la touche `Échap`. */
   showDetailedMoon: (shown: boolean) => void
   exitTelescope: () => void
@@ -108,6 +147,11 @@ export const useInteraction = create<InteractionState>((set, get) => ({
   phase: 'touring',
   stopIndex: 0,
   ready: false,
+  dialoguePage: 0,
+  dialoguePages: 1,
+  dialogueTyping: false,
+  dialogueSkip: 0,
+  folderHovered: false,
   telescopeSettled: false,
   moonRevealed: false,
   telescopeHovered: false,
@@ -169,6 +213,29 @@ export const useInteraction = create<InteractionState>((set, get) => ({
   },
   showDetailedMoon: (moonDetailed) => {
     if (get().moonDetailed !== moonDetailed) set({ moonDetailed })
+  },
+  hoverFolder: (folderHovered) => {
+    if (get().folderHovered !== folderHovered) set({ folderHovered })
+  },
+  startDialogue: (dialoguePages) => set({ dialoguePages, dialoguePage: 0, dialogueTyping: false }),
+  setDialogueTyping: (dialogueTyping) => {
+    if (get().dialogueTyping !== dialogueTyping) set({ dialogueTyping })
+  },
+  advanceDialogue: () => {
+    const { dialogueTyping, dialoguePage, dialoguePages, dialogueSkip } = get()
+    // A (arbitrage du 2026-08-24) : un geste reçu pendant la frappe l'achève,
+    // et ne fait QUE ça. L'autre option — avancer quand même — garantissait un
+    // geste par phrase, mais laissait un lecteur pressé traverser tout le texte
+    // sans jamais en lire une ligne.
+    if (dialogueTyping) {
+      set({ dialogueSkip: dialogueSkip + 1 })
+      return 'typed'
+    }
+    if (dialoguePage + 1 < dialoguePages) {
+      set({ dialoguePage: dialoguePage + 1 })
+      return 'paged'
+    }
+    return 'exhausted'
   },
   hoverTelescope: (telescopeHovered) => {
     if (get().telescopeHovered !== telescopeHovered) set({ telescopeHovered })

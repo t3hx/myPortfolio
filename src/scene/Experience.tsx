@@ -1,4 +1,4 @@
-import { useCallback, useState, type RefObject } from 'react'
+import { useCallback, useEffect, useState, type RefObject } from 'react'
 import type { Object3D, Vector3 } from 'three'
 import { CAMERA_STOPS } from '@/config/cameraStops'
 import { BUBBLES, bubbleKicker, bubblePages } from '@/content/bubbles'
@@ -50,6 +50,8 @@ export function Experience({ bubbleLayer }: ExperienceProps) {
   const phase = useInteraction((s) => s.phase)
   const stopIndex = useInteraction((s) => s.stopIndex)
   const setReady = useInteraction((s) => s.setReady)
+  const dialoguePage = useInteraction((s) => s.dialoguePage)
+  const startDialogue = useInteraction((s) => s.startDialogue)
   const locale = useLocale((s) => s.locale)
 
   const onReady = useCallback(
@@ -66,6 +68,19 @@ export function Experience({ bubbleLayer }: ExperienceProps) {
   )
 
   const parkedStop = phase === 'parked' ? CAMERA_STOPS[stopIndex]?.label : undefined
+
+  /**
+   * Le dialogue repart au premier temps à CHAQUE arrivée (#122). Les dix
+   * bulles restent montées ensemble — les démonter emporterait leur fondu de
+   * sortie — donc rien ne remet leur pagination à zéro tout seul : une bulle
+   * revisitée rouvrirait sur sa dernière page.
+   */
+  useEffect(() => {
+    if (!parkedStop) return
+    const bubble = BUBBLES.find((b) => b.stop === parkedStop)
+    if (!bubble) return
+    startDialogue(bubblePages(bubble, PROJECTS.length, locale).length)
+  }, [parkedStop, locale, startDialogue])
 
   return (
     <>
@@ -116,6 +131,7 @@ export function Experience({ bubbleLayer }: ExperienceProps) {
       {BUBBLES.map((bubble, i) => {
         const anchor = anchors[i]
         if (!anchor) return null
+        const pages = bubblePages(bubble, PROJECTS.length, locale)
         return (
           <Bubble
             key={bubble.stop}
@@ -128,12 +144,14 @@ export function Experience({ bubbleLayer }: ExperienceProps) {
             tilt={bubble.tilt}
           >
             {/* Le tiroir vide n'ouvre aucune fiche : son repli passe par la
-                bulle de la commode, pas par un écran (#78). */}
-            {/* La première page, et rien d'autre pour l'instant : le
-                défilement du dialogue est le sujet de #122. Tant qu'il
-                n'existe pas, chaque arrêt n'a qu'un temps, donc `[0]` EST son
-                texte — ce lot ne change rien de visible (#120). */}
-            {bubblePages(bubble, PROJECTS.length, locale)[0]}
+                bulle de la commode, pas par un écran (#78).
+
+                La page courante du dialogue (#122). Une seule bulle est
+                visible à la fois, donc un seul index suffit ; les neuf autres
+                le reçoivent aussi mais ne rendent rien. Le `min` protège
+                l'instant où l'arrêt a changé et où le nombre de pages n'a pas
+                encore été republié. */}
+            {pages[Math.min(dialoguePage, pages.length - 1)]}
           </Bubble>
         )
       })}

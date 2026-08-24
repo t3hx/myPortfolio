@@ -176,7 +176,11 @@ bouton, et le nom existe aussi dans la fiche accessible).
   fond bleu. La fiche projet, qui réclame `.panel` pour la molette, en héritait :
   mesuré, elle sortait à 420 px de large au lieu de 1280. L'apparence du HUD vit
   désormais sous `.hud-panel`, et `.panel` ne porte plus aucun style.
-- **Le halo de survol est spécifié mais non maquetté** : aucun écran de `screens/` ne porte `.bubble--interactive`, faute d'objet cliquable arrêté au moment de la session. Le CSS existe et vaut spécification — ce n'est pas une maquette qu'on aurait oubliée. **Tranché avec #47 : aucune bulle n'est interactive** — la bulle est purement narrative, n'ouvre rien, et laisse passer molette et clics (`pointer-events: none`). `.bubble--interactive` reste une spécification dormante si un futur arrêt en a besoin.
+- **Le halo de survol est spécifié mais non maquetté** : aucun écran de `screens/` ne porte `.bubble--interactive`, faute d'objet cliquable arrêté au moment de la session. Le CSS existe et vaut spécification — ce n'est pas une maquette qu'on aurait oubliée. **Tranché avec #47 : aucune bulle n'est interactive** — la bulle était purement narrative, n'ouvrait rien, et laissait passer molette et clics (`pointer-events: none`). `.bubble--interactive` restait une spécification dormante.
+
+  **RENVERSÉ le 2026-08-24 (#122).** La bulle est devenue une boîte de dialogue : elle dit plusieurs phrases, et c'est le visiteur qui les fait défiler — clic ou molette. Elle ne devient pas cliquable pour autant, et c'est la nuance qui compte : elle garde `pointer-events: none`, et **c'est la scène qui écoute**. La règle est « la scène d'abord, le dialogue sinon » — un clic qui vise un objet interactif lui appartient (le télescope décolle, un dossier s'envole), partout ailleurs il fait parler l'arrêt. Une bulle qui capterait ses propres clics avalerait ceux destinés à l'objet qu'elle désigne, puisqu'elle est ancrée juste à côté de lui.
+
+  Ce qui ne change pas : la bulle **n'ouvre toujours rien**. Elle raconte, et le seul pouvoir qu'on lui a donné est celui de continuer sa phrase. `.bubble--interactive` reste dormante.
 
 ## Contraintes respectées (rappel code)
 
