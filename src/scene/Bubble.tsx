@@ -209,6 +209,16 @@ export function Bubble({
       {/* Markup des maquettes : kicker (point + étiquette) puis phrase, ou
           variante « sans titre » point + phrase sur une ligne (home). */}
       <article ref={measureBox} className={cls} role="note" style={style}>
+        {/* L'aura d'arrivée (#128). Montée avec la bulle, elle joue UNE fois
+            par arrivée : tourner une page ne remonte pas la bulle, donc elle
+            ne rejoue pas en cours de dialogue — c'est ce qu'on veut, elle
+            désigne l'arrivée, pas la phrase.
+
+            Elle est posée AVANT le contenu et en `position: absolute`, donc
+            elle ne participe pas à la mise en page : la boîte a exactement la
+            même taille avec et sans elle. */}
+        <span className="bubble__aura" aria-hidden="true" />
+
         {/* Le chevron « la suite ». Une bulle qui a fini de parler et une bulle
             qui attend qu'on tourne la page se ressemblent trait pour trait —
             rien, dans le texte, ne dit qu'il en reste. C'est la seule chose

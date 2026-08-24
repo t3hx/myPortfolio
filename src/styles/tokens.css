@@ -36,6 +36,12 @@
 
   /* Motion — budgets */
   --t-bubble-in: 480ms;   /* cubic-bezier(.2,.8,.2,1), reveal bas→haut */
+  /* L'aura (#128) : 900 ms de tracé, arbitré avec l'auteur. C'est nettement
+     moins que la frappe de la phrase (1,2 à 2 s à 20 ms/caractère), et c'est
+     voulu — l'aura attire l'œil, PUIS laisse lire. Les deux partent au même
+     instant ; si elles duraient pareil, elles se disputeraient l'attention. */
+  --t-aura-draw: 900ms;
+  --t-aura-fade: 320ms;
   --t-bubble-out: 200ms;  /* fade simple avant départ caméra (1200 ms) */
   --t-preload-out: 320ms; /* fondu du preloader — couvre la 1re frame du canvas */
   --t-bar: 180ms;         /* opacité .4 → .75 */
@@ -116,6 +122,92 @@
 /* Sans titre (home) : point + phrase sur une ligne */
 .bubble__inline { display: flex; align-items: center; gap: 14px; }
 .bubble__inline .bubble__text { white-space: nowrap; }
+/* L'AURA (#128) — elle se dessine autour de la bulle à son arrivée, puis
+   s'éteint. Une bulle qui apparaît en fondu ne dit pas à l'œil OÙ regarder ; le
+   temps de tracer le contour, le regard est allé s'y poser.
+
+   **Deux traits, l'un du centre haut, l'autre du centre bas, sens horaire.**
+   Ils se rejoignent donc sur les deux côtés, et le contour se referme d'un
+   coup. C'est un seul dégradé conique qui l'exprime : deux secteurs opposés qui
+   s'ouvrent ensemble, et qui servent de MASQUE au trait. Rien à mesurer, rien à
+   recalculer — le masque est centré sur la boîte, donc il épouse n'importe
+   quelle taille de bulle sans qu'on lui dise laquelle.
+
+   Le compromis est là et il est assumé : le balayage est ANGULAIRE, pas
+   proportionnel au périmètre. Sur une bulle large, le trait file vite le long
+   des petits côtés et lentement le long des grands. La version fidèle au
+   périmètre demanderait deux chemins SVG dont le `d` est calculé à partir des
+   dimensions mesurées — donc de mesurer la boîte, de la remettre dans un état
+   React et de la suivre. Pour 900 ms, l'angle suffit.
+
+   `@property` est OBLIGATOIRE : une propriété personnalisée non déclarée ne
+   s'interpole pas dans des `@keyframes`, elle SAUTE d'une valeur à l'autre. Le
+   viseur du télescope a déjà payé ce piège (#106).
+
+   Sous « mouvement réduit », elle n'existe pas : auto-déclenchée, et elle
+   n'apporte aucune information que la bulle ne porte pas déjà. */
+@property --aura-sweep {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: 0deg;
+}
+
+.bubble__aura {
+  position: absolute; inset: -1px; pointer-events: none;
+  border: 1.5px solid var(--glow-deep);
+  border-radius: inherit;
+  box-shadow: 0 0 18px rgba(var(--glow-rgb), .5), inset 0 0 12px rgba(var(--glow-rgb), .18);
+  /* Les deux secteurs opposés. Le second part à 180deg : c'est ce qui fait le
+     départ « centre bas », et les deux tournent dans le même sens. */
+  --aura-mask: conic-gradient(
+    from 0deg,
+    #000 0deg var(--aura-sweep),
+    transparent var(--aura-sweep) 180deg,
+    #000 180deg calc(180deg + var(--aura-sweep)),
+    transparent calc(180deg + var(--aura-sweep))
+  );
+  /* Doublé comme `backdrop-filter` l'est plus haut : Safari n'a pas encore
+     `mask-image` sans préfixe. */
+  mask-image: var(--aura-mask);
+  -webkit-mask-image: var(--aura-mask);
+  /* Le TRACÉ est quasi linéaire, et c'est une correction mesurée : avec la
+     courbe d'assouplissement du design system (`--ease-out`, très chargée en
+     début), le contour atteignait 148° sur 180 au bout de 284 ms — 82 % du
+     dessin dans le premier tiers du temps, puis un rampement invisible. Ça ne
+     se lisait pas comme un tracé mais comme un éclair. Une main qui dessine
+     avance à vitesse à peu près constante ; on garde juste de quoi partir et
+     finir en douceur.
+
+     L'affaissement, lui, garde `--ease-out` : là, il s'agit bien de partir
+     vite et de s'éteindre lentement. */
+  animation:
+    aura-draw var(--t-aura-draw) cubic-bezier(0.35, 0.1, 0.6, 0.95) both,
+    aura-fade var(--t-aura-fade) var(--ease-out) var(--t-aura-draw) both;
+}
+
+/* Le tracé : les deux secteurs s'ouvrent d'un demi-tour chacun, donc le
+   contour est complet quand ils se rejoignent. */
+@keyframes aura-draw {
+  from { --aura-sweep: 0deg; }
+  /* 183 et non 180 : à l'angle exact, les deux secteurs se touchent sans se
+     recouvrir, et l'anticrénelage laisse une couture visible au centre haut et
+     au centre bas — soit précisément les deux points d'où le tracé est parti.
+     Trois degrés de chevauchement les referment, et personne ne peut voir
+     trois degrés de trop sur un contour déjà complet. */
+  to   { --aura-sweep: 183deg; }
+}
+
+/* L'affaissement : le trait s'éteint et se retire d'un cheveu vers la bulle,
+   pour ne pas disparaître en clignotant. */
+@keyframes aura-fade {
+  from { opacity: 1; transform: scale(1); }
+  to   { opacity: 0; transform: scale(.985); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bubble__aura { display: none; }
+}
+
 /* Le chevron « la suite » (#122). Une bulle qui a fini de parler et une bulle
    qui attend qu'on tourne la page sont identiques : rien dans le texte ne dit
    qu'il en reste. Un signe, jamais un mot — le dialogue est la voix du lieu, et

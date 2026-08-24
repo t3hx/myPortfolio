@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
+import { reducedMotionBlocks } from './support/css'
 import { TELESCOPE_FOV_PAD, isTelescope } from '@/config/telescope'
 import { SCOPE_OUT_MS } from '@/ui/TelescopeScope'
 
@@ -80,35 +81,6 @@ describe("la composition de l'oculaire", () => {
     expect(component).not.toMatch(/crosshair|scope__cross/)
   })
 })
-
-/**
- * Le contenu des blocs `@media (prefers-reduced-motion)`, et RIEN d'autre.
- *
- * Les deux contrôles ci-dessous lisaient « tout ce qui suit le premier `@media`
- * », c'est-à-dire la fin du fichier — donc aussi des règles qui n'ont rien à
- * voir. Ça tenait tant que ces blocs étaient les derniers ; ajouter une règle
- * de mouvement réduit plus haut dans la feuille a suffi à leur faire lire des
- * sélecteurs qu'ils n'avaient jamais eu l'intention de voir (#122). Un test
- * qui dépend de l'ORDRE des règles finit par accuser la mauvaise.
- */
-function reducedMotionBlocks(css: string): string {
-  const out: string[] = []
-  let from = 0
-  for (;;) {
-    const at = css.indexOf('@media (prefers-reduced-motion', from)
-    if (at === -1) break
-    const open = css.indexOf('{', at)
-    let depth = 0
-    let i = open
-    for (; i < css.length; i++) {
-      if (css[i] === '{') depth++
-      else if (css[i] === '}' && --depth === 0) break
-    }
-    out.push(css.slice(open + 1, i))
-    from = i
-  }
-  return out.join('\n')
-}
 
 describe('le mouvement réduit', () => {
   it("conserve l'ouverture mais lui retire le resserrement", () => {
