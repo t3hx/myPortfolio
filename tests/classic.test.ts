@@ -240,36 +240,66 @@ describe('le balayage de consigne', () => {
    *  deux pages l'utilisent. C'est lui qui a été mesuré et arbitré (#131). */
   it('réutilise les keyframes de la bulle pour sa boucle', () => {
     expect(tokens).toContain('@keyframes cue-laser')
-    expect(css).toMatch(/\.classic-cue--loop[\s\S]{0,120}animation: cue-laser/)
+    expect(css).toMatch(/\.classic-cue \{[\s\S]{0,700}animation:[\s\S]{0,120}cue-laser/)
   })
 
-  it('ne traverse qu’une fois sur l’accroche, et sur toute la durée', () => {
-    // Les keyframes de la bulle traversent en 22 % puis attendent : cette
+  it('traverse l’accroche une seule fois, et sur toute la durée', () => {
+    // Les keyframes de la consigne traversent en 22 % puis attendent : cette
     // attente n'a de sens qu'en boucle. Un seul passage doit occuper sa durée.
-    expect(css).toMatch(/\.classic-cue--pass[\s\S]{0,140}animation: classic-cue-pass/)
-    expect(css).toMatch(/@keyframes classic-cue-pass[\s\S]{0,160}from[\s\S]{0,60}130%/)
-    expect(css).toMatch(/\.classic-cue--pass[\s\S]{0,140}1 both/)
+    expect(css).toMatch(/\.classic-sweep \{[\s\S]{0,700}animation:[\s\S]{0,120}classic-sweep-pass/)
+    expect(css).toMatch(/@keyframes classic-sweep-pass[\s\S]{0,160}from[\s\S]{0,60}130%/)
+    expect(css).toMatch(/\.classic-sweep \{[\s\S]{0,700}1 both/)
   })
 
-  it('peint le même dégradé que la bulle', () => {
-    // La recette est recopiée (six lignes) ; ce test est ce qui l'empêche de
-    // diverger le jour où l'une des deux est retouchée.
-    const stops = (block: string) =>
-      block
-        .match(/linear-gradient\(([\s\S]*?)\);/)![1]
-        .replace(/\s+/g, ' ')
-        .trim()
-    const bubble = tokens.slice(tokens.indexOf('.bubble__cue {'))
-    const classic = css.slice(css.indexOf('.classic-cue {'))
-    expect(stops(classic)).toBe(stops(bubble))
+  it('ne peint PAS l’accroche dans l’accent', () => {
+    // Elle raconte, elle ne demande rien. Peinte en cyan, elle dirait — dans le
+    // vocabulaire de #131 — « ceci vous demande quelque chose », sur la seule
+    // phrase d'auteur de la page. Son dégradé est donc l'INVERSE de celui d'une
+    // consigne : la crème aux extrémités, le cyan au cœur.
+    const hero = readFileSync('src/ui/classic/Hero.tsx', 'utf8')
+    const tagline = hero.slice(hero.indexOf('classic-hero__tagline'))
+    expect(tagline).toContain('classic-sweep')
+    expect(tagline.slice(0, 400)).not.toContain('classic-cue')
+
+    const sweep = css.slice(css.indexOf('.classic-sweep {'))
+    const stops = sweep.match(/linear-gradient\(([\s\S]*?)\);/)![1]
+    expect(stops).toMatch(/#f2e9da 0%/)
+    expect(stops).toMatch(/var\(--glow-deep\) 50%/)
+  })
+
+  it('éclaire la consigne autant qu’il la traverse', () => {
+    // Le dégradé seul ne pouvait pas se démarquer davantage : son point le plus
+    // clair est déjà #fff. Ce qui manquait était la LUEUR, et il en faut deux
+    // couches — blanche et serrée pour détacher les lettres, cyan et large pour
+    // déborder — sans quoi l'effet se voit sur l'encre de l'accueil et se perd
+    // sur le verre fumé d'une bulle.
+    expect(tokens).toContain('@keyframes cue-bloom')
+    const bloom = tokens.slice(tokens.indexOf('@keyframes cue-bloom'))
+    expect(bloom).toMatch(/drop-shadow\([^)]*255, 255, 255/)
+    expect(bloom).toMatch(/drop-shadow\([^)]*--glow-rgb/)
+    // Exactement synchrone avec la traversée : même durée, même retard.
+    expect(tokens).toMatch(
+      /cue-laser var\(--t-cue-laser\)[\s\S]{0,60}cue-bloom var\(--t-cue-laser\)/,
+    )
+    expect(css).toMatch(
+      /cue-laser var\(--t-classic-cue-loop\)[\s\S]{0,90}cue-bloom var\(--t-classic-cue-loop\)/,
+    )
   })
 
   it('perd son balayage sous mouvement réduit, jamais sa couleur', () => {
     // L'accent porte une information — ceci vous demande quelque chose — qu'on
     // ne peut pas retirer sans appauvrir la phrase. Même arbitrage que la bulle.
     const reduced = css.slice(css.indexOf('@media (prefers-reduced-motion: reduce)'))
-    expect(reduced).toMatch(/\.classic-cue \{[\s\S]{0,160}animation: none/)
-    expect(reduced).toMatch(/\.classic-cue \{[\s\S]{0,160}text-fill-color: var\(--glow\)/)
+    expect(reduced).toMatch(/\.classic-cue \{[\s\S]{0,200}animation: none/)
+    expect(reduced).toMatch(/\.classic-cue \{[\s\S]{0,200}text-fill-color: var\(--glow\)/)
+    // La lueur part avec le balayage — sinon le mot reste un néon fixe.
+    expect(reduced).toMatch(/\.classic-cue \{[\s\S]{0,200}filter: none/)
+    // `lastIndexOf` : la DERNIÈRE occurrence est celle du bloc « mouvement
+    // réduit ». La première est la définition, qui contient au contraire le filtre.
+    const bubbleReduced = tokens.slice(tokens.lastIndexOf('.bubble__cue {'))
+    expect(bubbleReduced.slice(0, 220)).toContain('filter: none')
+    // L'accroche, elle, n'a rien à garder : sa couleur est déjà la bonne.
+    expect(reduced).toMatch(/\.classic-sweep \{[\s\S]{0,200}text-fill-color: inherit/)
   })
 })
 

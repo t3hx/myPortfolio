@@ -279,12 +279,17 @@
      de pixels et haut d'une ligne, une bande inclinée traverse surtout par le
      haut et par le bas, et le blanc n'atteint jamais franchement les lettres.
      Mesuré : à 100deg, le mot restait cyan au sommet du balayage. */
+  /* La bande claire est ÉTROITE (43 → 57 %), pas large (34 → 66 % au premier
+     jet). Étalé sur un tiers du dégradé, le blanc arrivait par une montée si
+     douce qu'on ne voyait pas passer un reflet : on voyait le mot s'éclaircir
+     puis s'assombrir. Resserrée, la transition a un bord, et un bord est ce
+     qui se lit comme un objet qui traverse. */
   background-image: linear-gradient(
     90deg,
     var(--glow) 0%,
-    var(--glow) 34%,
+    var(--glow) 43%,
     #fff 50%,
-    var(--glow) 66%,
+    var(--glow) 57%,
     var(--glow) 100%
   );
   background-size: 220% 100%;
@@ -292,7 +297,39 @@
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
-  animation: cue-laser var(--t-cue-laser) linear infinite;
+  /* DEUX animations, exactement synchrones parce qu'elles partagent leur durée.
+     Le dégradé seul ne pouvait pas se démarquer davantage : son point le plus
+     clair est déjà #fff, et sur un fond de verre fumé le blanc pur ne se
+     distingue pas tant du cyan. Ce qui manquait n'était pas de la clarté mais
+     de la LUEUR — le halo est ce qui fait lire « allumé » plutôt que
+     « plus clair ». Il déborde les lettres, donc il se voit là où la couleur
+     ne peut plus rien. */
+  animation:
+    cue-laser var(--t-cue-laser) linear infinite,
+    cue-bloom var(--t-cue-laser) linear infinite;
+}
+
+/* La lueur ne dure QUE la traversée (0 → 22 %), et son sommet tombe au milieu,
+   là où la bande claire est sur le mot. Au-delà, plus rien : une lueur qui
+   resterait ferait du mot un néon, alors qu'il doit redevenir du texte.
+
+   Elle a DEUX couches, et chacune fait un travail que l'autre ne peut pas.
+   Serrée et blanche, elle détache les lettres de ce qu'il y a derrière — un
+   halo cyan autour d'un mot cyan ne fait que l'épaissir, mesuré : on ne voyait
+   rien passer. Large et cyan, elle donne la lueur, celle qui déborde le mot et
+   se voit là où la couleur des lettres ne peut plus rien.
+
+   Le blanc seul ne suffisait pas non plus : sur le verre fumé d'une bulle, un
+   halo blanc de 9 px se perd dans le panneau, alors qu'il éclate sur le fond
+   d'encre de l'accueil. Il fallait les deux pour que le même effet se voie
+   dans les deux décors. */
+@keyframes cue-bloom {
+  0%, 22%, 100% { filter: none; }
+  11% {
+    filter:
+      drop-shadow(0 0 3px rgba(255, 255, 255, .9))
+      drop-shadow(0 0 11px rgba(var(--glow-rgb), .85));
+  }
 }
 
 /* Le balayage traverse VITE et attend longtemps : c'est un reflet qui passe,
@@ -313,6 +350,7 @@
     animation: none;
     background-image: none;
     -webkit-text-fill-color: var(--glow);
+    filter: none;
   }
 }
 

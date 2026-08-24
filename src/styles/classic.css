@@ -53,10 +53,10 @@
   --t-classic-decrypt: 1700ms;
   --t-classic-reveal: 850ms;
   /* Le balayage de l'accueil. Deux régimes pour un seul effet : l'accroche
-     n'est traversée qu'une fois, lentement — c'est une phrase qu'on lit ;
-     « défiler » l'est en boucle et vite, parce que c'est une consigne qui doit
-     rester repérable tant qu'on ne l'a pas suivie. */
-  --t-classic-cue-pass: 2600ms;
+     n'est traversée qu'une fois — c'est une phrase qu'on lit, pas une consigne ;
+     « défiler » l'est en boucle, parce que c'est une consigne qui doit rester
+     repérable tant qu'on ne l'a pas suivie. */
+  --t-classic-sweep: 1800ms;
   --t-classic-cue-loop: 1800ms;
   --ease-classic-reveal: cubic-bezier(0.2, 0.7, 0.2, 1);
   /* L'accélération du glissement prénom/nom : forte au départ, forte à
@@ -592,13 +592,14 @@
   }
 }
 
-/* --- La consigne, portée sur l'accueil (#131) -------------------------------------- */
-/* Reprise de `.bubble__cue` : la pièce marque de la même façon partout ce qui
-   demande quelque chose au visiteur. La RECETTE est recopiée — six lignes de
-   dégradé — mais le MOUVEMENT ne l'est pas : les keyframes `cue-laser` vivent
-   dans `tokens.css` et sont les mêmes, parce que c'est le mouvement qui a été
-   mesuré et arbitré, pas le dégradé. `tests/classic.test.ts` vérifie que les
-   deux dégradés n'ont pas divergé.
+/* --- Le balayage, deux emplois qui ne disent pas la même chose (#131) ------------- */
+/* LA CONSIGNE — « défiler ». Reprise exacte de `.bubble__cue` : la pièce marque
+   partout de la même façon ce qui demande quelque chose au visiteur. La RECETTE
+   est recopiée — six lignes de dégradé — mais le MOUVEMENT ne l'est pas : les
+   keyframes `cue-laser` et `cue-bloom` vivent dans `tokens.css` et sont les
+   mêmes, parce que c'est le mouvement qui a été mesuré et arbitré, pas le
+   dégradé. `tests/classic.test.ts` vérifie que les deux dégradés n'ont pas
+   divergé.
 
    Le laser est un dégradé DÉCOUPÉ sur le texte et déplacé, jamais un calque
    posé par-dessus : un calque demanderait la géométrie exacte des mots, qui
@@ -608,9 +609,9 @@
   background-image: linear-gradient(
     90deg,
     var(--glow) 0%,
-    var(--glow) 34%,
+    var(--glow) 43%,
     #fff 50%,
-    var(--glow) 66%,
+    var(--glow) 57%,
     var(--glow) 100%
   );
   background-size: 220% 100%;
@@ -618,17 +619,46 @@
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
+  animation:
+    cue-laser var(--t-classic-cue-loop) linear var(--cue-delay, 0ms) infinite,
+    cue-bloom var(--t-classic-cue-loop) linear var(--cue-delay, 0ms) infinite;
 }
 
-/* UN passage, lent, et il ne revient pas. La traversée occupe toute la durée —
-   ce ne sont donc PAS les keyframes de la bulle, qui traversent en 22 % puis
-   attendent : cette attente n'a de sens qu'en boucle. `both` retient la
-   position finale, où le texte est entièrement dans l'accent. */
-.classic-cue--pass {
-  animation: classic-cue-pass var(--t-classic-cue-pass) linear var(--cue-delay, 0ms) 1 both;
+/* LE REFLET — l'accroche. **Ce n'est PAS une consigne**, et c'est toute la
+   différence : la phrase raconte, elle ne demande rien. Elle garde donc sa
+   couleur, celle de la voix, et le laser ne fait que la TRAVERSER. Le premier
+   jet la peignait en cyan à demeure, ce qui lui faisait dire, dans le
+   vocabulaire de #131, « ceci vous demande quelque chose » — un contresens sur
+   la seule phrase d'auteur de la page.
+
+   Ici le cyan est donc le CŒUR du dégradé et la crème ses extrémités : l'exact
+   inverse de la consigne. Comme le cyan est moins lumineux que la crème, la
+   bande seule se lirait comme un creux plutôt que comme un faisceau — c'est la
+   lueur qui la rétablit en source de lumière. */
+.classic-sweep {
+  background-image: linear-gradient(
+    90deg,
+    #f2e9da 0%,
+    #f2e9da 43%,
+    var(--glow-deep) 50%,
+    #f2e9da 57%,
+    #f2e9da 100%
+  );
+  background-size: 220% 100%;
+  background-position: 130% 0;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  /* UN passage, et la traversée occupe toute la durée : les keyframes de la
+     consigne traversent en 22 % puis attendent, et cette attente n'a de sens
+     qu'en boucle. `both` retient la position finale, hors du texte, où la
+     phrase a repris sa couleur. */
+  animation:
+    classic-sweep-pass var(--t-classic-sweep) linear var(--cue-delay, 0ms) 1 both,
+    classic-sweep-bloom var(--t-classic-sweep) linear var(--cue-delay, 0ms) 1 both;
 }
 
-@keyframes classic-cue-pass {
+@keyframes classic-sweep-pass {
   from {
     background-position: 130% 0;
   }
@@ -637,11 +667,16 @@
   }
 }
 
-/* En boucle, avec la forme exacte de la bulle — traverser vite, puis attendre —
-   simplement sur un cycle plus court. C'est un reflet qui repasse, pas une
-   pulsation : à cadence régulière, la consigne clignoterait. */
-.classic-cue--loop {
-  animation: cue-laser var(--t-classic-cue-loop) linear var(--cue-delay, 0ms) infinite;
+/* La lueur suit le faisceau : elle monte, culmine au milieu de la traversée et
+   s'éteint avec lui. */
+@keyframes classic-sweep-bloom {
+  0%,
+  100% {
+    filter: none;
+  }
+  50% {
+    filter: drop-shadow(0 0 8px rgba(var(--glow-deep-rgb), 0.85));
+  }
 }
 
 /* --- Les sections ------------------------------------------------------------------ */
@@ -1097,6 +1132,16 @@
     animation: none;
     background-image: none;
     -webkit-text-fill-color: var(--glow);
+    filter: none;
+  }
+
+  /* L'accroche, elle, n'a RIEN à garder : sa couleur est déjà la bonne et le
+     balayage n'était que du mouvement. On la rend au texte simple. */
+  .classic-sweep {
+    animation: none;
+    background-image: none;
+    -webkit-text-fill-color: inherit;
+    filter: none;
   }
 }
 

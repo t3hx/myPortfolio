@@ -161,12 +161,12 @@ export function Hero({ locale }: { locale: Locale }) {
           </span>
         </h1>
 
-        {/* L'accroche porte le balayage des bulles (#131), UNE fois et lentement.
-            Le retard le fait partir quand le fondu d'allumage est fini — sinon
-            le laser traverse un texte encore transparent, et le seul passage
-            qu'il y avait est perdu. */}
+        {/* L'accroche garde sa couleur — elle raconte, elle ne demande rien —
+            et un laser cyan la traverse une fois. Le retard le fait partir
+            quand le fondu d'allumage est fini : sinon le faisceau traverse un
+            texte encore transparent, et l'unique passage est perdu. */}
         <p className="classic-hero__tagline classic-ignite" style={ignite(1400, 2000)}>
-          <span className="classic-cue classic-cue--pass" style={cueDelay(3400)}>
+          <span className="classic-sweep" style={cueDelay(3400)}>
             {t(UI.classic.tagline, locale)}
           </span>
         </p>
@@ -198,7 +198,7 @@ export function Hero({ locale }: { locale: Locale }) {
         {/* « Défiler » est une CONSIGNE — le seul mot de la page qui demande
             quelque chose — donc il porte l'accent en permanence et le balayage
             repasse, tant qu'on ne l'a pas suivi. */}
-        <span className="classic-cue classic-cue--loop" style={cueDelay(4600)}>
+        <span className="classic-cue" style={cueDelay(4600)}>
           {t(UI.classic.scroll, locale)}
         </span>
         <i />
