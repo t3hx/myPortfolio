@@ -1,15 +1,9 @@
 import { Html } from '@react-three/drei'
-import {
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-  type CSSProperties,
-  type ReactNode,
-  type RefObject,
-} from 'react'
+import { useCallback, useEffect, useRef, useState, type CSSProperties, type RefObject } from 'react'
 import { Vector3, type Camera, type Object3D } from 'three'
 import { clampToSafeArea } from '@/lib/bubbleAnchors'
+import { useElapsed } from '@/lib/clock'
+import { typeDuration, typedLength } from '@/lib/typewriter'
 
 /**
  * Bulle narrative ancrée par projection écran (issue #47).
@@ -64,8 +58,12 @@ export interface BubbleProps {
   tilt?: number
   /** Classes supplémentaires ajoutées à `.bubble`. */
   className?: string
-  /** La phrase — une seule, voix Newsreader italique. */
-  children: ReactNode
+  /**
+   * La phrase à écrire. **Une chaîne, pas un `ReactNode`** depuis #121 : la
+   * machine à écrire a besoin des caractères, et un nœud React ne se coupe pas
+   * en deux à la lettre près.
+   */
+  children: string
 }
 
 export function Bubble({
@@ -92,6 +90,16 @@ export function Bubble({
     return () => window.clearTimeout(timer)
   }, [visible])
 
+  /**
+   * La frappe (#121). Elle part quand la bulle devient visible et s'arrête
+   * seule ; `useElapsed` rend `null` avant, après, et sous
+   * `prefers-reduced-motion` — cas dans lequel `typedLength` rend la phrase
+   * entière. La frappe est auto-déclenchée, donc c'est bien une COUPURE qui
+   * lui convient, pas un raccourcissement : le critère du design system est
+   * l'autonomie de l'animation, pas sa durée.
+   */
+  const elapsed = useElapsed(visible, typeDuration(children), children)
+  const shown = typedLength(children, elapsed)
   // La taille rendue de la bulle, relevée aux seuls changements de taille : la
   // lire à chaque frame forcerait un calcul de mise en page par frame.
   //
@@ -175,15 +183,41 @@ export function Bubble({
               <span className="bubble__dot" />
               <span className="bubble__label">{kicker}</span>
             </header>
-            <p className="bubble__text">{children}</p>
+            <p className="bubble__text">
+              <Typed text={children} shown={shown} />
+            </p>
           </>
         ) : (
           <div className="bubble__inline">
             <span className="bubble__dot" />
-            <p className="bubble__text">{children}</p>
+            <p className="bubble__text">
+              <Typed text={children} shown={shown} />
+            </p>
           </div>
         )}
       </article>
     </Html>
+  )
+}
+
+/**
+ * Le texte en train de s'écrire, et le reste **rendu mais invisible**.
+ *
+ * C'est ce qui réserve la hauteur de la phrase entière dès le premier
+ * caractère. Sans cela, la bulle pousse ligne à ligne : elle est centrée sur
+ * son ancre, donc elle grandirait des deux côtés et l'objet désigné semblerait
+ * bouger pendant qu'on lit. `visibility: hidden` occupe la place sans peindre
+ * — `display: none` ne l'occuperait pas, et `opacity: 0` laisserait le texte
+ * sélectionnable et lisible par un lecteur d'écran.
+ */
+function Typed({ text, shown }: { text: string; shown: number }) {
+  if (shown >= text.length) return <>{text}</>
+  return (
+    <>
+      {text.slice(0, shown)}
+      <span aria-hidden="true" style={{ visibility: 'hidden' }}>
+        {text.slice(shown)}
+      </span>
+    </>
   )
 }
