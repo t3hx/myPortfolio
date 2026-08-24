@@ -1,7 +1,10 @@
 import { useEffect, useState } from 'react'
 import { UI } from '@/content/ui'
 import { t } from '@/lib/locale'
+import { useElapsed } from '@/lib/clock'
+import { typeDuration, typedLength } from '@/lib/typewriter'
 import { useInteraction } from '@/state/interaction'
+import { Typed } from '@/ui/Typed'
 import { useLocale } from '@/state/locale'
 
 /**
@@ -35,6 +38,15 @@ export function TelescopeScope() {
   const visible = useInteraction((s) => s.telescopeSettled)
   const locale = useLocale((s) => s.locale)
   const moonRevealed = useInteraction((st) => st.moonRevealed)
+
+  // La lune écrit sa phrase, comme les arrêts écrivent les leurs. Elle n'est
+  // PAS paginée pour autant : la visée ne reçoit ni molette ni clic — `Échap`
+  // en est la seule issue — donc rien n'y ferait tourner une page, et rien n'y
+  // achèverait une frappe non plus. Une phrase, qui s'écrit à l'arrivée de la
+  // lune et reste tant qu'on regarde.
+  const phrase = t(UI.telescope.moon, locale)
+  const elapsed = useElapsed(moonRevealed, typeDuration(phrase), phrase)
+  const shown = typedLength(phrase, elapsed)
 
   // Démontage différé, comme la bulle, la fiche et le CV : `visible` à false
   // lance le fondu, le démontage suit. Démonter tout de suite emporterait la
@@ -78,7 +90,9 @@ export function TelescopeScope() {
             <span className="bubble__dot" />
             <span className="bubble__label">{t(UI.telescope.subject, locale)}</span>
           </header>
-          <p className="bubble__text">{t(UI.telescope.moon, locale)}</p>
+          <p className="bubble__text">
+            <Typed text={phrase} shown={shown} />
+          </p>
         </article>
       )}
 

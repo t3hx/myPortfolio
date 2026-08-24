@@ -5,6 +5,7 @@ import { clampToSafeArea } from '@/lib/bubbleAnchors'
 import { useElapsed } from '@/lib/clock'
 import { typeDuration, typedLength } from '@/lib/typewriter'
 import { useInteraction } from '@/state/interaction'
+import { Typed } from '@/ui/Typed'
 
 /**
  * Bulle narrative ancrée par projection écran (issue #47).
@@ -243,27 +244,5 @@ export function Bubble({
         )}
       </article>
     </Html>
-  )
-}
-
-/**
- * Le texte en train de s'écrire, et le reste **rendu mais invisible**.
- *
- * C'est ce qui réserve la hauteur de la phrase entière dès le premier
- * caractère. Sans cela, la bulle pousse ligne à ligne : elle est centrée sur
- * son ancre, donc elle grandirait des deux côtés et l'objet désigné semblerait
- * bouger pendant qu'on lit. `visibility: hidden` occupe la place sans peindre
- * — `display: none` ne l'occuperait pas, et `opacity: 0` laisserait le texte
- * sélectionnable et lisible par un lecteur d'écran.
- */
-function Typed({ text, shown }: { text: string; shown: number }) {
-  if (shown >= text.length) return <>{text}</>
-  return (
-    <>
-      {text.slice(0, shown)}
-      <span aria-hidden="true" style={{ visibility: 'hidden' }}>
-        {text.slice(shown)}
-      </span>
-    </>
   )
 }
