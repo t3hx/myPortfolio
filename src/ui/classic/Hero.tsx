@@ -16,7 +16,7 @@ import { t, tm, type Locale } from '@/lib/locale'
 import { useDecryptClock } from '@/lib/decrypt'
 import { DECRYPT_CHARSET_CODE, Scrambled } from '@/ui/Scrambled'
 import { WireCube } from '@/ui/classic/WireCube'
-import { cueDelay, ignite } from '@/ui/classic/useReveal'
+import { beamDelay, cueDelay, ignite } from '@/ui/classic/useReveal'
 
 /**
  * L'accueil : le nom qui se déchiffre, le cube qui tourne, la pièce qui
@@ -166,7 +166,7 @@ export function Hero({ locale }: { locale: Locale }) {
             quand le fondu d'allumage est fini : sinon le faisceau traverse un
             texte encore transparent, et l'unique passage est perdu. */}
         <p className="classic-hero__tagline classic-ignite" style={ignite(1400, 2000)}>
-          <span className="classic-sweep" style={cueDelay(3400)}>
+          <span className="beam" style={beamDelay(3400)}>
             {t(UI.classic.tagline, locale)}
           </span>
         </p>

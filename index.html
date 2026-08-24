@@ -3,7 +3,18 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Portfolio — la visite d'une pièce</title>
+    <title>Portfolio — Thibault Dubois</title>
+    <!--
+      Le triangle du logo, servi tel quel (#29). Il vaut pour les DEUX
+      expériences : c'est le même portfolio, et un onglet ne sait pas laquelle
+      on visite. Il est déclaré ici et pas monté par React parce qu'un onglet
+      s'affiche avant la première ligne de JavaScript.
+
+      `type` est explicite : sans lui, certains navigateurs demandent d'abord un
+      `/favicon.ico` qui n'existe pas, et se rabattent sur le SVG après un 404
+      dans la console.
+    -->
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <!-- Typo du design system « Lueur » (src/styles/tokens.css) : Space Grotesk
          (UI) + Newsreader italique (la voix). Mêmes graisses que les maquettes.
 

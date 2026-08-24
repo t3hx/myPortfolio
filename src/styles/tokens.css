@@ -56,6 +56,7 @@
   --t-cascade: 420ms;     /* déchiffrement d'un titre — voir CASCADE_MS */
   /* Le balayage d'une consigne : il traverse vite, puis attend. */
   --t-cue-laser: 3200ms;
+  --t-beam: 1800ms;      /* le faisceau qui TRAVERSE une phrase, une fois */
   --t-ping: 1500ms;       /* le tapotement de la main qui désigne un objet */
   --t-scope-in: 620ms;    /* ouverture de la visée du télescope */
   --t-scope-out: 260ms;   /* fermeture — voir SCOPE_OUT_MS */
@@ -350,6 +351,70 @@
     animation: none;
     background-image: none;
     -webkit-text-fill-color: var(--glow);
+    filter: none;
+  }
+}
+
+/* LE FAISCEAU (#29). Le pendant de la consigne, et son exact contraire.
+
+   Une consigne PORTE l'accent : la couleur est de l'information, elle dit
+   « ceci vous demande quelque chose ». Un faisceau ne fait que TRAVERSER un
+   texte qui, lui, garde sa couleur — il souligne sans requalifier. C'est ce qui
+   permet de le poser sur une phrase d'auteur ou sur une ligne technique sans
+   leur faire dire qu'elles réclament un geste.
+
+   Le dégradé est donc l'inverse de celui d'une consigne : la couleur du texte
+   aux extrémités, l'accent au cœur. Elle est lue en `currentColor` plutôt
+   qu'écrite : le faisceau sert des textes de couleurs différentes — la crème
+   pleine de l'accroche, la crème à 50 % d'une méta — et une valeur en dur
+   repeindrait le texte au lieu de le traverser.
+
+   Il ne PASSE QU'UNE FOIS. Rejouer se fait en retirant puis remettant la
+   classe, ce que React fait tout seul quand la carte survolée change ; une
+   boucle en ferait une consigne, ce qu'il n'est pas. */
+.beam {
+  background-image: linear-gradient(
+    90deg,
+    currentColor 0%,
+    currentColor 43%,
+    var(--glow-deep) 50%,
+    currentColor 57%,
+    currentColor 100%
+  );
+  background-size: 220% 100%;
+  background-position: 130% 0;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation:
+    beam-pass var(--t-beam) linear var(--beam-delay, 0ms) 1 both,
+    beam-bloom var(--t-beam) linear var(--beam-delay, 0ms) 1 both;
+}
+
+/* La traversée occupe TOUTE la durée : les keyframes d'une consigne traversent
+   en 22 % puis attendent, et cette attente n'a de sens qu'en boucle. `both`
+   retient la position finale, hors du texte, où la phrase a repris sa couleur. */
+@keyframes beam-pass {
+  from { background-position: 130% 0; }
+  to   { background-position: -30% 0; }
+}
+
+/* La lueur suit le faisceau : elle monte, culmine au milieu de la traversée et
+   s'éteint avec lui. Cyan, ici, parce que c'est le faisceau qui est cyan — à
+   l'inverse de la consigne, dont la lueur est blanche pour trancher sur un mot
+   déjà cyan. */
+@keyframes beam-bloom {
+  0%, 100% { filter: none; }
+  50%      { filter: drop-shadow(0 0 8px rgba(var(--glow-deep-rgb), .85)); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* Rien à garder : la couleur du texte est déjà la bonne, le faisceau n'était
+     que du mouvement. On rend la phrase au texte simple. */
+  .beam {
+    animation: none;
+    background-image: none;
+    -webkit-text-fill-color: inherit;
     filter: none;
   }
 }

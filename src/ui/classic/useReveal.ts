@@ -92,14 +92,19 @@ export function ignite(durationMs: number, delayMs: number): CSSProperties {
   } as CSSProperties
 }
 
-/**
- * Le retard d'un balayage de consigne.
- *
- * Il compte plus qu'il n'en a l'air sur l'accroche : elle ne reçoit qu'UN
- * passage, et un laser qui traverse pendant que le fondu d'allumage court
- * encore traverse un texte transparent. Le seul passage qu'il y avait est
- * alors perdu, et rien ne le rejoue.
- */
+/** Le retard du balayage d'une consigne. En boucle : le retard ne fait que
+ *  caler la première traversée sur la fin du fondu d'allumage. */
 export function cueDelay(ms: number): CSSProperties {
   return { '--cue-delay': `${ms}ms` } as CSSProperties
+}
+
+/**
+ * Le retard d'un faisceau (`.beam`).
+ *
+ * Il compte bien plus que celui d'une consigne : un faisceau ne passe QU'UNE
+ * fois. S'il traverse pendant que le fondu d'allumage court encore, il traverse
+ * un texte transparent — l'unique passage est perdu, et rien ne le rejoue.
+ */
+export function beamDelay(ms: number): CSSProperties {
+  return { '--beam-delay': `${ms}ms` } as CSSProperties
 }

@@ -329,6 +329,10 @@ Issue #33. The toggle in the menu bar is live; **every visitor-facing string goe
 
 ### The preselection gate (`src/App.tsx` + `src/lib/experienceChoice.ts`)
 
+**Exactly one card is featured at a time, and it is state, not CSS** (2026-08-25). The halo used to be carried by `:hover` **and** `:focus-visible`; `autoFocus` puts focus on the 3D card at load, so hovering the second lit both — a screen that asks a question while showing two answers ticked. Two independent pseudo-classes cannot exclude each other; one variable can. The 3D card stays the default recommendation and hover **steals** the halo from it; leaving both returns it to 3D rather than going dark, because this screen recommends rather than merely offering. The featured card's technical line also runs the design system's `.beam` — replayed by React adding and removing the class, with a `key` forcing the remount so the browser sees a new animation.
+
+Its two card descriptions and its footnote **were hardcoded French in the JSX** until #29 — they never switched to English after #33 and nothing could say so. A string left in a component does not look missing; it just stays French while everything else changes.
+
 `App.tsx` is a DOM-only router (issue #24): preselection screen → lazy-loaded `App3D` (the Canvas) or the classic placeholder. The lazy import is **load-bearing** — a static import path from the entry chunk would ship all of three/R3F/drei to every visitor, including the ones who pick classic. It used to be even more load-bearing: `RoomModel` fired `useGLTF.preload` at module scope, so importing it _at all_ started the 3 MB download. That preload is gone (#25) — `useLoader.preload` takes no `onProgress`, and being the call that actually started the fetch, it left the preloader's bar with no data to show. The load now starts on `RoomModel`'s first render, a few ms later. A stored `classic` choice (localStorage, `portfolio.experience`) is honoured without ever probing WebGL; a missing WebGL context auto-falls back to classic. Every dev URL param below bypasses the gate straight to 3D so the render-comparison loop stays deterministic. The screen recreates `design/screens/0a-preselection.html`; `src/styles/tokens.css` is imported directly by `main.tsx` (single source of truth, no copy).
 
 ### The classic 2D site (`src/ui/ClassicApp.tsx` + `src/ui/classic/` + `src/styles/classic.css`)
@@ -357,6 +361,8 @@ The mobile breakpoint (720 px) is implemented as specced even though the mobile 
 - `?debug` — the diagnostic HUD (phase banner, stop rail, panel/telescope buttons); `?debug-fly` — fly mode, not yet ported to R3F
 - `?capture` — `preserveDrawingBuffer` for the render-comparison loop; nothing else (#45)
 - `?choose` — clears the stored 3D/classic choice and reopens the preselection screen
+
+**The favicon is the logo's triangle** (`public/favicon.svg`), shared by both experiences — a tab does not know which one you are visiting, and it paints before the first line of JavaScript, so it is a file served as-is rather than a React component. Its colours are hardcoded because `tokens.css` never reaches a file the browser loads _outside_ the page. **It is XML: no double hyphen inside a comment.** Naming the accent token by its CSS spelling was enough to make the file unparseable, and a browser then shows an XML error _page_ in the tab rather than a broken icon — which nobody would catch, since nobody looks at their own favicon. `tests/classic.test.ts` guards it.
 
 ## Conventions
 

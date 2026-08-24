@@ -243,28 +243,57 @@ describe('le balayage de consigne', () => {
     expect(css).toMatch(/\.classic-cue \{[\s\S]{0,700}animation:[\s\S]{0,120}cue-laser/)
   })
 
-  it('traverse l’accroche une seule fois, et sur toute la durée', () => {
-    // Les keyframes de la consigne traversent en 22 % puis attendent : cette
-    // attente n'a de sens qu'en boucle. Un seul passage doit occuper sa durée.
-    expect(css).toMatch(/\.classic-sweep \{[\s\S]{0,700}animation:[\s\S]{0,120}classic-sweep-pass/)
-    expect(css).toMatch(/@keyframes classic-sweep-pass[\s\S]{0,160}from[\s\S]{0,60}130%/)
-    expect(css).toMatch(/\.classic-sweep \{[\s\S]{0,700}1 both/)
+  it('traverse une seule fois, et sur toute la durée', () => {
+    // Les keyframes d'une consigne traversent en 22 % puis attendent : cette
+    // attente n'a de sens qu'en boucle. Un faisceau doit occuper sa durée.
+    expect(tokens).toMatch(/\.beam \{[\s\S]{0,700}animation:[\s\S]{0,120}beam-pass/)
+    expect(tokens).toMatch(/@keyframes beam-pass[\s\S]{0,160}from[\s\S]{0,80}130%/)
+    expect(tokens).toMatch(/\.beam \{[\s\S]{0,700}1 both/)
   })
 
-  it('ne peint PAS l’accroche dans l’accent', () => {
-    // Elle raconte, elle ne demande rien. Peinte en cyan, elle dirait — dans le
-    // vocabulaire de #131 — « ceci vous demande quelque chose », sur la seule
-    // phrase d'auteur de la page. Son dégradé est donc l'INVERSE de celui d'une
-    // consigne : la crème aux extrémités, le cyan au cœur.
+  it('ne peint PAS ce qu’il traverse dans l’accent', () => {
+    // Une phrase qui raconte ne demande rien. Peinte en cyan, elle dirait —
+    // dans le vocabulaire de #131 — « ceci vous demande quelque chose ». Le
+    // dégradé d'un faisceau est donc l'INVERSE de celui d'une consigne : la
+    // couleur du texte aux extrémités, l'accent au cœur.
+    const beam = tokens.slice(tokens.indexOf('.beam {'))
+    const stops = beam.match(/linear-gradient\(([\s\S]*?)\);/)![1]
+    expect(stops).toMatch(/currentColor 0%/)
+    expect(stops).toMatch(/var\(--glow-deep\) 50%/)
+    // `currentColor` et non une valeur en dur : le faisceau sert des textes de
+    // couleurs différentes — la crème pleine de l'accroche, la crème à 50 %
+    // d'une méta de pré-sélection — et une couleur écrite les repeindrait.
+    expect(stops).not.toMatch(/#[0-9a-f]{6}/i)
+
     const hero = readFileSync('src/ui/classic/Hero.tsx', 'utf8')
     const tagline = hero.slice(hero.indexOf('classic-hero__tagline'))
-    expect(tagline).toContain('classic-sweep')
+    expect(tagline).toContain('className="beam"')
     expect(tagline.slice(0, 400)).not.toContain('classic-cue')
+  })
 
-    const sweep = css.slice(css.indexOf('.classic-sweep {'))
-    const stops = sweep.match(/linear-gradient\(([\s\S]*?)\);/)![1]
-    expect(stops).toMatch(/#f2e9da 0%/)
-    expect(stops).toMatch(/var\(--glow-deep\) 50%/)
+  it('rejoue à chaque changement de vedette sur la pré-sélection', () => {
+    // Un faisceau ne passe qu'une fois : laissé en place, il ne traverserait
+    // qu'au tout premier rendu et plus jamais. C'est le retrait puis la remise
+    // de la classe qui le relance, et la clé qui force le remontage — sans
+    // elle React réutilise le nœud et le navigateur ne voit pas de nouvelle
+    // animation quand la classe revient dans la même image.
+    const presel = readFileSync('src/ui/Preselection.tsx', 'utf8')
+    expect(presel).toMatch(/key=\{featured \? 'lit' : 'dim'\}/)
+    expect(presel).toMatch(/featured \? 'presel-card__meta beam' : 'presel-card__meta'/)
+  })
+
+  it('n’allume qu’une seule carte de pré-sélection à la fois', () => {
+    // Le halo était porté par `:hover` ET par `:focus-visible` : `autoFocus`
+    // posant le focus sur la carte 3D dès le chargement, survoler la seconde en
+    // allumait deux — un écran qui pose une question en montrant deux réponses
+    // cochées. Deux pseudo-classes ne peuvent pas s'exclure ; une variable, si.
+    const presel = readFileSync('src/ui/Preselection.tsx', 'utf8')
+    const shell = readFileSync('src/styles/styles.css', 'utf8')
+    expect(shell).toContain('.presel-card--lit')
+    expect(shell).not.toMatch(/\.presel-card:hover/)
+    expect(presel).toContain("useState<ExperienceChoice>('3d')")
+    // Sortir des deux rend la vedette à la 3D : cet écran recommande.
+    expect(presel).toMatch(/onPointerLeave=\{\(\) => setFeatured\('3d'\)\}/)
   })
 
   it('éclaire la consigne autant qu’il la traverse', () => {
@@ -298,8 +327,11 @@ describe('le balayage de consigne', () => {
     // réduit ». La première est la définition, qui contient au contraire le filtre.
     const bubbleReduced = tokens.slice(tokens.lastIndexOf('.bubble__cue {'))
     expect(bubbleReduced.slice(0, 220)).toContain('filter: none')
-    // L'accroche, elle, n'a rien à garder : sa couleur est déjà la bonne.
-    expect(reduced).toMatch(/\.classic-sweep \{[\s\S]{0,200}text-fill-color: inherit/)
+    // Le faisceau, lui, n'a rien à garder : la couleur du texte est déjà la
+    // bonne, il n'était que du mouvement. On rend la phrase au texte simple.
+    const beamReduced = tokens.slice(tokens.lastIndexOf('.beam {'))
+    expect(beamReduced.slice(0, 260)).toContain('text-fill-color: inherit')
+    expect(beamReduced.slice(0, 260)).toContain('animation: none')
   })
 })
 
@@ -324,6 +356,40 @@ describe('la bascule de langue', () => {
       page.indexOf('export function ClassicApp'),
     )
     expect(toggle).not.toContain('disabled')
+  })
+})
+
+describe('la favicon', () => {
+  const svg = readFileSync('public/favicon.svg', 'utf8')
+  const html = readFileSync('index.html', 'utf8')
+
+  it('est servie aux deux expériences', () => {
+    // Un onglet ne sait pas laquelle on visite, et il s'affiche avant la
+    // première ligne de JavaScript : le SVG est donc un fichier servi tel quel,
+    // déclaré dans le document, jamais monté par React.
+    expect(html).toContain('rel="icon"')
+    expect(html).toContain('/favicon.svg')
+    // `type` explicite : sans lui, certains navigateurs réclament d'abord un
+    // `/favicon.ico` inexistant et laissent un 404 dans la console.
+    expect(html).toContain('type="image/svg+xml"')
+  })
+
+  it("porte le triangle du logo, avec ses coordonnées à l'échelle", () => {
+    // `src/ui/Logo.tsx` trace `M2 2.5 H14 L8 13.5 Z` dans une boîte de 16 ;
+    // celle-ci en fait 32. C'est la seule copie de la forme dans le produit.
+    expect(svg).toContain('M6 7 H26 L16 26 Z')
+    expect(svg).toContain('viewBox="0 0 32 32"')
+  })
+
+  it('ne contient aucun double tiret dans ses commentaires', () => {
+    // **C'est du XML.** Un double tiret y est interdit à l'intérieur d'un
+    // commentaire : nommer le jeton d'accent par son écriture CSS a suffi à
+    // rendre le fichier illisible, et le navigateur affiche alors une PAGE
+    // d'erreur XML dans l'onglet, pas une icône cassée. Personne ne regarde sa
+    // propre favicon, donc personne ne l'aurait vu.
+    for (const comment of svg.match(/<!--[\s\S]*?-->/g) ?? []) {
+      expect(comment.slice(4, -3)).not.toContain('--')
+    }
   })
 })
 

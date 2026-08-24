@@ -23,23 +23,51 @@ export const UI = {
     copy: { fr: 'On allume les lampes…', en: 'Turning the lamps on…' } as Localized,
   },
   preselection: {
+    /**
+     * L'accroche. Elle nommait « la visite d'une pièce » — ce qui n'a jamais
+     * décrit que la BRANCHE 3D, et le devenait faux à mesure que la version
+     * classique cessait d'être un échafaudage (#29). Elle décrit maintenant
+     * l'écran : deux portes, un seul contenu derrière. Sa promesse compte
+     * autant que sa justesse — c'est elle qui autorise à prendre la version
+     * légère sans craindre de rater quelque chose.
+     */
     eyebrow: {
-      fr: "Portfolio — la visite d'une pièce",
-      en: 'Portfolio — a tour of one room',
+      fr: 'Portfolio — deux entrées, une même histoire',
+      en: 'Portfolio — two ways in, one story',
     } as Localized,
     title: {
       fr: 'Comment souhaitez-vous visiter ?',
       en: 'How would you like to visit?',
     } as Localized,
     three: { fr: 'Expérience 3D', en: '3D experience' } as Localized,
+    /**
+     * Ce que promet chaque carte. **Ces deux phrases vivaient en dur dans le
+     * JSX** — elles n'ont jamais basculé en anglais depuis #33, et rien ne
+     * pouvait le signaler : une chaîne oubliée dans un composant ne se voit pas
+     * manquer, elle reste simplement en français quand tout le reste change.
+     */
+    threeBody: {
+      fr: "Entrez dans la pièce — la caméra vous guide d'objet en objet, au fil de la molette.",
+      en: 'Step into the room — the camera walks you from object to object, one scroll at a time.',
+    } as Localized,
     threeMeta: {
       fr: 'WebGL · ~3 Mo · souris, tactile ou clavier',
       en: 'WebGL · ~3 MB · mouse, touch or keyboard',
     } as Localized,
     classic: { fr: 'Expérience classique', en: 'Classic experience' } as Localized,
+    classicBody: {
+      fr: "La même histoire, en une page légère — idéale en déplacement ou au lecteur d'écran.",
+      en: 'The same story, in one light page — at its best on the move or in a screen reader.',
+    } as Localized,
     classicMeta: {
       fr: 'HTML · instantané · accessible',
       en: 'HTML · instant · accessible',
+    } as Localized,
+    /** Le rappel du bas. Il désamorce la seule crainte que cet écran puisse
+     *  produire : celle de s'engager. */
+    note: {
+      fr: 'votre choix est mémorisé — modifiable à tout moment depuis le menu',
+      en: 'your choice is remembered — changeable at any time from the menu',
     } as Localized,
   },
   /**
