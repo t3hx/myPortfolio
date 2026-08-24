@@ -41,6 +41,39 @@ Un emplacement, pas une forme de BD : panneau de verre, pas de queue.
 - Variantes : `--centered` (home, desk) ; `--tilted` (guitare : `rotate(-11.15deg)`, mesuré au pixel sur le bord de l'ampli, ombre courte `0 12px 26px`).
 - Le texte vit dans le DOM ; la racine overlay est `pointer-events: none`, seuls les îlots réactivent.
 
+### Le rappel vers le sujet (2026-08-24)
+
+Chaque bulle tend une ligne de 44 px vers ce dont elle parle — un dégradé crème qui s'éteint en s'éloignant. **Le côté suit la position de la bulle dans le cadre** : posée à gauche (`center.x < 0,5`), elle tend son rappel vers la droite, et l'inverse. C'est la seule règle : la ligne relie la bulle à son sujet, donc elle part du côté où le sujet se trouve.
+
+Deux arrêts seulement l'avaient — le CV et les posters, maquettés ainsi par la session design. Les autres l'ont reçue par souci de cohérence : le rappel n'était pas une variante de deux bulles, c'était une anatomie que huit avaient perdue en route.
+
+**L'accueil est la seule exception.** Sa bulle est la variante sans titre, centrée en bas, et elle ne désigne aucun objet — elle dit « faites défiler ». Un rappel horizontal y pointerait vers rien.
+
+### L'aura d'arrivée (#128, 2026-08-24)
+
+Une bulle qui apparaît en fondu ne dit pas à l'œil **où regarder**. Une aura se dessine autour d'elle à son arrivée, puis s'éteint : le temps de tracer le contour, le regard est allé s'y poser.
+
+**Deux traits, l'un du centre haut, l'autre du centre bas, dans le sens des aiguilles d'une montre.** Ils se rejoignent sur les deux côtés, et le contour se referme d'un coup. Puis l'aura s'affaisse — elle se retire d'un cheveu vers la bulle en s'éteignant, plutôt que de disparaître en clignotant.
+
+|              |                                                                           |
+| ------------ | ------------------------------------------------------------------------- |
+| Tracé        | **900 ms**, `--t-aura-draw`                                               |
+| Affaissement | 320 ms, `--t-aura-fade`, enchaîné                                         |
+| Trait        | 1,5 px `--glow-deep`, halo externe 18 px et interne 12 px en `--glow-rgb` |
+
+Quatre choses tiennent cette animation, et aucune n'est cosmétique :
+
+- **Un seul dégradé conique sert de masque**, avec deux secteurs opposés qui s'ouvrent ensemble. Il est centré sur la boîte, donc il épouse n'importe quelle taille de bulle **sans qu'on ait à la mesurer**. Le compromis assumé : le balayage est _angulaire_, pas proportionnel au périmètre — sur une bulle large, le trait file vite le long des petits côtés. La version fidèle au périmètre demanderait deux chemins SVG calculés sur des dimensions mesurées, remises dans un état React et suivies ; pour 900 ms, l'angle suffit.
+- **`@property` est obligatoire.** Une propriété personnalisée non déclarée ne s'interpole pas dans des `@keyframes` : elle _saute_ d'une valeur à l'autre. Le viseur du télescope a déjà payé ce piège.
+- **Le tracé est quasi linéaire, et c'est une correction mesurée.** Avec `--ease-out`, le contour atteignait 148° sur 180 au bout de 284 ms — 82 % du dessin dans le premier tiers, puis un rampement invisible : ça se lisait comme un éclair, pas comme un tracé. L'affaissement, lui, garde `--ease-out`.
+- **Les deux secteurs se chevauchent de 3°.** À l'angle exact ils se touchent sans se recouvrir, et l'anticrénelage laisse une couture visible au centre haut et au centre bas — précisément les deux points d'où le tracé est parti.
+
+L'encadré de la lune, dans la visée du télescope, porte **exactement la même anatomie** : aura, rappel, titre, texte qui s'écrit. Les deux balisages étaient recopiés l'un de l'autre, et ça s'est vu comme ça se voit toujours — l'un a reçu l'aura, l'autre non, et la lune s'est retrouvée avec un « traitement particulier » que personne n'avait décidé. Ils partagent désormais un seul composant.
+
+Elle joue **une fois par arrivée** : tourner une page du dialogue ne remonte pas la bulle, donc l'aura ne rejoue pas en cours de lecture — elle désigne l'arrivée, pas la phrase. Et elle est **coupée** sous `prefers-reduced-motion` : auto-déclenchée, elle n'apporte aucune information que la bulle ne porte pas déjà.
+
+Sa durée est plus courte que la frappe de la phrase (1,2 à 2 s) **exprès** : les deux partent au même instant, et si elles duraient pareil elles se disputeraient l'attention. L'aura attire l'œil, puis laisse lire.
+
 ### Placement par arrêt (ancré au sujet, marges safe-area, jamais en px absolus)
 
 | Écran         | Position (repère 1280×720) | Largeur max    | Note                                                   |

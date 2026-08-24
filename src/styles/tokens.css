@@ -36,6 +36,12 @@
 
   /* Motion — budgets */
   --t-bubble-in: 480ms;   /* cubic-bezier(.2,.8,.2,1), reveal bas→haut */
+  /* L'aura (#128) : 900 ms de tracé, arbitré avec l'auteur. C'est nettement
+     moins que la frappe de la phrase (1,2 à 2 s à 20 ms/caractère), et c'est
+     voulu — l'aura attire l'œil, PUIS laisse lire. Les deux partent au même
+     instant ; si elles duraient pareil, elles se disputeraient l'attention. */
+  --t-aura-draw: 900ms;
+  --t-aura-fade: 320ms;
   --t-bubble-out: 200ms;  /* fade simple avant départ caméra (1200 ms) */
   --t-preload-out: 320ms; /* fondu du preloader — couvre la 1re frame du canvas */
   --t-bar: 180ms;         /* opacité .4 → .75 */
@@ -48,7 +54,7 @@
   --t-cv-out: 200ms;      /* même sortie qu'une bulle — voir CV_OUT_MS */
   --t-decrypt: 1600ms;    /* déchiffrement du nom — voir DECRYPT_MS */
   --t-cascade: 420ms;     /* déchiffrement d'un titre — voir CASCADE_MS */
-  --t-ping: 2400ms;       /* cycle de la pastille qui désigne un objet */
+  --t-ping: 1500ms;       /* le tapotement de la main qui désigne un objet */
   --t-scope-in: 620ms;    /* ouverture de la visée du télescope */
   --t-scope-out: 260ms;   /* fermeture — voir SCOPE_OUT_MS */
   --t-sweep: 700ms;       /* balayage d'une cartouche au survol */
@@ -116,6 +122,111 @@
 /* Sans titre (home) : point + phrase sur une ligne */
 .bubble__inline { display: flex; align-items: center; gap: 14px; }
 .bubble__inline .bubble__text { white-space: nowrap; }
+/* L'AURA (#128) — elle se dessine autour de la bulle à son arrivée, puis
+   s'éteint. Une bulle qui apparaît en fondu ne dit pas à l'œil OÙ regarder ; le
+   temps de tracer le contour, le regard est allé s'y poser.
+
+   **Deux traits, l'un du centre haut, l'autre du centre bas, sens horaire.**
+   Ils se rejoignent donc sur les deux côtés, et le contour se referme d'un
+   coup. C'est un seul dégradé conique qui l'exprime : deux secteurs opposés qui
+   s'ouvrent ensemble, et qui servent de MASQUE au trait. Rien à mesurer, rien à
+   recalculer — le masque est centré sur la boîte, donc il épouse n'importe
+   quelle taille de bulle sans qu'on lui dise laquelle.
+
+   Le compromis est là et il est assumé : le balayage est ANGULAIRE, pas
+   proportionnel au périmètre. Sur une bulle large, le trait file vite le long
+   des petits côtés et lentement le long des grands. La version fidèle au
+   périmètre demanderait deux chemins SVG dont le `d` est calculé à partir des
+   dimensions mesurées — donc de mesurer la boîte, de la remettre dans un état
+   React et de la suivre. Pour 900 ms, l'angle suffit.
+
+   `@property` est OBLIGATOIRE : une propriété personnalisée non déclarée ne
+   s'interpole pas dans des `@keyframes`, elle SAUTE d'une valeur à l'autre. Le
+   viseur du télescope a déjà payé ce piège (#106).
+
+   Sous « mouvement réduit », elle n'existe pas : auto-déclenchée, et elle
+   n'apporte aucune information que la bulle ne porte pas déjà. */
+@property --aura-sweep {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: 0deg;
+}
+
+.bubble__aura {
+  position: absolute; inset: -1px; pointer-events: none;
+  border: 2px solid var(--glow-deep);
+  border-radius: inherit;
+  /* Le HALO. Quatre ombres empilées plutôt qu'une, chacune plus large et plus
+     transparente : c'est la façon d'obtenir une retombée DOUCE vers l'alpha,
+     là où une ombre unique donne un cerne net qui s'arrête d'un coup. Une
+     seule et large paraissait posée sur la bulle ; quatre lui donnent une
+     lumière qui se dissipe.
+
+     Pas de `filter: blur()` : le filtre s'applique AVANT le masque, donc le
+     trait flouté serait recoupé net par le secteur qui progresse — le bord
+     d'attaque du tracé redeviendrait dur, ce qu'on cherche justement à éviter. */
+  box-shadow:
+    0 0 4px rgba(var(--glow-rgb), .95),
+    0 0 12px rgba(var(--glow-rgb), .7),
+    0 0 28px rgba(var(--glow-rgb), .48),
+    0 0 56px rgba(var(--glow-rgb), .3),
+    0 0 100px rgba(var(--glow-rgb), .16),
+    /* L'ombre INTERNE est ce qui mordait sur le texte : à .3 sur 18 px, elle
+       teintait le verre fumé jusque sous les mots et la bulle paraissait
+       rétrécie de l'intérieur. Un halo se voit DEHORS ; dedans, il n'a qu'à
+       poser un liseré. */
+    inset 0 0 8px rgba(var(--glow-rgb), .12);
+  /* Les deux secteurs opposés. Le second part à 180deg : c'est ce qui fait le
+     départ « centre bas », et les deux tournent dans le même sens. */
+  --aura-mask: conic-gradient(
+    from 0deg,
+    #000 0deg var(--aura-sweep),
+    transparent var(--aura-sweep) 180deg,
+    #000 180deg calc(180deg + var(--aura-sweep)),
+    transparent calc(180deg + var(--aura-sweep))
+  );
+  /* Doublé comme `backdrop-filter` l'est plus haut : Safari n'a pas encore
+     `mask-image` sans préfixe. */
+  mask-image: var(--aura-mask);
+  -webkit-mask-image: var(--aura-mask);
+  /* Le TRACÉ est quasi linéaire, et c'est une correction mesurée : avec la
+     courbe d'assouplissement du design system (`--ease-out`, très chargée en
+     début), le contour atteignait 148° sur 180 au bout de 284 ms — 82 % du
+     dessin dans le premier tiers du temps, puis un rampement invisible. Ça ne
+     se lisait pas comme un tracé mais comme un éclair. Une main qui dessine
+     avance à vitesse à peu près constante ; on garde juste de quoi partir et
+     finir en douceur.
+
+     L'affaissement, lui, garde `--ease-out` : là, il s'agit bien de partir
+     vite et de s'éteindre lentement. */
+  animation:
+    aura-draw var(--t-aura-draw) cubic-bezier(0.35, 0.1, 0.6, 0.95) both,
+    aura-fade var(--t-aura-fade) var(--ease-out) var(--t-aura-draw) both;
+}
+
+/* Le tracé : les deux secteurs s'ouvrent d'un demi-tour chacun, donc le
+   contour est complet quand ils se rejoignent. */
+@keyframes aura-draw {
+  from { --aura-sweep: 0deg; }
+  /* 183 et non 180 : à l'angle exact, les deux secteurs se touchent sans se
+     recouvrir, et l'anticrénelage laisse une couture visible au centre haut et
+     au centre bas — soit précisément les deux points d'où le tracé est parti.
+     Trois degrés de chevauchement les referment, et personne ne peut voir
+     trois degrés de trop sur un contour déjà complet. */
+  to   { --aura-sweep: 183deg; }
+}
+
+/* L'affaissement : le trait s'éteint et se retire d'un cheveu vers la bulle,
+   pour ne pas disparaître en clignotant. */
+@keyframes aura-fade {
+  from { opacity: 1; transform: scale(1); }
+  to   { opacity: 0; transform: scale(.985); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bubble__aura { display: none; }
+}
+
 /* Le chevron « la suite » (#122). Une bulle qui a fini de parler et une bulle
    qui attend qu'on tourne la page sont identiques : rien dans le texte ne dit
    qu'il en reste. Un signe, jamais un mot — le dialogue est la voix du lieu, et
@@ -148,6 +259,15 @@
 .bubble__tick { position: absolute; top: 50%; width: 44px; height: 1px; }
 .bubble__tick--right { left: 100%; background: linear-gradient(270deg, rgba(var(--cream-rgb), .55), rgba(var(--cream-rgb), 0)); }
 .bubble__tick--left  { right: 100%; background: linear-gradient(90deg,  rgba(var(--cream-rgb), .55), rgba(var(--cream-rgb), 0)); }
+/* Variante VERTICALE (2026-08-24) : pour une bulle posée sous son sujet, un
+   rappel horizontal pointerait à côté. Celui-ci part du milieu du bord haut et
+   monte — il désigne ce qui est au-dessus. Le dégradé est opaque contre la
+   bulle et s'éteint en s'éloignant, comme les deux autres. */
+.bubble__tick--top {
+  top: auto; bottom: 100%; left: 50%; transform: translateX(-50%);
+  width: 1px; height: 44px;
+  background: linear-gradient(0deg, rgba(var(--cream-rgb), .55), rgba(var(--cream-rgb), 0));
+}
 
 @keyframes bubble-in {
   from { opacity: 0; transform: translateY(10px); clip-path: inset(0 0 100% 0); }
@@ -705,25 +825,65 @@
    contiennent aucun indice d'interface — tout ce qu'on dessinerait dans la
    scène au repos ferait dériver la mesure de l'arrêt. */
 .ping {
-  position: relative; display: block; width: 10px; height: 10px;
+  position: relative; display: block; width: 44px; height: 44px;
   pointer-events: none;
 }
-.ping__dot {
-  position: absolute; inset: 0; border-radius: 50%;
-  background: var(--glow);
-  box-shadow: 0 0 10px rgba(var(--glow-rgb), .65);
+
+/* LA MAIN (2026-08-24). Elle a remplacé une pastille : le point disait « ici »,
+   la main dit « ici, et clique » — la seule chose que le télescope attend, et
+   que rien d'autre dans la pièce n'enseigne.
+
+   Le halo passe par `drop-shadow` et non par `box-shadow` : une ombre de boîte
+   éclairerait le CARRÉ du svg, dont l'essentiel est transparent, et on verrait
+   un rectangle lumineux avec une main dedans. `drop-shadow` suit la FORME. */
+.ping__hand {
+  position: relative; z-index: 1;
+  display: block; width: 100%; height: 100%;
+  color: var(--glow);
+  filter:
+    drop-shadow(0 0 3px rgba(var(--glow-rgb), 1))
+    drop-shadow(0 0 9px rgba(var(--glow-rgb), .75))
+    drop-shadow(0 0 22px rgba(var(--glow-rgb), .45))
+    drop-shadow(0 0 44px rgba(var(--glow-rgb), .22));
+  animation: ping-tap var(--t-ping) var(--ease-out) infinite;
+  transform-origin: 50% 30%;
 }
-/* L'anneau part du point et s'efface en s'écartant — le geste d'un radar. Il
-   s'éteint AVANT d'avoir fini de grandir : un anneau qui disparaît net à son
-   diamètre maximal se lit comme un cercle qui clignote, pas comme une onde. */
-.ping__ring {
-  position: absolute; inset: 0; border-radius: 50%;
-  border: 1px solid rgba(var(--glow-rgb), .9);
-  animation: ping-out var(--t-ping) var(--ease-out) infinite;
+
+/* Le geste est un APPUI, plus une respiration. Une main qui enfle et se dégonfle
+   sans rien toucher ne dit rien de plus qu'un point lumineux ; une main qui
+   s'enfonce, rebondit, et fait partir une onde du bout du doigt dit « clique ».
+
+   Le cycle a donc un temps mort, et cette fois c'est voulu : un souffle ne doit
+   pas s'arrêter, un tapotement DOIT marquer la pause entre deux coups — c'est
+   elle qui en fait un geste et non un tremblement. */
+@keyframes ping-tap {
+  0%       { transform: scale(1)    translateY(0);   }
+  14%      { transform: scale(.9)   translateY(5px); }
+  30%      { transform: scale(1.12) translateY(-2px); }
+  44%, 100% { transform: scale(1)   translateY(0);   }
 }
-@keyframes ping-out {
-  0%        { transform: scale(1);   opacity: .9; }
-  70%, 100% { transform: scale(3.4); opacity: 0; }
+
+/* L'onde de contact. Elle part du bout du doigt — d'où le décalage vers le bas
+   — au moment précis où la main touche, et s'efface avant d'avoir fini de
+   grandir : un cercle qui disparaît net à son diamètre maximal se lit comme un
+   clignotement, pas comme une onde.
+
+   Elle doit DÉPASSER la main, et c'est la condition pour qu'on la lise comme
+   une onde et non comme un cerne. À 2,6 elle plafonnait à 47 px pour une main
+   de 44 : elle grandissait, mais restait dedans, donc elle ne partait de nulle
+   part. À 4,4 elle atteint 79 px, soit près du double de la main. */
+.ping__tap {
+  position: absolute; left: 50%; top: 62%;
+  width: 18px; height: 18px; margin: -9px 0 0 -9px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(var(--glow-rgb), .95);
+  box-shadow: 0 0 14px rgba(var(--glow-rgb), .5);
+  animation: ping-wave var(--t-ping) var(--ease-out) infinite;
+}
+@keyframes ping-wave {
+  0%, 12%   { transform: scale(.4); opacity: 0; }
+  20%       { opacity: .95; }
+  62%, 100% { transform: scale(4.4); opacity: 0; }
 }
 
 /* ===== Visée du télescope (#106) =====
@@ -882,7 +1042,11 @@
   /* pastille : l'anneau tourne en boucle tout seul, il part. Le POINT reste —
      l'indication n'est pas du mouvement, et la retirer priverait d'affordance
      précisément les personnes qui ont demandé moins d'animation. */
-  .ping__ring { animation: none !important; opacity: 0 !important; }
+  /* La main reste — c'est une affordance, et la couper priverait d'indication
+     les personnes sensibles au mouvement. Ce qui s'arrête, c'est le geste :
+     l'appui, et l'onde qu'il envoie. */
+  .ping__hand { animation: none !important; opacity: 1 !important; }
+  .ping__tap { animation: none !important; opacity: 0 !important; }
   /* visée : l'ouverture répond à un clic, elle est donc conservée — mais
      réduite à un fondu. Le resserrement du cercle, lui, part tout seul une
      fois le clic donné, et c'est du mouvement plein cadre. */

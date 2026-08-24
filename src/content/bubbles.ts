@@ -74,8 +74,21 @@ export interface BubbleContent {
    * et c'est le `maxWidth` qu'on corrige alors, jamais le `center`.
    */
   text: readonly [Localized, ...Localized[]]
-  /** Ligne de rappel de 44 px vers l'objet, du côté indiqué. */
-  tick?: 'left' | 'right'
+  /**
+   * Ligne de rappel de 44 px vers l'objet, du côté indiqué.
+   *
+   * **Le côté suit la position de la bulle dans le cadre** : posée à gauche
+   * (`center.x < 0,5`), elle tend son rappel vers la droite, et l'inverse.
+   * C'est la seule règle — la ligne relie la bulle à ce dont elle parle, donc
+   * elle part du côté où se trouve le sujet.
+   *
+   * Deux arrêts seulement en avaient (le CV et les posters, maquettés ainsi
+   * par la session design) ; les autres l'ont reçue le 2026-08-24, par souci de
+   * cohérence. **L'accueil n'en a pas, et c'est la seule exception** : sa bulle
+   * est la variante sans titre, centrée en bas, et elle ne désigne aucun objet
+   * — elle dit « faites défiler ». Un rappel horizontal y pointerait vers rien.
+   */
+  tick?: 'left' | 'right' | 'top'
   /** Variante `--tilted` : rotation en degrés, mesurée sur la maquette. */
   tilt?: number
 }
@@ -99,7 +112,9 @@ export const BUBBLES: BubbleContent[] = [
   {
     stop: 'Desk',
     objects: ['Desk_Merged'],
-    center: { x: 0.5, y: 0.8304 },
+    // Descendue de 40 px dans le cadre du design (0,8304 → 0,8860 sur 720)
+    // pour dégager le bureau, et son rappel passe au-dessus (2026-08-24).
+    center: { x: 0.5, y: 0.886 },
     maxWidth: 460,
     subject: { fr: 'Le bureau', en: 'The desk' },
     text: [
@@ -123,6 +138,7 @@ export const BUBBLES: BubbleContent[] = [
         en: 'And the mug has been cold for an hour. It rarely stays that way much longer.',
       },
     ],
+    tick: 'top',
   },
   {
     stop: 'CV',
@@ -152,6 +168,7 @@ export const BUBBLES: BubbleContent[] = [
         en: 'The archive: diplomas, contracts, and a few ideas filed away too early.',
       },
     ],
+    tick: 'right',
   },
   {
     stop: 'Bookshelf',
@@ -165,6 +182,7 @@ export const BUBBLES: BubbleContent[] = [
         en: 'Binders of sheet music and method books — all the theory I still promise to finish.',
       },
     ],
+    tick: 'right',
   },
   {
     stop: 'Cat',
@@ -178,6 +196,7 @@ export const BUBBLES: BubbleContent[] = [
         en: 'Pixel, quality control. Nothing leaves this room without his green stare.',
       },
     ],
+    tick: 'right',
   },
   {
     stop: 'Guitar',
@@ -193,6 +212,7 @@ export const BUBBLES: BubbleContent[] = [
     ],
     // Parallèle au bord de l'ampli, mesuré au pixel pendant la session design.
     tilt: -11.15,
+    tick: 'left',
   },
   {
     stop: 'Posters',
@@ -220,6 +240,7 @@ export const BUBBLES: BubbleContent[] = [
         en: 'The telescope is aimed at the window, lean in to see the moon.',
       },
     ],
+    tick: 'left',
   },
   {
     stop: 'Scoreboard',
@@ -233,6 +254,7 @@ export const BUBBLES: BubbleContent[] = [
         en: 'Pins and red thread: every journey starts from home.',
       },
     ],
+    tick: 'right',
   },
 ]
 

@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
+import { reducedMotionBlocks } from './support/css'
 import { TELESCOPE_FOV_PAD, isTelescope } from '@/config/telescope'
 import { SCOPE_OUT_MS } from '@/ui/TelescopeScope'
 
@@ -80,35 +81,6 @@ describe("la composition de l'oculaire", () => {
     expect(component).not.toMatch(/crosshair|scope__cross/)
   })
 })
-
-/**
- * Le contenu des blocs `@media (prefers-reduced-motion)`, et RIEN d'autre.
- *
- * Les deux contrôles ci-dessous lisaient « tout ce qui suit le premier `@media`
- * », c'est-à-dire la fin du fichier — donc aussi des règles qui n'ont rien à
- * voir. Ça tenait tant que ces blocs étaient les derniers ; ajouter une règle
- * de mouvement réduit plus haut dans la feuille a suffi à leur faire lire des
- * sélecteurs qu'ils n'avaient jamais eu l'intention de voir (#122). Un test
- * qui dépend de l'ORDRE des règles finit par accuser la mauvaise.
- */
-function reducedMotionBlocks(css: string): string {
-  const out: string[] = []
-  let from = 0
-  for (;;) {
-    const at = css.indexOf('@media (prefers-reduced-motion', from)
-    if (at === -1) break
-    const open = css.indexOf('{', at)
-    let depth = 0
-    let i = open
-    for (; i < css.length; i++) {
-      if (css[i] === '{') depth++
-      else if (css[i] === '}' && --depth === 0) break
-    }
-    out.push(css.slice(open + 1, i))
-    from = i
-  }
-  return out.join('\n')
-}
 
 describe('le mouvement réduit', () => {
   it("conserve l'ouverture mais lui retire le resserrement", () => {
@@ -239,12 +211,40 @@ describe('la pastille de désignation', () => {
     expect(ping).toContain('hovered')
   })
 
-  it('garde le point sous mouvement réduit, et perd l’anneau', () => {
-    // L'anneau tourne en boucle tout seul : il part. Le point reste —
-    // l'indication n'est pas du mouvement.
+  it('garde la main sous mouvement réduit, et perd sa respiration', () => {
+    // La main respire toute seule : sa pulsation part. La main, elle, reste —
+    // c'est une affordance, pas une décoration, et la couper priverait
+    // d'indication les personnes sensibles au mouvement.
     const reduced = reducedMotionBlocks(tokens)
-    expect(reduced).toContain('.ping__ring')
-    expect(reduced).not.toContain('.ping__dot')
+    expect(reduced).toMatch(/\.ping__hand[^}]*animation:\s*none/)
+    expect(reduced).toMatch(/\.ping__hand[^}]*opacity:\s*1/)
+  })
+
+  it('éclaire la FORME de la main, pas sa boîte', () => {
+    // Une `box-shadow` éclairerait le carré du svg, dont l'essentiel est
+    // transparent : on verrait un rectangle lumineux avec une main dedans.
+    // `drop-shadow` suit le tracé.
+    const hand = tokens.slice(tokens.indexOf('.ping__hand {'))
+    expect(hand.slice(0, hand.indexOf('}'))).toContain('drop-shadow')
+  })
+
+  it('tapote au lieu de respirer', () => {
+    // Une main qui enfle et se dégonfle sans rien toucher ne dit rien de plus
+    // qu'un point lumineux. Le geste doit s'ENFONCER puis rebondir, et faire
+    // partir une onde du bout du doigt : c'est ce qui se lit comme un clic.
+    const kf = tokens.slice(tokens.indexOf('@keyframes ping-tap'))
+    const bloc = kf.slice(0, kf.indexOf('\n}'))
+    expect(bloc, "l'appui descend").toMatch(/translateY\(\d+px\)/)
+    expect(bloc, 'puis rebondit au-dessus').toMatch(/translateY\(-\d+px\)/)
+    expect(tokens, "l'onde part du contact").toContain('@keyframes ping-wave')
+  })
+
+  it('laisse une pause entre deux coups', () => {
+    // Et cette fois le temps mort est VOULU : un souffle ne doit pas s'arrêter,
+    // un tapotement doit marquer la pause entre deux coups — c'est elle qui en
+    // fait un geste et non un tremblement.
+    const kf = tokens.slice(tokens.indexOf('@keyframes ping-tap'))
+    expect(kf.slice(0, kf.indexOf('\n}'))).toMatch(/\d+%,\s*100%/)
   })
 })
 

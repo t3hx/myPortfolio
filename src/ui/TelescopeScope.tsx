@@ -4,7 +4,7 @@ import { t } from '@/lib/locale'
 import { reducedMotion, useTyping } from '@/lib/clock'
 import { typeDuration, typedLength } from '@/lib/typewriter'
 import { useInteraction } from '@/state/interaction'
-import { Typed } from '@/ui/Typed'
+import { BubbleCard } from '@/ui/BubbleCard'
 import { useLocale } from '@/state/locale'
 
 /**
@@ -89,13 +89,11 @@ export function TelescopeScope() {
           sortie, pour fondre et se resserrer avec lui. */}
       {moonRevealed && (
         <article className="bubble scope__bubble">
-          <header className="bubble__kicker">
-            <span className="bubble__dot" />
-            <span className="bubble__label">{t(UI.telescope.subject, locale)}</span>
-          </header>
-          <p className="bubble__text">
-            <Typed text={phrase} shown={shown} />
-          </p>
+          {/* Le MÊME intérieur que les bulles du tour (#128). La lune n'a pas
+              de traitement particulier : elle parle comme le reste de la
+              pièce, aura comprise — et le jour où on voudra la paginer, elle
+              n'aura rien de neuf à apprendre. */}
+          <BubbleCard kicker={t(UI.telescope.subject, locale)} text={phrase} shown={shown} />
         </article>
       )}
 
