@@ -60,6 +60,13 @@ export interface BubbleProps {
   /** Classes supplémentaires ajoutées à `.bubble`. */
   className?: string
   /**
+   * Il reste une page après celle-ci. Affiche le chevron « la suite » — mais
+   * seulement une fois la frappe finie : tant que le texte s'écrit, la suite
+   * n'est pas encore la question, et l'annoncer inviterait à couper la phrase
+   * qu'on est en train de lire.
+   */
+  hasNext?: boolean
+  /**
    * La phrase à écrire. **Une chaîne, pas un `ReactNode`** depuis #121 : la
    * machine à écrire a besoin des caractères, et un nœud React ne se coupe pas
    * en deux à la lettre près.
@@ -76,6 +83,7 @@ export function Bubble({
   tick,
   tilt,
   className,
+  hasNext = false,
   children,
 }: BubbleProps) {
   // Démontage différé : `visible` à false lance le fondu (.bubble--out), le
@@ -198,6 +206,13 @@ export function Bubble({
       {/* Markup des maquettes : kicker (point + étiquette) puis phrase, ou
           variante « sans titre » point + phrase sur une ligne (home). */}
       <article ref={measureBox} className={cls} role="note" style={style}>
+        {/* Le chevron « la suite ». Une bulle qui a fini de parler et une bulle
+            qui attend qu'on tourne la page se ressemblent trait pour trait —
+            rien, dans le texte, ne dit qu'il en reste. C'est la seule chose
+            qu'on ajoute au dialogue, et c'est un signe, pas une phrase. */}
+        {hasNext && shown >= children.length && (
+          <span className="bubble__next" aria-hidden="true" />
+        )}
         {tick && <span className={`bubble__tick bubble__tick--${tick}`} aria-hidden="true" />}
         {kicker ? (
           <>

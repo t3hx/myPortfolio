@@ -142,6 +142,7 @@ export function Experience({ bubbleLayer }: ExperienceProps) {
             maxWidth={bubble.maxWidth}
             tick={bubble.tick}
             tilt={bubble.tilt}
+            hasNext={parkedStop === bubble.stop && dialoguePage + 1 < pages.length}
           >
             {/* Le tiroir vide n'ouvre aucune fiche : son repli passe par la
                 bulle de la commode, pas par un écran (#78).

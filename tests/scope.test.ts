@@ -81,12 +81,41 @@ describe("la composition de l'oculaire", () => {
   })
 })
 
+/**
+ * Le contenu des blocs `@media (prefers-reduced-motion)`, et RIEN d'autre.
+ *
+ * Les deux contrôles ci-dessous lisaient « tout ce qui suit le premier `@media`
+ * », c'est-à-dire la fin du fichier — donc aussi des règles qui n'ont rien à
+ * voir. Ça tenait tant que ces blocs étaient les derniers ; ajouter une règle
+ * de mouvement réduit plus haut dans la feuille a suffi à leur faire lire des
+ * sélecteurs qu'ils n'avaient jamais eu l'intention de voir (#122). Un test
+ * qui dépend de l'ORDRE des règles finit par accuser la mauvaise.
+ */
+function reducedMotionBlocks(css: string): string {
+  const out: string[] = []
+  let from = 0
+  for (;;) {
+    const at = css.indexOf('@media (prefers-reduced-motion', from)
+    if (at === -1) break
+    const open = css.indexOf('{', at)
+    let depth = 0
+    let i = open
+    for (; i < css.length; i++) {
+      if (css[i] === '{') depth++
+      else if (css[i] === '}' && --depth === 0) break
+    }
+    out.push(css.slice(open + 1, i))
+    from = i
+  }
+  return out.join('\n')
+}
+
 describe('le mouvement réduit', () => {
   it("conserve l'ouverture mais lui retire le resserrement", () => {
     // Elle répond à un clic, donc elle est conservée — mais le resserrement du
     // cercle, lui, part tout seul une fois le clic donné, et c'est du mouvement
     // plein cadre.
-    const reduced = tokens.slice(tokens.indexOf('@media (prefers-reduced-motion'))
+    const reduced = reducedMotionBlocks(tokens)
     expect(reduced).toContain('.scope {')
     expect(reduced).not.toMatch(/\.scope\s*\{[^}]*scale/)
   })
@@ -213,7 +242,7 @@ describe('la pastille de désignation', () => {
   it('garde le point sous mouvement réduit, et perd l’anneau', () => {
     // L'anneau tourne en boucle tout seul : il part. Le point reste —
     // l'indication n'est pas du mouvement.
-    const reduced = tokens.slice(tokens.indexOf('@media (prefers-reduced-motion'))
+    const reduced = reducedMotionBlocks(tokens)
     expect(reduced).toContain('.ping__ring')
     expect(reduced).not.toContain('.ping__dot')
   })

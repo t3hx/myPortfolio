@@ -12,16 +12,18 @@
  * Les dix phrases françaises font de 58 à 101 caractères, ce qui donne :
  *
  *     15 ms →  0,87 s … 1,51 s   trop rapide, c'est un fondu, pas une frappe
- *     26 ms →  1,51 s … 2,63 s   retenu
+ *     20 ms →  1,16 s … 2,02 s   retenu (arbitrage à l'écran, 2026-08-24)
+ *     26 ms →  1,51 s … 2,63 s   premier essai, jugé encore un peu lent
  *     40 ms →  2,32 s … 4,04 s   on attend la machine
  *
  * Le repère : la frappe doit rester assez lente pour qu'on la VOIE écrire —
  * sinon autant afficher — et finir avant que le lecteur ait fini de lire, sinon
- * elle le retient. Une seconde et demie à deux secondes et demie est aussi
- * l'ordre de grandeur d'un mouvement de caméra (1,15 à 2,1 s, #115) : l'arrêt
- * finit de parler à peu près quand on finit d'y arriver.
+ * elle le retient. La fourchette retenue tombe juste sous celle d'un mouvement
+ * de caméra (1,15 à 2,1 s, #115) : l'arrêt finit de parler un peu avant qu'on
+ * ait fini d'y arriver, ce qui laisse la phrase se poser plutôt que courir
+ * après la caméra.
  */
-export const TYPE_MS_PER_CHAR = 26
+export const TYPE_MS_PER_CHAR = 20
 
 /** Le temps qu'il faut pour écrire ce texte, en millisecondes. */
 export function typeDuration(text: string): number {

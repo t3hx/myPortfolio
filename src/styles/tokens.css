@@ -116,6 +116,34 @@
 /* Sans titre (home) : point + phrase sur une ligne */
 .bubble__inline { display: flex; align-items: center; gap: 14px; }
 .bubble__inline .bubble__text { white-space: nowrap; }
+/* Le chevron « la suite » (#122). Une bulle qui a fini de parler et une bulle
+   qui attend qu'on tourne la page sont identiques : rien dans le texte ne dit
+   qu'il en reste. Un signe, jamais un mot — le dialogue est la voix du lieu, et
+   une consigne d'interface y détonnerait.
+
+   En bas à DROITE, dans la marge de la boîte : c'est là que finit la lecture,
+   donc là que l'œil arrive quand il a fini. Il respire pour se distinguer d'un
+   point de ponctuation.
+
+   Sous « mouvement réduit », il cesse de respirer mais RESTE : c'est une
+   affordance, pas une décoration. La couper priverait d'information ceux qui
+   demandent moins de mouvement — même arbitrage que le point du télescope,
+   dont le halo s'arrête et dont le point demeure. */
+.bubble__next {
+  position: absolute; right: 14px; bottom: 10px;
+  width: 7px; height: 7px;
+  border-right: 1.5px solid var(--glow); border-bottom: 1.5px solid var(--glow);
+  transform: rotate(45deg);
+  animation: bubble-next 1.6s ease-in-out infinite;
+}
+@keyframes bubble-next {
+  0%, 100% { opacity: .35; transform: rotate(45deg) translate(0, 0); }
+  50%      { opacity: .95; transform: rotate(45deg) translate(1.5px, 1.5px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bubble__next { animation: none; opacity: .8; }
+}
+
 /* Ligne de rappel vers l'objet (optionnelle) */
 .bubble__tick { position: absolute; top: 50%; width: 44px; height: 1px; }
 .bubble__tick--right { left: 100%; background: linear-gradient(270deg, rgba(var(--cream-rgb), .55), rgba(var(--cream-rgb), 0)); }
