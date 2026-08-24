@@ -49,7 +49,13 @@ export function Preloader() {
   // du canvas une fois la visite commencée (les captures `?stop=` en dépendent).
   useEffect(() => {
     if (!ready) return
-    const timer = window.setTimeout(() => setMounted(false), PRELOAD_OUT_MS)
+    const timer = window.setTimeout(() => {
+      setMounted(false)
+      // L'écran est découvert ICI, et pas à `ready` : c'est le moment où le
+      // visiteur voit la pièce, donc le moment où une animation auto-déclenchée
+      // a un sens. Tout ce qui démarre avant s'anime derrière un écran opaque.
+      useInteraction.getState().setRevealed()
+    }, PRELOAD_OUT_MS)
     return () => window.clearTimeout(timer)
   }, [ready])
 

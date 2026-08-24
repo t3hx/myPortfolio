@@ -44,32 +44,41 @@ function reducedMotion(): boolean {
  * celui que React documente pour ajuster un état quand une prop change.
  */
 export function useElapsed(active: boolean, total: number, resetKey?: string): number | null {
-  const [clock, setClock] = useState<{ key: string | undefined; value: number | null }>(() => ({
-    key: resetKey,
-    value: active && !reducedMotion() ? 0 : null,
-  }))
+  const départ = () => (active && !reducedMotion() ? 0 : null)
+  const [clock, setClock] = useState<{
+    key: string | undefined
+    active: boolean
+    value: number | null
+  }>(() => ({ key: resetKey, active, value: départ() }))
 
   // Ajustement pendant le rendu : React relance immédiatement le rendu du même
   // composant, donc rien de périmé n'atteint l'écran.
-  if (clock.key !== resetKey) {
-    setClock({ key: resetKey, value: active && !reducedMotion() ? 0 : null })
+  //
+  // **Les DEUX entrées comptent.** N'ajuster que sur `resetKey` laissait passer
+  // l'autre transition : une horloge qui s'ACTIVE gardait un instant la valeur
+  // qu'elle avait en dormant (`null`, soit « affiche tout »). Mesuré sur la
+  // bulle d'accueil, dont le composant existe avant que l'écran ne se
+  // découvre : une image à 69 caractères sur 69, puis la frappe repartait de
+  // zéro.
+  if (clock.key !== resetKey || clock.active !== active) {
+    setClock({ key: resetKey, active, value: départ() })
   }
 
   useEffect(() => {
     if (!active || reducedMotion()) {
-      setClock({ key: resetKey, value: null })
+      setClock({ key: resetKey, active, value: null })
       return
     }
-    setClock({ key: resetKey, value: 0 })
+    setClock({ key: resetKey, active, value: 0 })
     let frame = 0
     const started = performance.now()
     const tick = (now: number) => {
       const dt = now - started
       if (dt >= total) {
-        setClock({ key: resetKey, value: total })
+        setClock({ key: resetKey, active, value: total })
         return
       }
-      setClock({ key: resetKey, value: dt })
+      setClock({ key: resetKey, active, value: dt })
       frame = requestAnimationFrame(tick)
     }
     frame = requestAnimationFrame(tick)
@@ -80,7 +89,7 @@ export function useElapsed(active: boolean, total: number, resetKey?: string): n
     // les longueurs diffèrent.
   }, [active, total, resetKey])
 
-  // Pendant l'image où la clé vient de changer, on répond zéro plutôt que la
-  // valeur de l'animation précédente.
-  return clock.key === resetKey ? clock.value : 0
+  // Pendant l'image où l'une des deux entrées vient de changer, on répond par
+  // le départ plutôt que par la valeur de l'animation précédente.
+  return clock.key === resetKey && clock.active === active ? clock.value : départ()
 }

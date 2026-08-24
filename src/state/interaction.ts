@@ -37,6 +37,19 @@ interface InteractionState {
   /** True once the .glb is loaded and stop transforms are extracted. */
   ready: boolean
   /**
+   * L'écran est DÉCOUVERT : le préchargeur a fini de s'effacer et le visiteur
+   * voit la pièce.
+   *
+   * Distinct de `ready`, qui dit seulement que la scène est prête — entre les
+   * deux, il s'écoule le fondu du préchargeur, et pendant ce temps React rend
+   * déjà les bulles sans que personne ne les voie. Une frappe démarrée là
+   * s'écrit derrière l'écran de chargement : à l'arrivée par lien profond, la
+   * phrase était déjà à moitié faite quand elle devenait visible (mesuré : 42
+   * caractères sur 69 pour l'accueil), et sur une machine rapide elle serait
+   * entièrement passée.
+   */
+  revealed: boolean
+  /**
    * L'excursion du télescope est ARRIVÉE — la caméra est derrière l'oculaire.
    *
    * Distinct de `phase === 'telescope'`, qui est vrai dès le clic : la visée
@@ -108,6 +121,8 @@ interface InteractionState {
   setPhase: (phase: Phase) => void
   setStopIndex: (index: number) => void
   setReady: () => void
+  /** Appelé par le préchargeur au moment où il se démonte. */
+  setRevealed: () => void
   setCabinet: (state: CabinetState) => void
   selectProject: (slug: string | null) => void
   requestStop: (index: number) => void
@@ -147,6 +162,7 @@ export const useInteraction = create<InteractionState>((set, get) => ({
   phase: 'touring',
   stopIndex: 0,
   ready: false,
+  revealed: false,
   dialoguePage: 0,
   dialoguePages: 1,
   dialogueTyping: false,
@@ -165,6 +181,7 @@ export const useInteraction = create<InteractionState>((set, get) => ({
     if (get().stopIndex !== stopIndex) set({ stopIndex })
   },
   setReady: () => set({ ready: true }),
+  setRevealed: () => set({ revealed: true }),
   setCabinet: (cabinet) => {
     if (get().cabinet !== cabinet) set({ cabinet })
   },

@@ -107,7 +107,11 @@ export function Bubble({
    * lui convient, pas un raccourcissement : le critère du design system est
    * l'autonomie de l'animation, pas sa durée.
    */
-  const elapsed = useElapsed(visible, typeDuration(children), children)
+  // La frappe attend que l'écran soit découvert : démarrée pendant le fondu du
+  // préchargeur, elle s'écrit derrière lui et la phrase est déjà à moitié faite
+  // quand on la voit (#122).
+  const revealed = useInteraction((st) => st.revealed)
+  const elapsed = useElapsed(visible && revealed, typeDuration(children), children)
 
   // Un geste reçu pendant la frappe l'achève (#122, arbitrage A). Le store
   // transmet un COMPTEUR et non un booléen : ce qui passe est un événement
@@ -174,7 +178,12 @@ export function Bubble({
   // conteneur du canvas`) et ne se re-parente jamais si le ref se remplit
   // après. Aujourd'hui le Suspense du glb garantit l'ordre ; ce garde le
   // garantit par le code (un montage trop tôt attend le re-render suivant).
-  if (!mounted || !portal.current) return null
+  // Tant que le préchargeur couvre l'écran, la bulle n'existe pas. Arrêter son
+  // horloge ne suffisait pas : `useElapsed` rend `null` quand elle est
+  // inactive, ce que le texte lit comme « affiche tout » — la phrase entière
+  // paraissait donc le temps d'une image, à l'instant précis où l'écran se
+  // découvrait, avant de repartir de zéro.
+  if (!mounted || !revealed || !portal.current) return null
 
   const cls = [
     'bubble',
