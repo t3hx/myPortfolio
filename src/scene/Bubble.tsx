@@ -5,7 +5,7 @@ import { clampToSafeArea } from '@/lib/bubbleAnchors'
 import { useNow } from '@/lib/clock'
 import { typedLength } from '@/lib/typewriter'
 import { useInteraction } from '@/state/interaction'
-import { Typed } from '@/ui/Typed'
+import { BubbleCard } from '@/ui/BubbleCard'
 
 /**
  * Bulle narrative ancrée par projection écran (issue #47).
@@ -209,42 +209,7 @@ export function Bubble({
       {/* Markup des maquettes : kicker (point + étiquette) puis phrase, ou
           variante « sans titre » point + phrase sur une ligne (home). */}
       <article ref={measureBox} className={cls} role="note" style={style}>
-        {/* L'aura d'arrivée (#128). Montée avec la bulle, elle joue UNE fois
-            par arrivée : tourner une page ne remonte pas la bulle, donc elle
-            ne rejoue pas en cours de dialogue — c'est ce qu'on veut, elle
-            désigne l'arrivée, pas la phrase.
-
-            Elle est posée AVANT le contenu et en `position: absolute`, donc
-            elle ne participe pas à la mise en page : la boîte a exactement la
-            même taille avec et sans elle. */}
-        <span className="bubble__aura" aria-hidden="true" />
-
-        {/* Le chevron « la suite ». Une bulle qui a fini de parler et une bulle
-            qui attend qu'on tourne la page se ressemblent trait pour trait —
-            rien, dans le texte, ne dit qu'il en reste. C'est la seule chose
-            qu'on ajoute au dialogue, et c'est un signe, pas une phrase. */}
-        {hasNext && shown >= children.length && (
-          <span className="bubble__next" aria-hidden="true" />
-        )}
-        {tick && <span className={`bubble__tick bubble__tick--${tick}`} aria-hidden="true" />}
-        {kicker ? (
-          <>
-            <header className="bubble__kicker">
-              <span className="bubble__dot" />
-              <span className="bubble__label">{kicker}</span>
-            </header>
-            <p className="bubble__text">
-              <Typed text={children} shown={shown} />
-            </p>
-          </>
-        ) : (
-          <div className="bubble__inline">
-            <span className="bubble__dot" />
-            <p className="bubble__text">
-              <Typed text={children} shown={shown} />
-            </p>
-          </div>
-        )}
+        <BubbleCard kicker={kicker} text={children} shown={shown} tick={tick} hasNext={hasNext} />
       </article>
     </Html>
   )

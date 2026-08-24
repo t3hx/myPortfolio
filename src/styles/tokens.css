@@ -156,7 +156,21 @@
   position: absolute; inset: -1px; pointer-events: none;
   border: 1.5px solid var(--glow-deep);
   border-radius: inherit;
-  box-shadow: 0 0 18px rgba(var(--glow-rgb), .5), inset 0 0 12px rgba(var(--glow-rgb), .18);
+  /* Le HALO. Quatre ombres empilées plutôt qu'une, chacune plus large et plus
+     transparente : c'est la façon d'obtenir une retombée DOUCE vers l'alpha,
+     là où une ombre unique donne un cerne net qui s'arrête d'un coup. Une
+     seule et large paraissait posée sur la bulle ; quatre lui donnent une
+     lumière qui se dissipe.
+
+     Pas de `filter: blur()` : le filtre s'applique AVANT le masque, donc le
+     trait flouté serait recoupé net par le secteur qui progresse — le bord
+     d'attaque du tracé redeviendrait dur, ce qu'on cherche justement à éviter. */
+  box-shadow:
+    0 0 5px rgba(var(--glow-rgb), .55),
+    0 0 15px rgba(var(--glow-rgb), .34),
+    0 0 32px rgba(var(--glow-rgb), .2),
+    0 0 62px rgba(var(--glow-rgb), .09),
+    inset 0 0 10px rgba(var(--glow-rgb), .15);
   /* Les deux secteurs opposés. Le second part à 180deg : c'est ce qui fait le
      départ « centre bas », et les deux tournent dans le même sens. */
   --aura-mask: conic-gradient(
