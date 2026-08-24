@@ -14,6 +14,15 @@ export interface CameraStop {
   /** Short label for the navigation UI (also the `?stop=` deep-link key).
    *  C'est aussi la clé qui relie l'arrêt à sa bulle — `src/content/bubbles.ts`. */
   label: string
+  /**
+   * L'arrêt accepte-t-il qu'on regarde autour de son sujet ? Absent = oui.
+   *
+   * **C'est une liste d'EXCEPTIONS, pas un réglage à remplir.** Le regard est
+   * la règle : un arrêt qui l'interdit doit dire pourquoi, ici, en une ligne.
+   * Le laisser optionnel est ce qui garantit qu'un arrêt ajouté demain
+   * l'aura — l'oubli va dans le bon sens.
+   */
+  lookAround?: false
 }
 
 export const CAMERA_STOPS: CameraStop[] = [
@@ -28,14 +37,25 @@ export const CAMERA_STOPS: CameraStop[] = [
   // commode, puis fait le tour de la pièce jusqu'au télescope, et le tableau
   // d'affichage la referme.
   { camera: 'CameraStop_Desk', label: 'Desk' },
-  { camera: 'CameraStop_MonitorVertical', label: 'CV' },
+  // Le CV ne se regarde PAS sous un autre angle, et ce n'est pas une question
+  // de cadrage : `CvScreen` est un panneau du DOM, posé dans le repère de
+  // l'écran, dont tout le travail est de se lire comme AFFICHÉ PAR le second
+  // moniteur. La caméra orbite, le moniteur glisse, le CV reste cloué au
+  // viewport — les deux se décollent, ce qui est exactement le défaut contre
+  // lequel cet écran est écrit. Une bulle, elle, est ancrée dans le monde et
+  // suit sans qu'on ait rien à faire.
+  { camera: 'CameraStop_MonitorVertical', label: 'CV', lookAround: false },
   { camera: 'CameraStop_Cabinet', label: 'Cabinet' },
   { camera: 'CameraStop_BookshelfPlant', label: 'Bookshelf' },
   { camera: 'CameraStop_Cat', label: 'Cat' },
   { camera: 'CameraStop_GuitarPoster', label: 'Guitar' },
   { camera: 'CameraStop_PosterTelescope', label: 'Posters' },
   { camera: 'CameraStop_Telescope', label: 'Telescope' },
-  { camera: 'CameraStop_Scoreboard', label: 'Scoreboard' },
+  // Le tableau d'affichage non plus (demande de l'auteur, 2026-08-25) : c'est
+  // une surface PLATE qu'on vient lire. Quelques degrés suffisent à la mettre
+  // en fuite, et une surface en fuite se lit moins bien — le regard ferait
+  // perdre ce qu'il est censé donner.
+  { camera: 'CameraStop_Scoreboard', label: 'Scoreboard', lookAround: false },
 ]
 
 /**

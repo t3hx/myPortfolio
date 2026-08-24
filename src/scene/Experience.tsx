@@ -4,6 +4,7 @@ import { CAMERA_STOPS } from '@/config/cameraStops'
 import { BUBBLES, bubbleKicker, bubblePages } from '@/content/bubbles'
 import { PROJECTS } from '@/content/projects'
 import { resolveBubbleAnchors } from '@/lib/bubbleAnchors'
+import { resolveLookPivots } from '@/lib/lookAround'
 import { useLocale } from '@/state/locale'
 import { reducedMotion } from '@/lib/clock'
 import { typeDuration } from '@/lib/typewriter'
@@ -49,6 +50,10 @@ export function Experience({ bubbleLayer }: ExperienceProps) {
   // lui-même, pas seulement des poses qu'on en a extraites.
   const [scene, setScene] = useState<Object3D | null>(null)
   const [anchors, setAnchors] = useState<(Vector3 | null)[]>([])
+  // Le rayon d'orbite de chaque arrêt, résolu avec les ancres et depuis le
+  // MÊME sujet : la bulle et le regard désignent le même objet, et le
+  // déclarer deux fois aurait fini par en désigner deux.
+  const [pivots, setPivots] = useState<number[]>([])
   const phase = useInteraction((s) => s.phase)
   const stopIndex = useInteraction((s) => s.stopIndex)
   const setReady = useInteraction((s) => s.setReady)
@@ -65,6 +70,7 @@ export function Experience({ bubbleLayer }: ExperienceProps) {
       // Une seule fois : la dé-projection ne dépend que des caméras du .glb et
       // des boîtes englobantes, tous deux figés après le chargement.
       setAnchors(resolveBubbleAnchors(scene, ordered))
+      setPivots(resolveLookPivots(scene, ordered))
       setReady()
     },
     [setReady],
@@ -97,7 +103,7 @@ export function Experience({ bubbleLayer }: ExperienceProps) {
 
       {/* Stop-to-stop navigation model (2026-08-05): no ScrollControls — the
           wheel is owned and gestures command GSAP strokes; see CameraRig. */}
-      {stops.length > 0 && <CameraRig stops={stops} moon={moon} />}
+      {stops.length > 0 && <CameraRig stops={stops} moon={moon} pivots={pivots} />}
 
       {/* Le tiroir de la commode s'ouvre à l'arrivée sur l'arrêt Cabinet (#76).
           Monté APRÈS CameraRig : celui-ci publie l'arrêt initial dans son
