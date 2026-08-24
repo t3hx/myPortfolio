@@ -107,6 +107,21 @@ export const BUBBLES: BubbleContent[] = [
         fr: 'Deux écrans, un clavier bruyant, du café tiède : le poste de pilotage de tous mes projets.',
         en: 'Two screens, a loud keyboard, lukewarm coffee: the cockpit of every project.',
       },
+      // PROVISOIRE — ces deux pages ne viennent PAS de la session design, qui
+      // n'a écrit qu'une phrase par arrêt. Je les ai écrites pour que le
+      // dialogue à plusieurs temps existe quelque part et se juge à l'écran
+      // (#122) ; elles sont à remplacer par la rédaction de #32. Le contrôle
+      // verbatim de `bubbleAnchors.test.ts` ne porte que sur la PREMIÈRE page,
+      // ce qui est exactement ce qui les rend possibles sans rendre le test
+      // faux — et sans les faire passer pour de la copy validée.
+      {
+        fr: 'Le second écran ne sert qu’à une chose : garder la documentation ouverte pendant que le premier travaille.',
+        en: 'The second screen has one job: keeping the documentation open while the first one works.',
+      },
+      {
+        fr: 'Et la tasse est froide depuis une heure. Elle le reste rarement plus longtemps.',
+        en: 'And the mug has been cold for an hour. It rarely stays that way much longer.',
+      },
     ],
   },
   {
