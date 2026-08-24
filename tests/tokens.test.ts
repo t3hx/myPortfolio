@@ -45,6 +45,27 @@ describe('tokens.css', () => {
     expect(faute, faute === null ? '' : `accolade en trop ligne ${faute}`).toBeNull()
   })
 
+  it('n’imbrique jamais une règle @ dans une autre règle', () => {
+    // LE contrôle qui manquait. Le compte d'accolades peut être JUSTE et la
+    // feuille cassée : c'est exactement ce qui est arrivé en corrigeant le
+    // défaut précédent — en retirant une accolade de trop, j'ai retiré celle
+    // qui fermait `.ping__tap`, si bien que `@keyframes ping-wave` s'est
+    // retrouvé imbriqué DANS la règle. Le fichier est resté équilibré, les
+    // trois tests d'accolades sont restés verts, et l'onde a cessé d'exister.
+    //
+    // `@keyframes`, `@media` et `@property` n'ont rien à faire ailleurs qu'à
+    // la racine : les y trouver signale un bloc qu'on a oublié de fermer.
+    const lignes = sansCommentaires(tokens).split('\n')
+    let profondeur = 0
+    const imbriquées: string[] = []
+    lignes.forEach((ligne, i) => {
+      const at = ligne.match(/@(keyframes|media|property)\b/)
+      if (at && profondeur > 0) imbriquées.push(`ligne ${i + 1} : @${at[1]}`)
+      profondeur += (ligne.match(/\{/g) ?? []).length - (ligne.match(/\}/g) ?? []).length
+    })
+    expect(imbriquées, imbriquées.join(', ')).toEqual([])
+  })
+
   it('ferme tout ce qu’elle a ouvert', () => {
     const lignes = sansCommentaires(tokens).split('\n')
     const profondeur = lignes.reduce(

@@ -866,7 +866,12 @@
 /* L'onde de contact. Elle part du bout du doigt — d'où le décalage vers le bas
    — au moment précis où la main touche, et s'efface avant d'avoir fini de
    grandir : un cercle qui disparaît net à son diamètre maximal se lit comme un
-   clignotement, pas comme une onde. */
+   clignotement, pas comme une onde.
+
+   Elle doit DÉPASSER la main, et c'est la condition pour qu'on la lise comme
+   une onde et non comme un cerne. À 2,6 elle plafonnait à 47 px pour une main
+   de 44 : elle grandissait, mais restait dedans, donc elle ne partait de nulle
+   part. À 4,4 elle atteint 79 px, soit près du double de la main. */
 .ping__tap {
   position: absolute; left: 50%; top: 62%;
   width: 18px; height: 18px; margin: -9px 0 0 -9px;
@@ -874,11 +879,11 @@
   border: 1.5px solid rgba(var(--glow-rgb), .95);
   box-shadow: 0 0 14px rgba(var(--glow-rgb), .5);
   animation: ping-wave var(--t-ping) var(--ease-out) infinite;
-@keyframes ping-wave {
-  0%, 12%  { transform: scale(.35); opacity: 0; }
-  20%      { opacity: .95; }
-  58%, 100% { transform: scale(2.6); opacity: 0; }
 }
+@keyframes ping-wave {
+  0%, 12%   { transform: scale(.4); opacity: 0; }
+  20%       { opacity: .95; }
+  62%, 100% { transform: scale(4.4); opacity: 0; }
 }
 
 /* ===== Visée du télescope (#106) =====
