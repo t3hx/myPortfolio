@@ -2,6 +2,7 @@ import { useFrame, useThree } from '@react-three/fiber'
 import gsap from 'gsap'
 import { useEffect, useRef } from 'react'
 import { PerspectiveCamera, Quaternion, Vector3 } from 'three'
+import { feedWheel, idleGesture } from '@/lib/gesture'
 import { applyProgress, nextStopIndex, verticalFov, type StopTransform } from '@/lib/stops'
 import { stopParamIndex } from '@/lib/viewMode'
 import { useInteraction } from '@/state/interaction'
@@ -25,12 +26,11 @@ import {
  *   arrow keys / rail clicks ────────────────────►  goToIndex(i)
  *   ?stop= deep link ────────────────────────────►  instant applyProgress
  *
- * Gesture rules (trackpad momentum-proof):
- *   - accumulated wheel delta ≥ GESTURE_THRESHOLD fires a step, then the
- *     gesture is CONSUMED: its momentum tail can never fire a second step
- *   - a gesture closes after GESTURE_RESET_MS of silence, or when the stroke
- *     completes — so a deliberate held scroll chains stops one by one, while
- *     a flick moves exactly one
+ * La règle du geste vit dans `lib/gesture.ts`, pure et testée : **un geste
+ * vaut exactement UN pas, quelle que soit son intensité** (#116). Il se clôt
+ * sur un silence, jamais à la fin de la course — enchaîner demande un geste
+ * neuf. Un demi-tour, lui, répond tout de suite : le momentum ne s'inverse
+ * jamais, donc c'est forcément une intention.
  */
 
 // --- Feel tuning ----------------------------------------------------------------------
@@ -43,15 +43,6 @@ const STEP_EASE = 'power3.inOut'
 // de distance — mais une seule course, donc lisible d'un bout à l'autre.
 const JUMP_DURATION = 1.6
 const JUMP_EASE = 'power2.inOut'
-const GESTURE_THRESHOLD_PX = 65 // accumulated wheel delta that fires a step
-const GESTURE_RESET_MS = 250 // silence that closes a gesture
-const MIN_COUNTED_DELTA = 6 // ignore sub-pixel jitter only — gentle trackpad
-// swipes emit 5-20px deltas and MUST count (28 used to eat whole gestures)
-// After a stroke completes, the SAME gesture's dying momentum tail keeps
-// emitting: only events above this fraction of the gesture's peak count
-// again. Peak-proportional, so gentle held scrolls (low peak) still chain.
-const TAIL_GUARD_RATIO = 0.35
-
 interface CameraRigProps {
   stops: StopTransform[]
   /**
@@ -80,12 +71,10 @@ export function CameraRig({ stops, moon }: CameraRigProps) {
   const pos = useRef({ p: 0 }).current
   const targetIndex = useRef(0)
   const stroke = useRef<gsap.core.Tween | null>(null)
-  // Gesture detector state (refs: the stroke's onComplete re-arms it).
-  const acc = useRef(0)
-  const armed = useRef(true)
-  const prevAbs = useRef(0)
-  const prevSign = useRef(0)
-  const tailMode = useRef(false) // re-armed by stroke completion, same gesture
+  // L'état du détecteur de geste. Il vit dans une ref parce qu'il change
+  // plusieurs fois par image et ne doit rien re-rendre ; la RÈGLE, elle, est
+  // dans `lib/gesture.ts`, pure et testée (#116).
+  const gesture = useRef(idleGesture())
   // Le vol direct d'un saut, et le drapeau qui fait taire la boucle du tour
   // pendant qu'il écrit la caméra lui-même.
   const flight = useRef<gsap.core.Tween | null>(null)
@@ -112,12 +101,10 @@ export function CameraRig({ stops, moon }: CameraRigProps) {
       onComplete: () => {
         stroke.current = null
         useInteraction.getState().setPhase('parked')
-        // Re-arm the gesture detector: a HELD deliberate scroll chains the
-        // next stop from here. tailMode guards against the same gesture's
-        // dying momentum tail counting as new input.
-        armed.current = true
-        acc.current = 0
-        tailMode.current = true
+        // Rien n'est réarmé ici, et c'est le cœur de #116. Le détecteur
+        // reprenait la main à la fin de la course, ce qui permettait au geste
+        // EN COURS de tirer un pas de plus. Un geste vaut un pas ; enchaîner
+        // demande un geste neuf, donc un silence.
       },
     })
   }
@@ -178,9 +165,7 @@ export function CameraRig({ stops, moon }: CameraRigProps) {
         // le premier défilement repartirait de l'arrêt qu'on avait quitté.
         pos.p = clamped
         useInteraction.getState().setPhase('parked')
-        armed.current = true
-        acc.current = 0
-        tailMode.current = true
+        // Comme pour un pas (#116) : l'arrivée ne réarme rien.
       },
     })
   }
@@ -211,8 +196,6 @@ export function CameraRig({ stops, moon }: CameraRigProps) {
     const stage = glDom.closest('.stage') ?? glDom.parentElement ?? glDom
     const store = useInteraction.getState
 
-    let lastEventAt = 0
-
     const onWheel = (e: WheelEvent) => {
       // Panels own their wheel natively — never intercept it.
       if (e.target instanceof Element && e.target.closest('.panel')) return
@@ -220,60 +203,22 @@ export function CameraRig({ stops, moon }: CameraRigProps) {
       if (phase !== 'touring' && phase !== 'parked') return
       e.preventDefault()
 
-      const now = performance.now()
-      // A silence closes the gesture — but ONLY between strokes. Everything
-      // mid-stroke below is deliberately CLOCK-FREE: event delivery timing is
-      // unreliable under jank, while the SHAPE of momentum is not (it decays,
-      // never exceeds its peak, never reverses).
-      if (now - lastEventAt > GESTURE_RESET_MS && !stroke.current) {
-        acc.current = 0
-        armed.current = true
-        prevAbs.current = 0 // gesture peak
-        prevSign.current = 0
-        tailMode.current = false
-      }
-      lastEventAt = now
-
+      // `deltaMode === 1` compte en LIGNES, pas en pixels : une molette de
+      // souris classique. 16 px par ligne la ramène dans la même unité que le
+      // trackpad, sans quoi le seuil voudrait dire deux choses différentes
+      // selon le périphérique.
       const delta = e.deltaMode === 1 ? e.deltaY * 16 : e.deltaY
-      const abs = Math.abs(delta)
+      const out = feedWheel(gesture.current, delta, performance.now())
+      gesture.current = out.state
+
       if (import.meta.env.DEV) {
         const w = window as unknown as { __wheelLog?: unknown[] }
         w.__wheelLog ??= []
-        w.__wheelLog.push({
-          delta,
-          acc: acc.current,
-          armed: armed.current,
-          peak: prevAbs.current,
-          tail: tailMode.current,
-        })
+        w.__wheelLog.push({ delta, step: out.step, ...out.state })
         if (w.__wheelLog.length > 50) w.__wheelLog.shift()
       }
-      if (abs < MIN_COUNTED_DELTA) return
 
-      // Fresh human intent = direction change, or a delta EXCEEDING the
-      // gesture's peak so far (momentum can only decay below it).
-      const reversed = prevSign.current !== 0 && Math.sign(delta) !== prevSign.current
-      const spiking = abs > prevAbs.current * 1.1
-      if (reversed || spiking) tailMode.current = false
-      // Same gesture continuing after its stroke completed: a dying tail sits
-      // far below the gesture peak — a deliberate held scroll stays near it.
-      if (tailMode.current && abs < prevAbs.current * TAIL_GUARD_RATIO) return
-      prevSign.current = Math.sign(delta)
-      prevAbs.current = reversed ? abs : Math.max(prevAbs.current, abs)
-      if (reversed) {
-        armed.current = true
-        acc.current = 0
-      } else if (spiking) {
-        armed.current = true
-      }
-      if (!armed.current) return
-
-      acc.current += delta
-      if (Math.abs(acc.current) >= GESTURE_THRESHOLD_PX) {
-        stepBy(Math.sign(acc.current) as 1 | -1)
-        acc.current = 0
-        armed.current = false
-      }
+      if (out.step !== 0) stepBy(out.step)
     }
 
     const onKeyDown = (e: KeyboardEvent) => {
