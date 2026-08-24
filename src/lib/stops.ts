@@ -21,6 +21,29 @@ export interface StopTransform {
   quaternion: Quaternion
   /** Horizontal field of view, in degrees. */
   hfov: number
+  /**
+   * Le champ VERTICAL que Blender a composé, en degrés — le `yfov` du glTF,
+   * tel quel.
+   *
+   * Il était lu puis jeté : `hfov` se dérive de lui et de l'`aspectRatio`, et
+   * c'est l'horizontal qui est l'invariant du tour. Mais l'accueil a besoin de
+   * la borne verticale d'origine (#135) : son cadrage doit ne JAMAIS montrer
+   * au-delà de l'écran du PC, et sur une fenêtre plus haute que celle composée,
+   * l'ajustement horizontal fait justement grandir le champ vertical.
+   */
+  yfov: number
+  /**
+   * De 0 à 1 — combien la borne verticale ci-dessus s'applique.
+   *
+   * **Un poids et non un booléen, parce qu'il s'interpole.** Un mouvement qui
+   * quitte l'accueil part d'un arrêt borné vers un arrêt libre : une bascule
+   * franche sauterait à la première image du trajet. `blendPose` le mélange
+   * comme le reste de la pose, et la borne se relâche pendant le vol.
+   *
+   * Sur une fenêtre au moins aussi large que le cadrage composé, il ne change
+   * rien du tout : la borne n'est jamais atteinte.
+   */
+  contain: number
 }
 
 const DEG = 180 / Math.PI
@@ -89,7 +112,10 @@ export function readStopTransform(scene: Object3D, cameraName: string): StopTran
   // Convert to the horizontal field, which is what the framing really is.
   const aspect = cam.aspect > 0 ? cam.aspect : 1
   const hfov = 2 * Math.atan(Math.tan((cam.fov * RAD) / 2) * aspect) * DEG
-  return { position, quaternion, hfov }
+  // `contain` à 0 par défaut : c'est `extractStops` qui le pose, depuis
+  // `CAMERA_STOPS`. La lune passe aussi par ici (#113) et n'est pas un arrêt du
+  // tour — elle n'a donc pas de ligne où déclarer quoi que ce soit.
+  return { position, quaternion, hfov, yfov: cam.fov, contain: 0 }
 }
 
 /**
@@ -107,7 +133,10 @@ export function extractStops(scene: Object3D): Map<string, StopTransform> {
 
   for (const stop of CAMERA_STOPS) {
     const transform = readStopTransform(scene, stop.camera)
-    if (transform) stops.set(stop.camera, transform)
+    if (transform) {
+      transform.contain = stop.fit === 'contain' ? 1 : 0
+      stops.set(stop.camera, transform)
+    }
   }
 
   if (stops.size === 0) {
@@ -146,6 +175,10 @@ export function blendPose(
   out.position.lerpVectors(from.position, to.position, t)
   out.quaternion.copy(from.quaternion).slerp(to.quaternion, t)
   out.hfov = from.hfov + (to.hfov - from.hfov) * t
+  out.yfov = from.yfov + (to.yfov - from.yfov) * t
+  // La borne verticale se relâche pendant le vol au lieu de sauter à la
+  // première image — c'est toute la raison d'en faire un poids.
+  out.contain = from.contain + (to.contain - from.contain) * t
   return out
 }
 
@@ -161,13 +194,20 @@ export function blendPose(
 export function applyPose(cam: PerspectiveCamera, pose: StopTransform): void {
   cam.position.copy(pose.position)
   cam.quaternion.copy(pose.quaternion)
-  cam.fov = verticalFov(pose.hfov, cam.aspect)
+  // L'ajustement HORIZONTAL, la règle du tour : le champ horizontal composé
+  // dans Blender est conservé partout, et une fenêtre plus courte recadre en
+  // haut et en bas plutôt que de reculer et perdre le plan.
+  const free = verticalFov(pose.hfov, cam.aspect)
+  // Sauf là où cadrer trop large montrerait ce qu'il ne faut pas voir (#135).
+  // La borne ne mord QUE sur une fenêtre plus haute que celle composée : sur
+  // 16:9 et au-delà, `free` est déjà sous `yfov` et le minimum ne change rien.
+  cam.fov = free + (Math.min(free, pose.yfov) - free) * pose.contain
   cam.updateProjectionMatrix()
 }
 
 /** Une pose neutre, à remplir. */
 export function emptyPose(): StopTransform {
-  return { position: new Vector3(), quaternion: new Quaternion(), hfov: 60 }
+  return { position: new Vector3(), quaternion: new Quaternion(), hfov: 60, yfov: 40, contain: 0 }
 }
 
 /** Copie `from` dans `out`, sans allouer. */
@@ -175,6 +215,8 @@ export function copyPose(out: StopTransform, from: StopTransform): StopTransform
   out.position.copy(from.position)
   out.quaternion.copy(from.quaternion)
   out.hfov = from.hfov
+  out.yfov = from.yfov
+  out.contain = from.contain
   return out
 }
 

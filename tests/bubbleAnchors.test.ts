@@ -37,6 +37,10 @@ function stopAt(position: Vector3, yawDeg: number, hfov: number): StopTransform 
     position,
     quaternion: new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), yawDeg * RAD),
     hfov,
+    // La dé-projection d'une ancre ne lit que la position, l'orientation et le
+    // champ horizontal : la politique de cadrage (#135) ne l'atteint pas.
+    yfov: 30,
+    contain: 0,
   }
 }
 
