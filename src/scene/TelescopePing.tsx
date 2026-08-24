@@ -63,6 +63,11 @@ export function TelescopePing({ scene, portal }: TelescopePingProps) {
   return (
     <Html position={anchor} center portal={portal} zIndexRange={[40, 0]}>
       <span className="ping" aria-hidden="true">
+        {/* L'onde part du bout du doigt, au moment du contact. C'est elle qui
+            rend le geste lisible : une main qui bouge toute seule respire, une
+            main qui touche quelque chose CLIQUE. */}
+        <span className="ping__tap" />
+
         {/* Une main qui clique, et non plus une pastille. Le point disait
             « ici » ; la main dit « ici, et clique » — la seule chose que le
             télescope attend, et que rien d'autre dans la pièce n'enseigne.

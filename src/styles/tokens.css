@@ -54,7 +54,7 @@
   --t-cv-out: 200ms;      /* même sortie qu'une bulle — voir CV_OUT_MS */
   --t-decrypt: 1600ms;    /* déchiffrement du nom — voir DECRYPT_MS */
   --t-cascade: 420ms;     /* déchiffrement d'un titre — voir CASCADE_MS */
-  --t-ping: 1700ms;       /* battement de la main qui désigne un objet */
+  --t-ping: 1500ms;       /* le tapotement de la main qui désigne un objet */
   --t-scope-in: 620ms;    /* ouverture de la visée du télescope */
   --t-scope-out: 260ms;   /* fermeture — voir SCOPE_OUT_MS */
   --t-sweep: 700ms;       /* balayage d'une cartouche au survol */
@@ -825,7 +825,7 @@
    contiennent aucun indice d'interface — tout ce qu'on dessinerait dans la
    scène au repos ferait dériver la mesure de l'arrêt. */
 .ping {
-  position: relative; display: block; width: 26px; height: 26px;
+  position: relative; display: block; width: 44px; height: 44px;
   pointer-events: none;
 }
 
@@ -835,34 +835,50 @@
 
    Le halo passe par `drop-shadow` et non par `box-shadow` : une ombre de boîte
    éclairerait le CARRÉ du svg, dont l'essentiel est transparent, et on verrait
-   un rectangle lumineux avec une main dedans. `drop-shadow` suit la FORME. Le
-   prix est connu — c'est un filtre, donc du remplissage, mais sur 26 px et un
-   seul élément à l'écran, il ne se discute pas.
-
-   Même recette empilée que l'aura des bulles (#128) : plusieurs couches, chacune
-   plus large et plus transparente, pour une retombée douce plutôt qu'un cerne. */
+   un rectangle lumineux avec une main dedans. `drop-shadow` suit la FORME. */
 .ping__hand {
+  position: relative; z-index: 1;
   display: block; width: 100%; height: 100%;
   color: var(--glow);
   filter:
-    drop-shadow(0 0 3px rgba(var(--glow-rgb), .9))
-    drop-shadow(0 0 8px rgba(var(--glow-rgb), .6))
-    drop-shadow(0 0 18px rgba(var(--glow-rgb), .35));
-  animation: ping-pulse var(--t-ping) ease-in-out infinite;
+    drop-shadow(0 0 3px rgba(var(--glow-rgb), 1))
+    drop-shadow(0 0 9px rgba(var(--glow-rgb), .75))
+    drop-shadow(0 0 22px rgba(var(--glow-rgb), .45))
+    drop-shadow(0 0 44px rgba(var(--glow-rgb), .22));
+  animation: ping-tap var(--t-ping) var(--ease-out) infinite;
   transform-origin: 50% 30%;
 }
 
-/* Une pulsation RÉGULIÈRE, et c'est le changement demandé. L'anneau précédent
-   grandissait sur 70 % du cycle puis restait éteint le reste du temps : un
-   battement suivi d'un silence, donc un rythme boiteux. Ici la courbe est
-   symétrique et le cycle n'a pas de temps mort — la main respire.
+/* Le geste est un APPUI, plus une respiration. Une main qui enfle et se dégonfle
+   sans rien toucher ne dit rien de plus qu'un point lumineux ; une main qui
+   s'enfonce, rebondit, et fait partir une onde du bout du doigt dit « clique ».
 
-   L'origine de la transformation est HAUTE (30 %) : une main qui grossit depuis
-   son centre s'enfonce dans l'objet qu'elle désigne, alors que le doigt, lui,
-   doit rester posé au même endroit. */
-@keyframes ping-pulse {
-  0%, 100% { transform: scale(1);    opacity: .78; }
-  50%      { transform: scale(1.16); opacity: 1; }
+   Le cycle a donc un temps mort, et cette fois c'est voulu : un souffle ne doit
+   pas s'arrêter, un tapotement DOIT marquer la pause entre deux coups — c'est
+   elle qui en fait un geste et non un tremblement. */
+@keyframes ping-tap {
+  0%       { transform: scale(1)    translateY(0);   }
+  14%      { transform: scale(.9)   translateY(5px); }
+  30%      { transform: scale(1.12) translateY(-2px); }
+  44%, 100% { transform: scale(1)   translateY(0);   }
+}
+
+/* L'onde de contact. Elle part du bout du doigt — d'où le décalage vers le bas
+   — au moment précis où la main touche, et s'efface avant d'avoir fini de
+   grandir : un cercle qui disparaît net à son diamètre maximal se lit comme un
+   clignotement, pas comme une onde. */
+.ping__tap {
+  position: absolute; left: 50%; top: 62%;
+  width: 18px; height: 18px; margin: -9px 0 0 -9px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(var(--glow-rgb), .95);
+  box-shadow: 0 0 14px rgba(var(--glow-rgb), .5);
+  animation: ping-wave var(--t-ping) var(--ease-out) infinite;
+}
+@keyframes ping-wave {
+  0%, 12%  { transform: scale(.35); opacity: 0; }
+  20%      { opacity: .95; }
+  58%, 100% { transform: scale(2.6); opacity: 0; }
 }
 }
 
@@ -1023,8 +1039,10 @@
      l'indication n'est pas du mouvement, et la retirer priverait d'affordance
      précisément les personnes qui ont demandé moins d'animation. */
   /* La main reste — c'est une affordance, et la couper priverait d'indication
-     les personnes sensibles au mouvement. Seule sa respiration s'arrête. */
+     les personnes sensibles au mouvement. Ce qui s'arrête, c'est le geste :
+     l'appui, et l'onde qu'il envoie. */
   .ping__hand { animation: none !important; opacity: 1 !important; }
+  .ping__tap { animation: none !important; opacity: 0 !important; }
   /* visée : l'ouverture répond à un clic, elle est donc conservée — mais
      réduite à un fondu. Le resserrement du cercle, lui, part tout seul une
      fois le clic donné, et c'est du mouvement plein cadre. */

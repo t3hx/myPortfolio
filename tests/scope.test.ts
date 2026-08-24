@@ -228,16 +228,23 @@ describe('la pastille de désignation', () => {
     expect(hand.slice(0, hand.indexOf('}'))).toContain('drop-shadow')
   })
 
-  it('bat sans temps mort', () => {
-    // Le changement demandé le 2026-08-24. L'anneau précédent grandissait sur
-    // 70 % du cycle puis restait éteint le reste du temps — un battement suivi
-    // d'un silence, donc un rythme boiteux. Une pulsation régulière n'a que
-    // deux étapes, et la seconde est au milieu.
-    const kf = tokens.slice(tokens.indexOf('@keyframes ping-pulse'))
+  it('tapote au lieu de respirer', () => {
+    // Une main qui enfle et se dégonfle sans rien toucher ne dit rien de plus
+    // qu'un point lumineux. Le geste doit s'ENFONCER puis rebondir, et faire
+    // partir une onde du bout du doigt : c'est ce qui se lit comme un clic.
+    const kf = tokens.slice(tokens.indexOf('@keyframes ping-tap'))
     const bloc = kf.slice(0, kf.indexOf('\n}'))
-    expect(bloc).toContain('0%, 100%')
-    expect(bloc).toContain('50%')
-    expect(bloc).not.toMatch(/\d+%,\s*100%\s*\{[^}]*opacity:\s*0/)
+    expect(bloc, "l'appui descend").toMatch(/translateY\(\d+px\)/)
+    expect(bloc, 'puis rebondit au-dessus').toMatch(/translateY\(-\d+px\)/)
+    expect(tokens, "l'onde part du contact").toContain('@keyframes ping-wave')
+  })
+
+  it('laisse une pause entre deux coups', () => {
+    // Et cette fois le temps mort est VOULU : un souffle ne doit pas s'arrêter,
+    // un tapotement doit marquer la pause entre deux coups — c'est elle qui en
+    // fait un geste et non un tremblement.
+    const kf = tokens.slice(tokens.indexOf('@keyframes ping-tap'))
+    expect(kf.slice(0, kf.indexOf('\n}'))).toMatch(/\d+%,\s*100%/)
   })
 })
 
