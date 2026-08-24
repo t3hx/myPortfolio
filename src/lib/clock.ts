@@ -2,94 +2,73 @@ import { useEffect, useState } from 'react'
 
 /** L'utilisateur demande moins de mouvement. Lu au rendu, pas seulement dans
  *  un effet : c'est ce qui permet de décider dès la PREMIÈRE image. */
-function reducedMotion(): boolean {
+export function reducedMotion(): boolean {
   if (typeof window === 'undefined') return false
   return window.matchMedia('(prefers-reduced-motion: reduce)').matches
 }
 
 /**
- * L'horloge des animations auto-déclenchées : **une boucle par surface qui
- * anime, aucune quand rien n'anime**.
+ * L'heure courante, republiée à chaque image tant que `active` — **une horloge
+ * sans origine à elle**.
  *
- * Calquée sur celle de `CvScreen` — pas extraite : son contrat diffère sur deux
- * points, voir plus bas. Le raisonnement, lui, vaut partout : une quinzaine de
- * titres se déchiffrent en même temps, et leur donner chacun sa boucle
- * `requestAnimationFrame` et son état, c'est quinze rendus React par image à
- * côté d'une scène 3D qui a déjà besoin des seize millisecondes. Un seul `rAF`
- * publie le temps écoulé et tout le monde en dérive son texte.
+ * C'est toute la différence avec la version précédente, et c'est ce qui a rendu
+ * le dialogue fiable (#122). Une horloge qui possède son propre départ possède
+ * aussi son propre avis sur « l'animation est-elle finie ? » — et quand deux
+ * endroits ont un avis, il faut le faire circuler, donc il arrive en retard.
+ * Ici l'origine vit dans le store, avec la page ; ce composant ne fait que
+ * demander « quelle heure est-il », ce à quoi personne ne peut répondre faux.
  *
- * Ce que ça n'est PAS : une horloge unique pour l'application entière. À
- * l'arrêt CV, la cascade et la frappe de la bulle tournent ensemble, donc deux
- * boucles. Les mutualiser demanderait un module singleton avec des abonnés, et
- * ce serait de la machinerie pour un problème que personne n'a mesuré — ce qui
- * coûtait cher, c'était les états React par élément, pas la boucle elle-même.
- *
- * **`null` veut dire « pas d'animation », et RIEN d'autre** : `active` est
- * faux, ou `prefers-reduced-motion` est demandé. Les composants le lisent comme
- * « affiche l'état final », ce qui neutralise l'animation au lieu de la
- * raccourcir — le critère du design system est l'autonomie, et une animation
- * qui part toute seule doit disparaître, pas accélérer.
- *
- * **Une animation terminée rend `total`, pas `null`.** Premier écart avec le
- * CV, et il vient d'un défaut mesuré : avec `null` aux deux bouts, un composant
- * ne peut pas distinguer *pas encore commencé* de *fini*. La frappe de la bulle
- * affichait donc sa phrase entière sur sa première image.
- *
- * **Le changement de `resetKey` remet l'horloge à zéro DANS LE RENDU**, pas
- * dans un effet. Second écart, même origine : un effet s'exécute *après* le
- * rendu, donc la première image du nouveau texte était calculée avec le temps
- * écoulé de l'ANCIEN — c'est-à-dire une animation terminée. Mesuré au
- * changement de page du dialogue : la phrase suivante apparaissait entière
- * pendant une image, puis se remettait à s'écrire. Le motif utilisé ici est
- * celui que React documente pour ajuster un état quand une prop change.
+ * La boucle s'arrête d'elle-même dès que l'appelant n'a plus besoin d'images :
+ * une frappe finie, une bulle invisible, un écran encore couvert.
  */
-export function useElapsed(active: boolean, total: number, resetKey?: string): number | null {
-  const départ = () => (active && !reducedMotion() ? 0 : null)
-  const [clock, setClock] = useState<{
-    key: string | undefined
-    active: boolean
-    value: number | null
-  }>(() => ({ key: resetKey, active, value: départ() }))
-
-  // Ajustement pendant le rendu : React relance immédiatement le rendu du même
-  // composant, donc rien de périmé n'atteint l'écran.
-  //
-  // **Les DEUX entrées comptent.** N'ajuster que sur `resetKey` laissait passer
-  // l'autre transition : une horloge qui s'ACTIVE gardait un instant la valeur
-  // qu'elle avait en dormant (`null`, soit « affiche tout »). Mesuré sur la
-  // bulle d'accueil, dont le composant existe avant que l'écran ne se
-  // découvre : une image à 69 caractères sur 69, puis la frappe repartait de
-  // zéro.
-  if (clock.key !== resetKey || clock.active !== active) {
-    setClock({ key: resetKey, active, value: départ() })
-  }
+export function useNow(active: boolean): number {
+  const [now, setNow] = useState(() => (typeof performance === 'undefined' ? 0 : performance.now()))
 
   useEffect(() => {
-    if (!active || reducedMotion()) {
-      setClock({ key: resetKey, active, value: null })
-      return
-    }
-    setClock({ key: resetKey, active, value: 0 })
+    if (!active) return
     let frame = 0
-    const started = performance.now()
-    const tick = (now: number) => {
-      const dt = now - started
-      if (dt >= total) {
-        setClock({ key: resetKey, active, value: total })
-        return
-      }
-      setClock({ key: resetKey, active, value: dt })
+    const tick = () => {
+      setNow(performance.now())
       frame = requestAnimationFrame(tick)
     }
     frame = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(frame)
-    // `resetKey` est une dépendance à part entière : sans lui, l'horloge ne
-    // repart que si `total` change, donc deux pages de MÊME longueur se
-    // suivraient sans que la frappe recommence — un défaut invisible tant que
-    // les longueurs diffèrent.
-  }, [active, total, resetKey])
+  }, [active])
 
-  // Pendant l'image où l'une des deux entrées vient de changer, on répond par
-  // le départ plutôt que par la valeur de l'animation précédente.
-  return clock.key === resetKey && clock.active === active ? clock.value : départ()
+  return now
+}
+
+/**
+ * Le temps écoulé d'une frappe **locale** : celle que personne d'autre n'a
+ * besoin d'arbitrer.
+ *
+ * Le dialogue des bulles n'utilise pas ce crochet, et c'est délibéré : là-bas,
+ * l'entrée doit savoir si la frappe est en cours pour décider ce que vaut un
+ * geste, donc l'origine du temps vit dans le store avec la page. Ici — la
+ * phrase de la lune, dans une visée qui ne reçoit aucune entrée — il n'y a
+ * qu'un lecteur, donc une horloge locale suffit.
+ *
+ * Le minuteur sert d'unique signal de fin : il arrête la boucle d'images sans
+ * qu'on ait à comparer le temps courant à lui-même pour savoir s'il faut
+ * continuer.
+ */
+export function useTyping(active: boolean, duration: number): number {
+  const [startedAt, setStartedAt] = useState(0)
+  const [finished, setFinished] = useState(false)
+
+  useEffect(() => {
+    if (!active) {
+      setStartedAt(0)
+      setFinished(false)
+      return
+    }
+    setStartedAt(performance.now())
+    setFinished(duration <= 0)
+    const timer = window.setTimeout(() => setFinished(true), duration)
+    return () => window.clearTimeout(timer)
+  }, [active, duration])
+
+  const now = useNow(active && !finished)
+  if (!active) return 0
+  return finished ? duration : now - startedAt
 }

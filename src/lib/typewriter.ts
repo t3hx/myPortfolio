@@ -31,15 +31,15 @@ export function typeDuration(text: string): number {
 }
 
 /**
- * Ce qui est visible d'un texte après `elapsed` millisecondes.
+ * Ce qui est visible d'un texte après `elapsed` millisecondes de frappe.
  *
- * `elapsed === null` veut dire « pas d'animation » — avant le départ, après la
- * fin, ou sous `prefers-reduced-motion` — et rend le texte ENTIER. C'est le
- * contrat de `useElapsed`, et c'est ce qui fait que couper l'animation affiche
- * la phrase au lieu de l'effacer.
+ * `duration` est passée plutôt que recalculée : c'est elle qui décide de la
+ * fin, et c'est la MÊME valeur que celle sur laquelle l'arbitrage des gestes se
+ * prononce. Deux calculs de la même durée, c'est deux réponses possibles à
+ * « est-ce que ça écrit encore ».
  */
-export function typedLength(text: string, elapsed: number | null): number {
-  if (elapsed === null) return text.length
+export function typedLength(text: string, elapsed: number, duration: number): number {
+  if (elapsed >= duration) return text.length
   if (elapsed <= 0) return 0
   return Math.min(text.length, Math.floor(elapsed / TYPE_MS_PER_CHAR))
 }

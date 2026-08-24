@@ -5,6 +5,8 @@ import { BUBBLES, bubbleKicker, bubblePages } from '@/content/bubbles'
 import { PROJECTS } from '@/content/projects'
 import { resolveBubbleAnchors } from '@/lib/bubbleAnchors'
 import { useLocale } from '@/state/locale'
+import { reducedMotion } from '@/lib/clock'
+import { typeDuration } from '@/lib/typewriter'
 import { readStopTransform, type StopTransform } from '@/lib/stops'
 import { TELESCOPE_MOON_CAMERA } from '@/config/telescope'
 import { Bubble } from '@/scene/Bubble'
@@ -52,6 +54,7 @@ export function Experience({ bubbleLayer }: ExperienceProps) {
   const setReady = useInteraction((s) => s.setReady)
   const dialoguePage = useInteraction((s) => s.dialoguePage)
   const startDialogue = useInteraction((s) => s.startDialogue)
+  const revealed = useInteraction((s) => s.revealed)
   const locale = useLocale((s) => s.locale)
 
   const onReady = useCallback(
@@ -76,11 +79,17 @@ export function Experience({ bubbleLayer }: ExperienceProps) {
    * revisitée rouvrirait sur sa dernière page.
    */
   useEffect(() => {
-    if (!parkedStop) return
+    if (!parkedStop || !revealed) return
     const bubble = BUBBLES.find((b) => b.stop === parkedStop)
     if (!bubble) return
-    startDialogue(bubblePages(bubble, PROJECTS.length, locale).length)
-  }, [parkedStop, locale, startDialogue])
+    // Sous « mouvement réduit », des durées nulles : ça dit exactement ce qu'on
+    // veut dire — la frappe ne dure pas — et le store n'a pas à avoir son
+    // propre avis sur le mouvement.
+    const pages = bubblePages(bubble, PROJECTS.length, locale)
+    startDialogue(reducedMotion() ? pages.map(() => 0) : pages.map(typeDuration))
+    // `revealed` est une dépendance : le dialogue ne part QU'UNE FOIS l'écran
+    // découvert, sinon la première phrase s'écrit derrière le préchargeur.
+  }, [parkedStop, locale, revealed, startDialogue])
 
   return (
     <>

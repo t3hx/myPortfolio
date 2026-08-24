@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { UI } from '@/content/ui'
 import { t } from '@/lib/locale'
-import { useElapsed } from '@/lib/clock'
+import { reducedMotion, useTyping } from '@/lib/clock'
 import { typeDuration, typedLength } from '@/lib/typewriter'
 import { useInteraction } from '@/state/interaction'
 import { Typed } from '@/ui/Typed'
@@ -45,8 +45,11 @@ export function TelescopeScope() {
   // achèverait une frappe non plus. Une phrase, qui s'écrit à l'arrivée de la
   // lune et reste tant qu'on regarde.
   const phrase = t(UI.telescope.moon, locale)
-  const elapsed = useElapsed(moonRevealed, typeDuration(phrase), phrase)
-  const shown = typedLength(phrase, elapsed)
+  const duration = reducedMotion() ? 0 : typeDuration(phrase)
+  // La visée ne reçoit aucune entrée : personne n'a besoin de savoir si ça
+  // écrit encore, donc une horloge locale suffit — là où le dialogue en exige
+  // une partagée avec l'arbitrage des gestes.
+  const shown = typedLength(phrase, useTyping(moonRevealed, duration), duration)
 
   // Démontage différé, comme la bulle, la fiche et le CV : `visible` à false
   // lance le fondu, le démontage suit. Démonter tout de suite emporterait la

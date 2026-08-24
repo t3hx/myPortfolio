@@ -2,8 +2,8 @@ import { Html } from '@react-three/drei'
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type RefObject } from 'react'
 import { Vector3, type Camera, type Object3D } from 'three'
 import { clampToSafeArea } from '@/lib/bubbleAnchors'
-import { useElapsed } from '@/lib/clock'
-import { typeDuration, typedLength } from '@/lib/typewriter'
+import { useNow } from '@/lib/clock'
+import { typedLength } from '@/lib/typewriter'
 import { useInteraction } from '@/state/interaction'
 import { Typed } from '@/ui/Typed'
 
@@ -101,40 +101,35 @@ export function Bubble({
   }, [visible])
 
   /**
-   * La frappe (#121). Elle part quand la bulle devient visible et s'arrête
-   * seule ; `useElapsed` rend `null` avant, après, et sous
-   * `prefers-reduced-motion` — cas dans lequel `typedLength` rend la phrase
-   * entière. La frappe est auto-déclenchée, donc c'est bien une COUPURE qui
-   * lui convient, pas un raccourcissement : le critère du design system est
-   * l'autonomie de l'animation, pas sa durée.
+   * La frappe. Elle lit la MÊME origine que l'arbitrage des gestes — l'instant
+   * où la page a commencé — au lieu d'avoir son horloge et de publier son état.
+   * C'est ce qui rend le clic fiable : la bulle et l'entrée ne peuvent pas être
+   * d'avis différents sur « est-ce que ça écrit encore », puisque ni l'une ni
+   * l'autre ne le décide.
    */
-  // La frappe attend que l'écran soit découvert : démarrée pendant le fondu du
-  // préchargeur, elle s'écrit derrière lui et la phrase est déjà à moitié faite
-  // quand on la voit (#122).
+  const startedAt = useInteraction((st) => st.dialogueStartedAt)
+  const done = useInteraction((st) => st.dialogueDone)
   const revealed = useInteraction((st) => st.revealed)
-  const elapsed = useElapsed(visible && revealed, typeDuration(children), children)
+  // La durée vient du STORE, pas d'un `typeDuration(children)` recalculé ici.
+  // Recalculée, elle ignorait le « mouvement réduit » — que l'appelant exprime
+  // par des durées nulles — et la bulle écrivait quand même.
+  const duration = useInteraction((st) => st.dialogueDurations[st.dialoguePage] ?? 0)
 
-  // Un geste reçu pendant la frappe l'achève (#122, arbitrage A). Le store
-  // transmet un COMPTEUR et non un booléen : ce qui passe est un événement
-  // (« achève »), pas un état — un booléen demanderait d'être rabaissé après
-  // coup, et deux gestes rapprochés ne se distingueraient pas.
-  //
-  // La bulle retient la valeur du jeton AU DÉBUT de la page ; tout incrément
-  // postérieur veut dire « celle-ci, achève-la ». Repartir de la valeur
-  // courante à chaque changement de texte est ce qui empêche un achèvement de
-  // déborder sur la page suivante.
-  const skip = useInteraction((st) => st.dialogueSkip)
-  const [skipBase, setSkipBase] = useState(skip)
-  useEffect(() => setSkipBase(useInteraction.getState().dialogueSkip), [children])
-  const shown = skip > skipBase ? children.length : typedLength(children, elapsed)
-
-  // La frappe en cours est publiée pour que l'entrée sache si un geste doit
-  // l'achever ou tourner la page. C'est le seul état que la bulle expose.
-  const setDialogueTyping = useInteraction((st) => st.setDialogueTyping)
-  const typing = visible && shown < children.length
+  // Le minuteur est le seul signal de fin, et il se recale sur `startedAt` :
+  // c'est la seule clé qui change à CHAQUE page, y compris entre deux pages de
+  // longueur identique — où la durée, elle, ne bougerait pas.
+  const [finished, setFinished] = useState(false)
   useEffect(() => {
-    if (visible) setDialogueTyping(typing)
-  }, [visible, typing, setDialogueTyping])
+    setFinished(duration <= 0)
+    if (duration <= 0) return
+    const timer = window.setTimeout(() => setFinished(true), duration)
+    return () => window.clearTimeout(timer)
+  }, [startedAt, duration])
+
+  const now = useNow(visible && revealed && !done && !finished)
+  const shown =
+    done || finished ? children.length : typedLength(children, now - startedAt, duration)
+
   // La taille rendue de la bulle, relevée aux seuls changements de taille : la
   // lire à chaque frame forcerait un calcul de mise en page par frame.
   //
@@ -179,11 +174,9 @@ export function Bubble({
   // conteneur du canvas`) et ne se re-parente jamais si le ref se remplit
   // après. Aujourd'hui le Suspense du glb garantit l'ordre ; ce garde le
   // garantit par le code (un montage trop tôt attend le re-render suivant).
-  // Tant que le préchargeur couvre l'écran, la bulle n'existe pas. Arrêter son
-  // horloge ne suffisait pas : `useElapsed` rend `null` quand elle est
-  // inactive, ce que le texte lit comme « affiche tout » — la phrase entière
-  // paraissait donc le temps d'une image, à l'instant précis où l'écran se
-  // découvrait, avant de repartir de zéro.
+  // Tant que le préchargeur couvre l'écran, la bulle n'existe pas : une frappe
+  // lancée derrière lui s'écrit sans spectateur, et la phrase était déjà à
+  // moitié faite quand elle devenait visible (mesuré : 42 caractères sur 69).
   if (!mounted || !revealed || !portal.current) return null
 
   const cls = [
