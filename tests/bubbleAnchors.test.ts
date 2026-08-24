@@ -3,6 +3,7 @@ import { BoxGeometry, Mesh, Object3D, PerspectiveCamera, Quaternion, Vector3 } f
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { CAMERA_STOPS } from '@/config/cameraStops'
 import { UI } from '@/content/ui'
+import { plainText } from '@/lib/richText'
 import { BUBBLES, bubbleKicker } from '@/content/bubbles'
 import {
   DESIGN_ASPECT,
@@ -235,7 +236,11 @@ describe('BUBBLES', () => {
     // Les pages suivantes sont de la copy neuve (#32) et n'ont pas de maquette
     // à laquelle se comparer — les garder hors de cette égalité est ce qui
     // permet d'en ajouter sans rendre le test faux.
-    expect([...BUBBLES.map((b) => b.text[0].fr)].sort()).toEqual([...mockups].sort())
+    // Comparé sur le texte NU : les marqueurs de consigne (`**…**`) sont du
+    // balisage, pas de la copy, et les maquettes n'en portent pas. Sans ce
+    // dénudage, marquer trois mots ferait échouer un contrôle qui ne parle que
+    // de ce que le visiteur lit.
+    expect([...BUBBLES.map((b) => plainText(b.text[0].fr))].sort()).toEqual([...mockups].sort())
 
     // La lune : même exigence, autre domicile. Sa maquette ne contient qu'une
     // bulle, et c'est la phrase que la visée affiche maintenant.

@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { plainText } from '@/lib/richText'
 import { Typed } from '@/ui/Typed'
 
 /**
@@ -38,7 +39,7 @@ export function BubbleCard({
   hasNext = false,
   children,
 }: BubbleCardProps) {
-  const written = shown >= text.length
+  const written = shown >= plainText(text).length
   return (
     <>
       {/* L'aura d'arrivée (#128). Elle est posée AVANT le contenu et en
