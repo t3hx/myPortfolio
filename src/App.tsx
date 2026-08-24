@@ -51,6 +51,27 @@ export default function App() {
     document.documentElement.lang = locale
   }, [locale])
 
+  const classic = resolution.kind === 'route' && resolution.choice === 'classic'
+
+  // Le déverrouillage du défilement (#29). `styles.css` fige `html, body, #root`
+  // en `height: 100%; overflow: hidden` : c'est ce qu'il faut à une scène 3D
+  // plein cadre, et c'est exactement ce qui empêche une page une-page
+  // d'exister — sans ça elle ne défile pas du tout, donc l'observateur de
+  // révélation ne se déclenche jamais, le halo ne dérive pas, le mini-nom
+  // n'apparaît pas, et rien ne le dit : la page a simplement l'air tronquée.
+  //
+  // Écrit ICI, avec `lang`, et pour la même raison : un seul écrivain pour les
+  // attributs de la racine. Retiré au départ, pour que rouvrir la
+  // pré-sélection puis choisir la 3D ne laisse pas une page qui défile sous un
+  // canvas fixe.
+  useEffect(() => {
+    if (!classic) return
+    document.documentElement.dataset.experience = 'classic'
+    return () => {
+      delete document.documentElement.dataset.experience
+    }
+  }, [classic])
+
   const choose = (choice: ExperienceChoice) => {
     storeChoice(choice)
     setResolution({ kind: 'route', choice, reason: 'chosen' })

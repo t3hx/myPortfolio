@@ -24,12 +24,24 @@
  * `onError` — une icône cassée est pire qu'un vide assumé, et c'est la donnée
  * qui décide, pas le réseau. Même règle que la couverture d'une fiche projet.
  */
-import type { Localized, MaybeLocalized } from '@/lib/locale'
+import { tm, type Locale, type Localized, type MaybeLocalized } from '@/lib/locale'
 
 export interface CvGlyph {
   /** Ce qui s'écrit sous la vignette, et dont l'initiale sert de repli.
    *  Traduit pour un savoir-être, neutre pour un nom de technologie. */
   name: MaybeLocalized
+  /**
+   * Ce qui s'écrit DANS la vignette quand il n'y a pas d'icône.
+   *
+   * Sans lui, c'est la première lettre du nom — ce qui suffit tant que les
+   * noms se distinguent par elle. Les tuiles du site classique (#29) ne
+   * peuvent pas s'en contenter : `TypeScript` et `Tailwind CSS` commencent
+   * tous deux par un T, `PostgreSQL` par le P de rien d'autre mais se lit
+   * `Pg` partout ailleurs. Deux caractères lèvent l'ambiguïté sans devenir un
+   * mot ; au-delà, la vignette n'est plus un glyphe mais une étiquette, et il
+   * y en a déjà une dessous.
+   */
+  initial?: string
   /**
    * Chemin d'un SVG servi depuis `public/` (ex. `/icons/react.svg`). Absent =
    * l'initiale. Rendu en `<img>`, pas en `mask-image` : les vraies marques sont
@@ -37,6 +49,18 @@ export interface CvGlyph {
    * asymétrie est voulue.
    */
   icon?: string
+}
+
+/**
+ * Ce qui s'écrit dans une vignette sans icône.
+ *
+ * La règle vit ici, pas dans les composants : l'écran vertical de la scène et
+ * les tuiles du site classique affichent la MÊME donnée, et deux replis
+ * différents feraient dire deux choses à un seul contenu — `Pg` d'un côté,
+ * `P` de l'autre, sans que rien ne le signale.
+ */
+export function glyphMark(glyph: CvGlyph, locale: Locale): string {
+  return glyph.initial ?? tm(glyph.name, locale).slice(0, 1)
 }
 
 /** Une ligne de la carte « Langues & permis » : un intitulé, une valeur. */
@@ -92,6 +116,16 @@ export interface Cv {
      */
     name: string
     photo?: string
+    /**
+     * L'âge, tel qu'il s'écrit — lu par la ligne de méta de l'accueil
+     * classique (#29), que l'écran vertical de la scène n'affiche pas.
+     *
+     * **Du texte, et il se périme.** Une date de naissance calculée serait
+     * juste toute seule, mais elle ferait entrer une horloge dans un module
+     * de contenu statique, pour une valeur qui change une fois par an et que
+     * l'auteur relit de toute façon en même temps que ses dates de poste.
+     */
+    age: Localized
     /** Le texte alternatif de la photo, quand il y en a une. */
     alt: Localized
   }
@@ -145,6 +179,7 @@ export const CV_JOBS_EMPTY: Localized = {
 export const CV: Cv = {
   identity: {
     name: 'Thibault Dubois',
+    age: { fr: '36 ans', en: '36 years old' },
     alt: { fr: 'Photo de Thibault', en: 'Photograph of Thibault' },
   },
   traitsTitle: { fr: 'Savoir-être', en: 'Soft skills' },
@@ -164,14 +199,14 @@ export const CV: Cv = {
   ],
   skillsTitle: { fr: 'Savoir-faire', en: 'Technical skills' },
   skills: [
-    { name: 'TypeScript' },
-    { name: 'React' },
-    { name: 'Node' },
-    { name: 'PostgreSQL' },
-    { name: 'Three.js' },
-    { name: 'Docker' },
-    { name: 'Blender' },
-    { name: 'Git' },
+    { name: 'TypeScript', initial: 'Ts' },
+    { name: 'React', initial: 'R' },
+    { name: 'Node', initial: 'N' },
+    { name: 'PostgreSQL', initial: 'Pg' },
+    { name: 'Three.js', initial: '3' },
+    { name: 'Docker', initial: 'Dk' },
+    { name: 'Blender', initial: 'Bl' },
+    { name: 'Git', initial: 'Gi' },
   ],
   outlookTitle: { fr: 'Le cap', en: 'The heading' },
   outlook: {
