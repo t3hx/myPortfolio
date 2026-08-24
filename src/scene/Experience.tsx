@@ -1,7 +1,7 @@
 import { useCallback, useState, type RefObject } from 'react'
 import type { Object3D, Vector3 } from 'three'
 import { CAMERA_STOPS } from '@/config/cameraStops'
-import { BUBBLES, bubbleKicker, bubbleText } from '@/content/bubbles'
+import { BUBBLES, bubbleKicker, bubblePages } from '@/content/bubbles'
 import { PROJECTS } from '@/content/projects'
 import { resolveBubbleAnchors } from '@/lib/bubbleAnchors'
 import { useLocale } from '@/state/locale'
@@ -129,7 +129,11 @@ export function Experience({ bubbleLayer }: ExperienceProps) {
           >
             {/* Le tiroir vide n'ouvre aucune fiche : son repli passe par la
                 bulle de la commode, pas par un écran (#78). */}
-            {bubbleText(bubble, PROJECTS.length, locale)}
+            {/* La première page, et rien d'autre pour l'instant : le
+                défilement du dialogue est le sujet de #122. Tant qu'il
+                n'existe pas, chaque arrêt n'a qu'un temps, donc `[0]` EST son
+                texte — ce lot ne change rien de visible (#120). */}
+            {bubblePages(bubble, PROJECTS.length, locale)[0]}
           </Bubble>
         )
       })}

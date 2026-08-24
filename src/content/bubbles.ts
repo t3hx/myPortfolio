@@ -51,7 +51,19 @@ export interface BubbleContent {
   /** Objet nommé dans le kicker. Absent = variante inline sans titre (home). */
   subject?: Localized
   /**
-   * La phrase — une seule, voix Newsreader italique.
+   * Ce que l'arrêt dit — **une suite de pages**, voix Newsreader italique.
+   *
+   * Une page est un TEMPS du dialogue, pas une longueur : c'est l'unité que le
+   * visiteur fait défiler d'un clic ou d'un geste (#119). Le type interdit la
+   * suite vide, parce qu'un arrêt muet passerait tous les tests sans que rien
+   * ne le dise — et qu'une bulle sans texte, à l'écran, ressemble à un défaut
+   * de chargement plutôt qu'à une décision.
+   *
+   * Les deux langues ont le MÊME nombre de pages, et c'est une contrainte
+   * choisie : une page est un temps de la narration, et les temps ne changent
+   * pas d'une langue à l'autre. Le français est 15 à 20 % plus long, ce qui se
+   * règle sur `maxWidth`, jamais en coupant une phrase en deux d'un côté et
+   * pas de l'autre.
    *
    * **Le français fait foi et lui seul** : c'est la langue des maquettes, et
    * `tests/bubbleAnchors.test.ts` le vérifie mot pour mot contre elles.
@@ -61,7 +73,7 @@ export interface BubbleContent {
    * en français, donc une traduction plus longue doit être vérifiée à l'œil,
    * et c'est le `maxWidth` qu'on corrige alors, jamais le `center`.
    */
-  text: Localized
+  text: readonly [Localized, ...Localized[]]
   /** Ligne de rappel de 44 px vers l'objet, du côté indiqué. */
   tick?: 'left' | 'right'
   /** Variante `--tilted` : rotation en degrés, mesurée sur la maquette. */
@@ -77,10 +89,12 @@ export const BUBBLES: BubbleContent[] = [
     objects: ['Monitors_Screens'],
     center: { x: 0.5, y: 0.896 },
     maxWidth: null,
-    text: {
-      fr: 'Bienvenue — faites défiler pour commencer la visite, chaque objet ici a une histoire.',
-      en: 'Welcome — scroll to begin the tour; every object in here has a story.',
-    },
+    text: [
+      {
+        fr: 'Bienvenue — faites défiler pour commencer la visite, chaque objet ici a une histoire.',
+        en: 'Welcome — scroll to begin the tour; every object in here has a story.',
+      },
+    ],
   },
   {
     stop: 'Desk',
@@ -88,10 +102,12 @@ export const BUBBLES: BubbleContent[] = [
     center: { x: 0.5, y: 0.8304 },
     maxWidth: 460,
     subject: { fr: 'Le bureau', en: 'The desk' },
-    text: {
-      fr: 'Deux écrans, un clavier bruyant, du café tiède : le poste de pilotage de tous mes projets.',
-      en: 'Two screens, a loud keyboard, lukewarm coffee: the cockpit of every project.',
-    },
+    text: [
+      {
+        fr: 'Deux écrans, un clavier bruyant, du café tiède : le poste de pilotage de tous mes projets.',
+        en: 'Two screens, a loud keyboard, lukewarm coffee: the cockpit of every project.',
+      },
+    ],
   },
   {
     stop: 'CV',
@@ -99,10 +115,12 @@ export const BUBBLES: BubbleContent[] = [
     center: { x: 0.1355, y: 0.2801 },
     maxWidth: 260,
     subject: { fr: 'Le CV', en: 'The résumé' },
-    text: {
-      fr: 'Le CV, en pied et à jour — la version papier dort dans la commode.',
-      en: 'The résumé, full-length and current — the paper copy sleeps in the cabinet.',
-    },
+    text: [
+      {
+        fr: 'Le CV, en pied et à jour — la version papier dort dans la commode.',
+        en: 'The résumé, full-length and current — the paper copy sleeps in the cabinet.',
+      },
+    ],
     tick: 'right',
   },
   {
@@ -113,10 +131,12 @@ export const BUBBLES: BubbleContent[] = [
     center: { x: 0.1602, y: 0.8404 },
     maxWidth: 300,
     subject: { fr: 'La commode', en: 'The cabinet' },
-    text: {
-      fr: 'Les archives : diplômes, contrats, et quelques idées classées trop tôt.',
-      en: 'The archive: diplomas, contracts, and a few ideas filed away too early.',
-    },
+    text: [
+      {
+        fr: 'Les archives : diplômes, contrats, et quelques idées classées trop tôt.',
+        en: 'The archive: diplomas, contracts, and a few ideas filed away too early.',
+      },
+    ],
   },
   {
     stop: 'Bookshelf',
@@ -124,10 +144,12 @@ export const BUBBLES: BubbleContent[] = [
     center: { x: 0.1317, y: 0.6502 },
     maxWidth: 240,
     subject: { fr: 'L’étagère', en: 'The shelf' },
-    text: {
-      fr: 'Des classeurs de partitions et de méthodes — toute la théorie que je promets encore de finir un jour.',
-      en: 'Binders of sheet music and method books — all the theory I still promise to finish.',
-    },
+    text: [
+      {
+        fr: 'Des classeurs de partitions et de méthodes — toute la théorie que je promets encore de finir un jour.',
+        en: 'Binders of sheet music and method books — all the theory I still promise to finish.',
+      },
+    ],
   },
   {
     stop: 'Cat',
@@ -135,10 +157,12 @@ export const BUBBLES: BubbleContent[] = [
     center: { x: 0.1908, y: 0.1504 },
     maxWidth: 340,
     subject: { fr: 'Le chat', en: 'The cat' },
-    text: {
-      fr: 'Pixel, contrôle qualité. Rien ne sort d’ici sans son regard vert.',
-      en: 'Pixel, quality control. Nothing leaves this room without his green stare.',
-    },
+    text: [
+      {
+        fr: 'Pixel, contrôle qualité. Rien ne sort d’ici sans son regard vert.',
+        en: 'Pixel, quality control. Nothing leaves this room without his green stare.',
+      },
+    ],
   },
   {
     stop: 'Guitar',
@@ -146,10 +170,12 @@ export const BUBBLES: BubbleContent[] = [
     center: { x: 0.6918, y: 0.3953 },
     maxWidth: 380,
     subject: { fr: 'La guitare', en: 'The guitar' },
-    text: {
-      fr: 'Le soir, c’est elle qui parle — une Les Paul branchée sur un vieux Sharmall.',
-      en: 'At night she does the talking — a Les Paul through an old Sharmall.',
-    },
+    text: [
+      {
+        fr: 'Le soir, c’est elle qui parle — une Les Paul branchée sur un vieux Sharmall.',
+        en: 'At night she does the talking — a Les Paul through an old Sharmall.',
+      },
+    ],
     // Parallèle au bord de l'ampli, mesuré au pixel pendant la session design.
     tilt: -11.15,
   },
@@ -159,10 +185,12 @@ export const BUBBLES: BubbleContent[] = [
     center: { x: 0.1719, y: 0.4607 },
     maxWidth: 330,
     subject: { fr: 'Les posters', en: 'The posters' },
-    text: {
-      fr: 'The Expanse au mur — le rappel quotidien de viser un peu plus loin.',
-      en: 'The Expanse on the wall — a daily reminder to aim a little further.',
-    },
+    text: [
+      {
+        fr: 'The Expanse au mur — le rappel quotidien de viser un peu plus loin.',
+        en: 'The Expanse on the wall — a daily reminder to aim a little further.',
+      },
+    ],
     tick: 'right',
   },
   {
@@ -171,10 +199,12 @@ export const BUBBLES: BubbleContent[] = [
     center: { x: 0.7708, y: 0.1154 },
     maxWidth: 340,
     subject: { fr: 'Le télescope', en: 'The telescope' },
-    text: {
-      fr: 'Le télescope pointe la fenêtre, approchez l’œil pour voir la lune.',
-      en: 'The telescope is aimed at the window, lean in to see the moon.',
-    },
+    text: [
+      {
+        fr: 'Le télescope pointe la fenêtre, approchez l’œil pour voir la lune.',
+        en: 'The telescope is aimed at the window, lean in to see the moon.',
+      },
+    ],
   },
   {
     stop: 'Scoreboard',
@@ -182,10 +212,12 @@ export const BUBBLES: BubbleContent[] = [
     center: { x: 0.1628, y: 0.9004 },
     maxWidth: 340,
     subject: { fr: 'La mappemonde', en: 'The world map' },
-    text: {
-      fr: 'Punaises et fils rouges : chaque voyage part de la maison.',
-      en: 'Pins and red thread: every journey starts from home.',
-    },
+    text: [
+      {
+        fr: 'Punaises et fils rouges : chaque voyage part de la maison.',
+        en: 'Pins and red thread: every journey starts from home.',
+      },
+    ],
   },
 ]
 
@@ -218,9 +250,13 @@ export function bubbleKicker(
  * Le compte de projets est passé en paramètre plutôt qu'importé : ce module est
  * la source des TEXTES, il n'a pas à savoir d'où vient la liste.
  */
-export function bubbleText(bubble: BubbleContent, projectCount: number, locale: Locale): string {
+export function bubblePages(bubble: BubbleContent, projectCount: number, locale: Locale): string[] {
+  // Le tiroir vide (#78) ne raconte pas la même chose que le tiroir plein : il
+  // remplace le dialogue entier, et n'a qu'un temps. C'est un REPLI, pas une
+  // page de plus — l'ajouter à la suite ferait dire à l'arrêt une phrase sur
+  // des projets qui ne sont pas là, puis une autre pour s'en excuser.
   if (bubble.stop === DRAWER_STOP_LABEL && projectCount === 0) {
-    return t(PROJECTS_EMPTY, locale)
+    return [t(PROJECTS_EMPTY, locale)]
   }
-  return t(bubble.text, locale)
+  return bubble.text.map((page) => t(page, locale))
 }
