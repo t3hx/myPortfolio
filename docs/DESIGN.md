@@ -49,6 +49,29 @@ Deux arrêts seulement l'avaient — le CV et les posters, maquettés ainsi par 
 
 **L'accueil est la seule exception.** Sa bulle est la variante sans titre, centrée en bas, et elle ne désigne aucun objet — elle dit « faites défiler ». Un rappel horizontal y pointerait vers rien.
 
+### Les consignes (#129, 2026-08-24)
+
+Certaines phrases ne racontent pas la pièce : elles **demandent** quelque chose au visiteur. Ces mots-là portent l'accent, et un balayage blanc les parcourt toutes les trois secondes.
+
+**Le marquage vise des MOTS, pas une phrase entière**, et c'est ce qui a décidé de sa forme. Une consigne vit presque toujours au milieu d'un texte qui, lui, raconte : sur l'accueil, « Bienvenue » et « chaque objet ici a une histoire » sont de la narration, et seul « faites défiler » demande quelque chose. Un drapeau posé sur la page aurait teinté les trois.
+
+La syntaxe est `**ainsi**`, dans le texte lui-même. **Ce n'est pas du Markdown** : rien d'autre n'est interprété, et un `**` non refermé reste un `**` — deviner où une consigne finirait, ce serait inventer une intention que personne n'a écrite. Le texte livré garde ses marqueurs, et le contrôle verbatim des maquettes compare le texte **nu** : c'est ce qui permet de marquer des mots sans faire diverger la copy de sa maquette.
+
+|          |                                                                                            |
+| -------- | ------------------------------------------------------------------------------------------ |
+| Couleur  | `--glow` — **de l'information** : elle distingue une demande d'un récit, et vaut à l'arrêt |
+| Balayage | 3200 ms, `--t-cue-laser` — **du mouvement** : il traverse en 22 % du cycle, puis attend    |
+
+Trois choses tiennent l'effet :
+
+- **Le laser est un dégradé découpé sur le texte** (`background-clip: text`) et déplacé, plutôt qu'un calque posé par-dessus. Un calque demanderait de connaître la géométrie exacte des mots, qui change à chaque retour à la ligne, à chaque traduction et à chaque largeur de bulle.
+- **Son axe est horizontal, pas incliné.** Mesuré : à 100°, sur un mot large de quelques dizaines de pixels et haut d'une ligne, la bande traversait surtout par le haut et par le bas et le blanc n'atteignait jamais franchement les lettres — le mot restait cyan au sommet du balayage.
+- **La couleur de base est répétée aux deux extrémités du dégradé**, sinon le retour du balayage se lit comme un saut.
+
+**Le balayage traverse vite et attend longtemps** : c'est un reflet qui passe, pas une pulsation — l'inverse exact du témoin du télescope, qui tapote et doit garder un rythme régulier. Ici, un rythme régulier ferait clignoter la phrase.
+
+Sous `prefers-reduced-motion`, **le balayage part et la couleur reste**. C'est la distinction qui compte : une animation qui se répète toutes les trois secondes est le cas d'école de ce que le réglage vise, alors que la couleur porte une information qu'on ne peut pas retirer sans appauvrir la phrase.
+
 ### L'aura d'arrivée (#128, 2026-08-24)
 
 Une bulle qui apparaît en fondu ne dit pas à l'œil **où regarder**. Une aura se dessine autour d'elle à son arrivée, puis s'éteint : le temps de tracer le contour, le regard est allé s'y poser.

@@ -59,6 +59,12 @@ export interface BubbleContent {
    * ne le dise — et qu'une bulle sans texte, à l'écran, ressemble à un défaut
    * de chargement plutôt qu'à une décision.
    *
+   * **`**ainsi**` marque une consigne** (#129) : ces mots portent l'accent et
+   * un balayage les parcourt. Le marquage vise des MOTS, pas la phrase — une
+   * consigne vit presque toujours au milieu d'un texte qui, lui, raconte. Ce
+   * n'est pas du Markdown : rien d'autre n'est interprété. Le texte livré garde
+   * ses marqueurs, et le contrôle verbatim des maquettes compare le texte NU.
+   *
    * Les deux langues ont le MÊME nombre de pages, et c'est une contrainte
    * choisie : une page est un temps de la narration, et les temps ne changent
    * pas d'une langue à l'autre. Le français est 15 à 20 % plus long, ce qui se
@@ -104,8 +110,12 @@ export const BUBBLES: BubbleContent[] = [
     maxWidth: null,
     text: [
       {
-        fr: 'Bienvenue — faites défiler pour commencer la visite, chaque objet ici a une histoire.',
-        en: 'Welcome — scroll to begin the tour; every object in here has a story.',
+        // `**…**` marque une CONSIGNE : ces mots-là s'écrivent dans l'accent et
+        // un balayage les parcourt (#129). Le marquage vise des MOTS et non la
+        // phrase — « Bienvenue » et « chaque objet ici a une histoire »
+        // racontent, seul « faites défiler » demande quelque chose.
+        fr: 'Bienvenue — **faites défiler** pour commencer la visite, chaque objet ici a une histoire.',
+        en: 'Welcome — **scroll** to begin the tour; every object in here has a story.',
       },
     ],
   },

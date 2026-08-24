@@ -1,3 +1,5 @@
+import { plainText } from '@/lib/richText'
+
 /**
  * La machine à écrire des bulles (#121) — **une fonction pure**, pour que la
  * règle soit vérifiable sans navigateur ni horloge.
@@ -25,9 +27,15 @@
  */
 export const TYPE_MS_PER_CHAR = 20
 
-/** Le temps qu'il faut pour écrire ce texte, en millisecondes. */
+/**
+ * Le temps qu'il faut pour écrire ce texte, en millisecondes.
+ *
+ * Compté sur le texte NU : les marqueurs de consigne (`**…**`) ne s'affichent
+ * pas, donc ils ne coûtent rien à la frappe. Les compter allongerait la durée
+ * d'une phrase à proportion de son balisage, ce qui n'a aucun sens à l'écran.
+ */
 export function typeDuration(text: string): number {
-  return text.length * TYPE_MS_PER_CHAR
+  return plainText(text).length * TYPE_MS_PER_CHAR
 }
 
 /**
@@ -39,7 +47,8 @@ export function typeDuration(text: string): number {
  * « est-ce que ça écrit encore ».
  */
 export function typedLength(text: string, elapsed: number, duration: number): number {
-  if (elapsed >= duration) return text.length
+  const longueur = plainText(text).length
+  if (elapsed >= duration) return longueur
   if (elapsed <= 0) return 0
-  return Math.min(text.length, Math.floor(elapsed / TYPE_MS_PER_CHAR))
+  return Math.min(longueur, Math.floor(elapsed / TYPE_MS_PER_CHAR))
 }
