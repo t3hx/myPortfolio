@@ -133,7 +133,17 @@ A node named `CameraStop_X` that carries **no** camera (an Empty) is now skipped
 
 ### Navigation model (user-validated — do not regress to scrubbing)
 
-One scroll gesture = ONE fluid stroke to the next/previous stop (fullpage model), driven by a single GSAP tween (`power3.inOut`, 1.2 s). See `src/scene/CameraRig.tsx`:
+One scroll gesture = ONE fluid stroke to the next/previous stop (fullpage model), driven by a single GSAP tween. See `src/scene/CameraRig.tsx`:
+
+**There is exactly ONE mover, and that is the point (#115).** A step, a menu jump and the wrap onto the first stop all run the same code; only the duration differs. What the tour renders from is a **pose** — `blendPose` mixes two, `applyPose` writes one into the camera — and never a position along a path.
+
+It used to be `pos.p ∈ [0, N-1]`, a continuous position along the **polyline** of stops, which mixed _where the camera is_ with _which path it follows_. While those were the same number, every movement was necessarily a movement **along the tour**: that is why a menu click rewound the whole room, and why the direct flight of #113 could only exist by stepping outside the variable, with a second engine and a `flying` flag to silence the first. A pose says only the first of the two, so any (from, to) pair becomes expressible.
+
+Two things came free with it, and both are worth keeping: the telescope return no longer needs a scratch camera (it reads the pose), which structurally removes the trap that scratch camera carried — it had to hold the **real** viewport aspect or the return landed zoomed — and `applyPose` is now the single place that turns a horizontal field into the vertical one three.js wants.
+
+**The duration is measured, and it takes three terms because distance and rotation are decorrelated on this scene.** The shortest step (Telescope → Scoreboard, 0.72 m) is a **157° half-turn on the spot**; the longest (Posters → Telescope, 3.04 m) turns by 26°. On distance alone the half-turn would be the _fastest_ move of the tour. `moveDuration()` takes the max of three normalised efforts — distance, rotation, field change — against references measured on the export, and `tests/stops.test.ts` locks that a half-turn is not cheaper than a traversal. Field change counts because a focal change reads as a dolly without a centimetre travelled.
+
+**`MOVE_MIN_S` / `MOVE_MAX_S` / `MOVE_EASE` were arbitrated in a real browser** (2026-08-24), on three candidates: 1.0–1.7 s `power2.inOut` read as too dry, 1.35–2.5 s `expo.inOut` stretched the middle of the trip past legibility, and **1.15–2.1 s `power3.inOut` won**. Motion is only judged in motion — a capture taken under a software rasterizer says nothing about fluidity, which is why this one decision was not made on images like the rest of the project's arbitrations.
 
 - The wheel is **owned** (`preventDefault`, Lenis-style) and feeds a clock-free gesture detector. **The rule is one gesture = exactly ONE step, whatever its intensity** (product decision, 2026-08-24, #116). It lives in `src/lib/gesture.ts` as a pure function so it can be checked outside a browser — `tests/gesture.test.ts` replays real device profiles (a flick with its momentum tail, a ramping press, a held drag, two flicks around a pause).
 
@@ -142,7 +152,7 @@ One scroll gesture = ONE fluid stroke to the next/previous stop (fullpage model)
   Two things stay, and both are load-bearing. **A gesture is closed by SILENCE and by nothing else** — not by the camera's state: an early version refused to re-arm while a stroke ran, which mostly stopped the _second_ flick from existing, since a stroke lasts 1.2 s and people chain well before that (measured in the browser). And **inside a gesture there is no clock**: under jank, event delivery timing lies, the shape of momentum does not — it decays, never exceeds its peak, never reverses. A direction change still answers immediately, because momentum cannot reverse; an end-of-scroll bounce cannot exploit that, since `acc` restarts from zero and a dying bounce never reaches the threshold.
 
 - Any post-gesture "settle" movement was explicitly rejected by the user — never reintroduce scrub+snap.
-- Feel knobs: `STEP_DURATION`, `STEP_EASE`, `JUMP_DURATION`, `JUMP_EASE` at the top of `CameraRig`; `GESTURE_THRESHOLD_PX`, `GESTURE_RESET_MS`, `MIN_COUNTED_DELTA` in `lib/gesture.ts`. `MIN_COUNTED_DELTA` is 6 px and exists **only** to ignore sub-pixel jitter — never raise it to calm the detector: it was 28 once, and at that value it ate whole gestures, because a gentle trackpad swipe emits 5–20 px deltas. Dev probes: `window.__rigDebug` (written before the loop's early returns, so it does not freeze during a flight or an excursion), `window.__wheelLog` (the last 50 events with the detector's state).
+- Feel knobs: `MOVE_EASE` at the top of `CameraRig`, `MOVE_MIN_S` / `MOVE_MAX_S` in `lib/stops.ts`; `GESTURE_THRESHOLD_PX`, `GESTURE_RESET_MS`, `MIN_COUNTED_DELTA` in `lib/gesture.ts`. `MIN_COUNTED_DELTA` is 6 px and exists **only** to ignore sub-pixel jitter — never raise it to calm the detector: it was 28 once, and at that value it ate whole gestures, because a gentle trackpad swipe emits 5–20 px deltas. Dev probes: `window.__rigDebug` (written before the loop's early returns, so it does not freeze during a move or an excursion), `window.__wheelLog` (the last 50 events with the detector's state).
 
 ### Interaction state machine (`src/state/interaction.ts`, zustand)
 

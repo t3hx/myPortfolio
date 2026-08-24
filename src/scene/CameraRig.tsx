@@ -8,7 +8,6 @@ import {
   blendPose,
   copyPose,
   emptyPose,
-  feelParam,
   moveDuration,
   nextStopIndex,
   verticalFov,
@@ -44,10 +43,17 @@ import {
  */
 
 // --- Feel tuning ----------------------------------------------------------------------
-// La COURBE du mouvement. Sa durée, elle, ne se règle plus ici : elle se
-// déduit de la distance parcourue (`moveDuration`, mesurée sur la scène) —
-// un pivot sur place et une traversée de la pièce ne peuvent pas durer pareil.
-const MOVE_EASE = 'power2.inOut'
+// La COURBE du mouvement — arbitrée sur trois candidats essayés dans un vrai
+// navigateur (#115, 2026-08-24). `power3` accélère et décélère plus franchement
+// que `power2` : les deux bouts sont plus lents, le milieu plus décidé, ce qui
+// est ce qui fait lire le déplacement comme une intention plutôt que comme un
+// glissement. `expo.inOut`, essayé aussi, exagérait au point que le milieu du
+// trajet devenait illisible.
+//
+// Sa DURÉE ne se règle pas ici : elle se déduit de ce que le mouvement fait
+// parcourir à l'œil — voir `moveDuration`, dont les références sont mesurées
+// sur la scène.
+const MOVE_EASE = 'power3.inOut'
 
 interface CameraRigProps {
   stops: StopTransform[]
@@ -129,7 +135,7 @@ export function CameraRig({ stops, moon }: CameraRigProps) {
     move.current = gsap.to(t, {
       v: 1,
       duration: moveDuration(from, to),
-      ease: feelParam()?.ease ?? MOVE_EASE,
+      ease: MOVE_EASE,
       onUpdate: () => blendPose(pose, from, to, t.v),
       onComplete: () => {
         move.current = null

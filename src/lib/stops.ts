@@ -220,27 +220,19 @@ const MOVE_REF_M = 3.05
 const MOVE_REF_DEG = 158
 const MOVE_REF_FOV = 45
 
-/** Les bornes de la durée, en secondes. */
+/**
+ * Les bornes de la durée, en secondes — **arbitrées dans un vrai navigateur**
+ * (#115, 2026-08-24), sur trois candidats : 1,0–1,7 s (trop sec), celles-ci, et
+ * 1,35–2,5 s (le milieu du trajet s'étire trop). Un mouvement ne se juge qu'en
+ * mouvement : une capture prise sous un rasteriseur logiciel ne dit rien de sa
+ * fluidité, et c'est pourquoi le choix ne s'est pas fait sur des images.
+ *
+ * Un peu plus lent qu'avant (1,2 s pour un pas, 1,6 s pour un saut, sans rapport
+ * l'une avec l'autre), et surtout plus étalé : le mouvement le plus ample dure
+ * presque le double du plus modeste, là où les deux duraient pareil.
+ */
 export const MOVE_MIN_S = 1.15
 export const MOVE_MAX_S = 2.1
-
-/**
- * ARBITRAGE EN COURS (#115) — `?feel=a|b|c` essaie trois réglages dans le
- * navigateur. Le mouvement ne se juge qu'en mouvement, et une capture prise
- * sous un rasteriseur logiciel ne dit rien de sa fluidité. À retirer une fois
- * le choix fait, avec le candidat retenu écrit en dur ci-dessus.
- */
-export const FEEL_CANDIDATES: Record<string, { min: number; max: number; ease: string }> = {
-  a: { min: 1.0, max: 1.7, ease: 'power2.inOut' },
-  b: { min: 1.15, max: 2.1, ease: 'power3.inOut' },
-  c: { min: 1.35, max: 2.5, ease: 'expo.inOut' },
-}
-
-export function feelParam(): { min: number; max: number; ease: string } | null {
-  if (typeof window === 'undefined') return null
-  const key = new URLSearchParams(window.location.search).get('feel')
-  return key ? (FEEL_CANDIDATES[key] ?? null) : null
-}
 
 /**
  * La durée d'un mouvement, d'après ce qu'il fait parcourir à l'œil.
@@ -270,8 +262,5 @@ export function moveDuration(from: StopTransform, to: StopTransform): number {
     1,
     Math.max(metres / MOVE_REF_M, degres / MOVE_REF_DEG, champ / MOVE_REF_FOV),
   )
-  const feel = feelParam()
-  const min = feel?.min ?? MOVE_MIN_S
-  const max = feel?.max ?? MOVE_MAX_S
-  return min + (max - min) * effort
+  return MOVE_MIN_S + (MOVE_MAX_S - MOVE_MIN_S) * effort
 }
