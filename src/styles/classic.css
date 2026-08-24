@@ -133,64 +133,6 @@
   text-shadow: 0 1px 10px rgba(0, 0, 0, 0.7);
 }
 
-/* Les deux langues, côte à côte, séparées d'un filet — la paire EST la liste.
-   Le cadre entoure les deux : c'est lui qui dit « ceci est un choix », là où un
-   bouton isolé laissait croire à une étiquette. */
-.classic-lang {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  padding: 5px 9px;
-  border: 1px solid rgba(var(--glow-rgb), 0.4);
-  border-radius: var(--r-bubble);
-  transition: border-color 180ms var(--ease-out);
-}
-
-.classic-lang:hover,
-.classic-lang:focus-within {
-  border-color: rgba(var(--glow-rgb), 0.9);
-}
-
-/* Les deux côtés sont des `<button>`, et un bouton n'hérite NI de la police NI
-   de la graisse : sans ces remises à zéro la bascule repasse en Helvetica au
-   milieu d'une barre en chasse fixe. C'est cet oubli exact qui avait fait
-   paraître la barre de la scène bon marché. */
-.classic-lang button {
-  appearance: none;
-  padding: 0;
-  border: 0;
-  background: none;
-  font-family: var(--font-mono);
-  font-size: 11px;
-  font-weight: 500;
-  letter-spacing: 0.1em;
-  transition: color 180ms var(--ease-out);
-}
-
-.classic-lang__on {
-  color: var(--glow);
-  /* Cliquable quand même : le désactiver ferait disparaître l'indicateur, or
-     c'est lui qui dit dans quelle langue on se trouve. */
-  cursor: default;
-}
-
-.classic-lang__off {
-  color: rgba(var(--cream-rgb), 0.45);
-  cursor: pointer;
-}
-
-.classic-lang__off:hover,
-.classic-lang__off:focus-visible {
-  color: var(--cream);
-  outline: none;
-}
-
-.classic-lang__rule {
-  width: 1px;
-  height: 10px;
-  background: rgba(var(--cream-rgb), 0.25);
-}
-
 /* --- Le mini-nom (spec §8) --------------------------------------------------------- */
 /* Il ne remplace pas le nom d'accueil, il prend le relais : l'observateur porte
    sur le `h1` lui-même, pas sur la section — c'est le NOM qui sort de l'écran,

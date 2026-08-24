@@ -357,6 +357,16 @@ body,
    Il respire au même rythme que le logo du preloader (2,6 s ease-in-out). Au
    relâchement, l'animation s'arrête et la transition de la règle de base ramène
    l'ombre en 200 ms. */
+/* En haut à droite, là où le site classique la pose aussi : deux écrans, une
+   seule habitude. Fixe et hors de `.presel`, qui est centré — l'y mettre
+   l'aurait fait entrer dans la colonne et pousser le titre. */
+.presel__lang {
+  position: fixed;
+  top: 14px;
+  right: 16px;
+  z-index: var(--z-bar);
+}
+
 .presel-card--lit {
   border-color: rgba(var(--glow-deep-rgb), 0.55);
   animation: presel-halo 2.6s ease-in-out infinite;

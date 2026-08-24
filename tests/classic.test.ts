@@ -336,14 +336,13 @@ describe('le balayage de consigne', () => {
 })
 
 describe('la bascule de langue', () => {
+  const toggle = readFileSync('src/ui/LangToggle.tsx', 'utf8')
+  const presel = readFileSync('src/ui/Preselection.tsx', 'utf8')
+
   it('montre les deux langues, pas seulement l’autre', () => {
     // Un bouton isolé marqué « EN » se lit aussi bien « vous êtes en anglais »
     // que « passer en anglais » — deux lectures exactement contraires — et il
     // ne dit pas quelles langues existent. La paire EST la liste.
-    const toggle = page.slice(
-      page.indexOf('function LangToggle'),
-      page.indexOf('export function ClassicApp'),
-    )
     expect(toggle).toContain('LOCALES.map')
     expect(toggle).toContain("aria-current={code === locale ? 'true' : undefined}")
   })
@@ -351,11 +350,43 @@ describe('la bascule de langue', () => {
   it('garde le côté actif cliquable', () => {
     // Le désactiver ferait disparaître l'indicateur, or c'est lui qui répond à
     // « dans quelle langue suis-je ». Même arbitrage que la barre de la scène.
-    const toggle = page.slice(
-      page.indexOf('function LangToggle'),
-      page.indexOf('export function ClassicApp'),
-    )
     expect(toggle).not.toContain('disabled')
+  })
+
+  /**
+   * **Elle existe sur l'écran de CHOIX, et c'est ce qui l'a rendue partagée.**
+   * On y arrivait dans la langue devinée par le navigateur, on lisait la
+   * question et les deux promesses dans cette langue, et on ne pouvait en
+   * changer qu'après s'être engagé dans une expérience.
+   */
+  it('est sur l’écran de choix comme sur le site classique', () => {
+    expect(presel).toContain('<LangToggle className="presel__lang" />')
+    expect(page).toContain('<LangToggle />')
+    // Un seul composant : deux copies auraient fini par diverger, et c'est le
+    // même geste, au même endroit de l'écran.
+    expect(presel).toContain("from '@/ui/LangToggle'")
+    expect(page).toContain("from '@/ui/LangToggle'")
+  })
+
+  it('lègue son choix aux deux portfolios sans rien transporter', () => {
+    // `useLocale` est un store global et mémorisé : la décision prise à l'écran
+    // de choix vaut ensuite pour la 3D comme pour le 2D, et pour les visites
+    // suivantes puisque `resolveLocale` fait passer un choix mémorisé avant
+    // toute détection. Aucune prop de langue ne descend, et c'est la propriété
+    // à préserver — la première qui apparaîtrait créerait une seconde vérité.
+    expect(toggle).toContain('useLocale((s) => s.setLocale)')
+    expect(toggle).not.toMatch(/locale\s*:\s*Locale/)
+    const store = readFileSync('src/state/locale.ts', 'utf8')
+    expect(store).toContain('storeLocale(locale)')
+    const lib = readFileSync('src/lib/locale.ts', 'utf8')
+    expect(lib).toMatch(/if \(stored && isLocale\(stored\)\) return \{ locale: stored/)
+  })
+
+  it('vit dans le design system, pas dans la feuille du site classique', () => {
+    // Elle sert la pré-sélection, qui n'appartient pas au site 2D. Même
+    // raisonnement que `.beam`.
+    expect(tokens).toContain('.lang {')
+    expect(css).not.toContain('.classic-lang')
   })
 })
 

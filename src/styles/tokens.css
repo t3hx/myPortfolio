@@ -438,6 +438,38 @@
   to   { opacity: 1; transform: translateY(0);    clip-path: inset(-35%); }
 }
 
+/* ===== Bascule de langue (horizontale) =====
+   Les deux langues côte à côte, séparées d'un filet : la paire EST la liste, et
+   le cadre autour dit « ceci est un choix », là où un bouton isolé laissait
+   croire à une étiquette. Elle sert la PRÉ-SÉLECTION et le site classique — la
+   langue se choisit avant l'expérience, et `useLocale` étant global et
+   mémorisé, la décision vaut ensuite pour les deux portfolios.
+
+   La réglette verticale de la barre de la scène (`.menu__lang`, plus bas) est
+   la même décision dans une autre mise en page. */
+.lang {
+  display: flex; align-items: center; gap: 7px;
+  padding: 5px 9px;
+  border: 1px solid rgba(var(--glow-rgb), .4); border-radius: var(--r-bubble);
+  transition: border-color var(--t-halo) var(--ease-out);
+}
+.lang:hover, .lang:focus-within { border-color: rgba(var(--glow-rgb), .9); }
+/* Un `<button>` n'hérite NI de la police NI de la graisse : sans ces remises à
+   zéro la bascule repasse en Helvetica au milieu d'une barre en chasse fixe.
+   C'est cet oubli exact qui avait fait paraître la barre de la scène bon marché. */
+.lang button {
+  appearance: none; padding: 0; border: 0; background: none;
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 11px; font-weight: 500; letter-spacing: .1em;
+  transition: color var(--t-halo) var(--ease-out);
+}
+/* Cliquable quand même : le désactiver ferait disparaître l'indicateur, or
+   c'est lui qui dit dans quelle langue on se trouve. */
+.lang__on  { color: var(--glow); cursor: default; }
+.lang__off { color: rgba(var(--cream-rgb), .45); cursor: pointer; }
+.lang__off:hover, .lang__off:focus-visible { color: var(--cream); outline: none; }
+.lang__rule { width: 1px; height: 10px; background: rgba(var(--cream-rgb), .25); }
+
 /* ===== Logo =====
    Un seul logo dans le produit : le triangle pointe en bas (2026-08-10, en
    remplacement du losange des premières maquettes — issue #65). SVG plutôt que

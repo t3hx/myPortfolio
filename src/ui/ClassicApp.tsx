@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   REVEAL_BODY_MS,
   REVEAL_CHIP_BASE_MS,
@@ -12,8 +12,9 @@ import { CV, glyphMark } from '@/content/cv'
 import { MENU_SOCIALS } from '@/content/menu'
 import { PROJECTS } from '@/content/projects'
 import { UI } from '@/content/ui'
-import { LOCALES, t, tm, type Locale } from '@/lib/locale'
+import { t, tm, type Locale } from '@/lib/locale'
 import { useLocale } from '@/state/locale'
+import { LangToggle } from '@/ui/LangToggle'
 import { EmberHalo } from '@/ui/classic/EmberHalo'
 import { Hero } from '@/ui/classic/Hero'
 import { SectionHead } from '@/ui/classic/SectionHead'
@@ -330,47 +331,6 @@ function MiniName({ locale }: { locale: Locale }) {
   )
 }
 
-/**
- * La bascule FR/EN — **les deux langues affichées, les deux cliquables**.
- *
- * Elle a d'abord montré une seule étiquette, celle de l'autre langue : en
- * français, un bouton marqué « EN ». Illisible, et pour deux raisons qui se
- * cumulent. Un bouton isolé ne dit pas s'il ÉTIQUETTE l'état courant ou s'il
- * ANNONCE sa destination — « EN » se lit aussi bien « vous êtes en anglais »
- * que « passer en anglais », et les deux lectures sont exactement contraires.
- * Et il ne dit pas non plus quelles langues existent : on ne peut pas choisir
- * dans une liste qu'on ne voit pas.
- *
- * Afficher les deux règle les deux d'un coup : la paire est la liste, et le
- * contraste dit laquelle est active. C'est déjà l'anatomie de la barre de la
- * scène (`.menu__lang`) — même décision, deux mises en page.
- *
- * **Le côté actif reste un bouton, et reste cliquable.** Le désactiver ferait
- * disparaître l'indicateur, or c'est lui qui répond à « dans quelle langue
- * suis-je ». Même arbitrage que dans la barre.
- */
-function LangToggle({ locale }: { locale: Locale }) {
-  const setLocale = useLocale((s) => s.setLocale)
-  return (
-    <div className="classic-lang" role="group" aria-label={t(UI.menu.switchTo, locale)}>
-      {LOCALES.map((code, i) => (
-        <Fragment key={code}>
-          {i > 0 && <span className="classic-lang__rule" aria-hidden="true" />}
-          <button
-            type="button"
-            className={code === locale ? 'classic-lang__on' : 'classic-lang__off'}
-            aria-current={code === locale ? 'true' : undefined}
-            title={t(UI.menu.switchTo, code)}
-            onClick={() => setLocale(code)}
-          >
-            {code.toUpperCase()}
-          </button>
-        </Fragment>
-      ))}
-    </div>
-  )
-}
-
 export function ClassicApp({
   autoFallback,
   onReopen,
@@ -400,7 +360,7 @@ export function ClassicApp({
             {social.label}
           </a>
         ))}
-        <LangToggle locale={locale} />
+        <LangToggle />
       </header>
 
       <MiniName locale={locale} />

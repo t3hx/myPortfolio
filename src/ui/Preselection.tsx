@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { ExperienceChoice } from '@/lib/experienceChoice'
+import { LangToggle } from '@/ui/LangToggle'
 import { Logo } from '@/ui/Logo'
 import { UI } from '@/content/ui'
 import { t, type Locale } from '@/lib/locale'
@@ -32,6 +33,13 @@ export function Preselection({ onChoose }: { onChoose: (choice: ExperienceChoice
 
   return (
     <main className="stage">
+      {/* La langue se choisit AVANT l'expérience, et cet écran était le seul à
+          ne pas le permettre : on y arrivait dans la langue devinée par le
+          navigateur, on lisait la question et les deux promesses dans cette
+          langue, et on ne pouvait en changer qu'après s'être engagé. Le choix
+          se propage tout seul aux deux portfolios — `useLocale` est un store
+          global et mémorisé, personne n'a à le transporter. */}
+      <LangToggle className="presel__lang" />
       <div className="presel">
         <header className="presel__head">
           <Logo className="presel__logo" />
