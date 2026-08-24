@@ -874,7 +874,6 @@
   border: 1.5px solid rgba(var(--glow-rgb), .95);
   box-shadow: 0 0 14px rgba(var(--glow-rgb), .5);
   animation: ping-wave var(--t-ping) var(--ease-out) infinite;
-}
 @keyframes ping-wave {
   0%, 12%  { transform: scale(.35); opacity: 0; }
   20%      { opacity: .95; }
