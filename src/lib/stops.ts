@@ -125,30 +125,57 @@ export function orderedStops(map: Map<string, StopTransform>): StopTransform[] {
   )
 }
 
-// Scratch objects — avoid per-frame allocation.
-const tmpPos = new Vector3()
-const tmpQuat = new Quaternion()
+/**
+ * Mélange deux poses et écrit le résultat dans `out`. `t = 0` rend `from`,
+ * `t = 1` rend exactement `to`.
+ *
+ * **Le champ interpolé est HORIZONTAL, jamais vertical, et ce n'est pas un
+ * détail de rangement.** Une caméra glTF décrit son cadrage par `yfov` **plus**
+ * `aspectRatio`, et Blender dérive ce couple de la résolution de rendu. Ce qui
+ * est invariant, c'est le champ horizontal : l'interpoler lui, puis convertir
+ * par viewport, fait survivre le cadrage de Blender à tous les rapports
+ * d'écran — un cadre plus court rogne en haut et en bas au lieu de reculer.
+ * Interpoler le champ vertical rendrait le mouvement dépendant de l'écran.
+ */
+export function blendPose(
+  out: StopTransform,
+  from: StopTransform,
+  to: StopTransform,
+  t: number,
+): StopTransform {
+  out.position.lerpVectors(from.position, to.position, t)
+  out.quaternion.copy(from.quaternion).slerp(to.quaternion, t)
+  out.hfov = from.hfov + (to.hfov - from.hfov) * t
+  return out
+}
 
 /**
- * Applies a continuous tour progress p ∈ [0, N-1] to the render camera:
- * position lerped, orientation slerped, horizontal fov interpolated (so
- * focal-length changes — the wide guitar shot → the telescope-moon zoom —
- * come for free), then converted to the vertical fov this viewport needs.
+ * Écrit une pose dans la caméra de rendu. C'est le seul endroit où le champ
+ * horizontal redevient le champ vertical que three.js attend — et il le fait
+ * avec le rapport d'écran RÉEL de la caméra.
+ *
+ * Ce détail a déjà coûté un défaut : le retour du télescope échantillonnait la
+ * pose du tour dans une caméra jetable laissée à son rapport par défaut, et
+ * revenait donc zoomé.
  */
-export function applyProgress(cam: PerspectiveCamera, stops: StopTransform[], p: number): void {
-  if (stops.length === 0) return
-  const clamped = Math.min(Math.max(p, 0), stops.length - 1)
-  const i = Math.min(Math.floor(clamped), stops.length - 2)
-  const t = stops.length > 1 ? clamped - i : 0
-  const a = stops[Math.max(i, 0)]
-  const b = stops[Math.min(i + 1, stops.length - 1)]
-
-  tmpPos.lerpVectors(a.position, b.position, t)
-  tmpQuat.copy(a.quaternion).slerp(b.quaternion, t)
-  cam.position.copy(tmpPos)
-  cam.quaternion.copy(tmpQuat)
-  cam.fov = verticalFov(a.hfov + (b.hfov - a.hfov) * t, cam.aspect)
+export function applyPose(cam: PerspectiveCamera, pose: StopTransform): void {
+  cam.position.copy(pose.position)
+  cam.quaternion.copy(pose.quaternion)
+  cam.fov = verticalFov(pose.hfov, cam.aspect)
   cam.updateProjectionMatrix()
+}
+
+/** Une pose neutre, à remplir. */
+export function emptyPose(): StopTransform {
+  return { position: new Vector3(), quaternion: new Quaternion(), hfov: 60 }
+}
+
+/** Copie `from` dans `out`, sans allouer. */
+export function copyPose(out: StopTransform, from: StopTransform): StopTransform {
+  out.position.copy(from.position)
+  out.quaternion.copy(from.quaternion)
+  out.hfov = from.hfov
+  return out
 }
 
 /**
@@ -179,3 +206,61 @@ export function nextStopIndex(from: number, dir: 1 | -1, count: number): number 
 
 /** Le premier arrêt du tour, celui sur lequel on boucle. L'accueil est 0. */
 export const LOOP_FIRST = 1
+
+/**
+ * Les trois échelles qui font qu'un mouvement est « long ». **Mesurées sur la
+ * scène**, pas choisies : ce sont les maxima observés entre deux arrêts
+ * voisins du tour.
+ *
+ *   distance   0,72 → 3,04 m   (médiane 1,36)
+ *   rotation   13 → 157°       (médiane 44)
+ *   Δ champ    1,4 → 44°       (médiane 10)
+ */
+const MOVE_REF_M = 3.05
+const MOVE_REF_DEG = 158
+const MOVE_REF_FOV = 45
+
+/**
+ * Les bornes de la durée, en secondes — **arbitrées dans un vrai navigateur**
+ * (#115, 2026-08-24), sur trois candidats : 1,0–1,7 s (trop sec), celles-ci, et
+ * 1,35–2,5 s (le milieu du trajet s'étire trop). Un mouvement ne se juge qu'en
+ * mouvement : une capture prise sous un rasteriseur logiciel ne dit rien de sa
+ * fluidité, et c'est pourquoi le choix ne s'est pas fait sur des images.
+ *
+ * Un peu plus lent qu'avant (1,2 s pour un pas, 1,6 s pour un saut, sans rapport
+ * l'une avec l'autre), et surtout plus étalé : le mouvement le plus ample dure
+ * presque le double du plus modeste, là où les deux duraient pareil.
+ */
+export const MOVE_MIN_S = 1.15
+export const MOVE_MAX_S = 2.1
+
+/**
+ * La durée d'un mouvement, d'après ce qu'il fait parcourir à l'œil.
+ *
+ * **Trois termes, et pas un seul, parce que la mesure a montré que distance et
+ * rotation sont DÉCORRÉLÉES sur cette scène.** Le pas le plus court en distance
+ * (Télescope → Mappemonde, 0,72 m) est aussi le plus violent : un demi-tour de
+ * 157° sur place. Le plus long (Posters → Télescope, 3,04 m) ne tourne que de
+ * 26°. Une durée proportionnelle à la seule distance rendrait donc le demi-tour
+ * le plus RAPIDE de la visite, ce qui est exactement l'inverse de ce qu'il
+ * faut. Le champ compte pour la même raison : un changement de focale se lit
+ * comme un travelling, même sans un centimètre parcouru.
+ *
+ * On prend le maximum des trois plutôt que leur somme : ce qui fatigue l'œil,
+ * c'est le mouvement le plus ample, pas leur cumul.
+ */
+export function moveDuration(from: StopTransform, to: StopTransform): number {
+  const metres = from.position.distanceTo(to.position)
+  // L'angle entre deux orientations, en degrés. `Math.abs` sur le produit
+  // scalaire : q et −q décrivent la même orientation, et sans lui un demi-tour
+  // se compterait parfois à 360° moins son angle.
+  const dot = Math.min(1, Math.abs(from.quaternion.dot(to.quaternion)))
+  const degres = 2 * Math.acos(dot) * DEG
+  const champ = Math.abs(from.hfov - to.hfov)
+
+  const effort = Math.min(
+    1,
+    Math.max(metres / MOVE_REF_M, degres / MOVE_REF_DEG, champ / MOVE_REF_FOV),
+  )
+  return MOVE_MIN_S + (MOVE_MAX_S - MOVE_MIN_S) * effort
+}
