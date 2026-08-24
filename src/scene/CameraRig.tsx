@@ -15,6 +15,9 @@ import {
 } from '@/lib/stops'
 import { stopParamIndex } from '@/lib/viewMode'
 import { useInteraction } from '@/state/interaction'
+import { LOOK_EPSILON_DEG } from '@/config/lookAround'
+import { approachYaw, lookYaw, orbitPose } from '@/lib/lookAround'
+import { reducedMotion } from '@/lib/clock'
 import {
   TELESCOPE_APPROACH_HFOV,
   TELESCOPE_APPROACH_S,
@@ -58,6 +61,15 @@ const MOVE_EASE = 'power3.inOut'
 interface CameraRigProps {
   stops: StopTransform[]
   /**
+   * Le rayon d'orbite de chaque arrêt, dans l'ordre du tour — la profondeur de
+   * son sujet, ou `0` s'il refuse le regard (voir `resolveLookPivots`).
+   *
+   * Passé en propriété comme `moon`, et résolu au même endroit que les ancres
+   * de bulles : les deux lisent le MÊME sujet, et la résolution ne dépend que
+   * du graphe et des caméras du `.glb`, tous deux figés après le chargement.
+   */
+  pivots: number[]
+  /**
    * La pose d'arrivée de l'excursion du télescope — `CameraStop_TelescopeMoon`,
    * lue dans le `.glb` mais **hors tour** (#113).
    *
@@ -74,7 +86,7 @@ interface CameraRigProps {
   moon: StopTransform | null
 }
 
-export function CameraRig({ stops, moon }: CameraRigProps) {
+export function CameraRig({ stops, moon, pivots }: CameraRigProps) {
   const camera = useThree((s) => s.camera) as PerspectiveCamera
   const glDom = useThree((s) => s.gl.domElement)
 
@@ -91,6 +103,26 @@ export function CameraRig({ stops, moon }: CameraRigProps) {
    * (départ, arrivée) devient exprimable.
    */
   const pose = useRef(emptyPose()).current
+
+  /**
+   * Le regard autour du sujet (2026-08-25) — **composé au moment d'écrire, et
+   * jamais fondu dans `pose`**.
+   *
+   * `pose` est la pose que Blender a autorisée, et la seule source de vérité du
+   * rendu (#115). Y ajouter l'orbite la ferait dériver à chaque mouvement de
+   * souris : le mouvement suivant partirait d'un ailleurs que personne n'a
+   * composé, le retour du télescope viserait à côté, et rien ne le dirait.
+   * L'orbite vit donc dans une pose de brouillon, recalculée par image à partir
+   * de la vraie.
+   */
+  const looked = useRef(emptyPose()).current
+  /** L'angle courant, en degrés. Il rejoint sa cible par lissage, et sa cible
+   *  est 0 dès qu'on n'est plus à l'arrêt : le regard se déroule tout seul au
+   *  départ d'un mouvement, sans qu'on ait à l'annuler. */
+  const yaw = useRef(0)
+  /** La position horizontale du curseur, de −1 (bord gauche) à +1. `null` tant
+   *  que la souris n'a pas bougé — un tactile, un clavier, une capture. */
+  const cursorX = useRef<number | null>(null)
   const from = useRef(emptyPose()).current
   const targetIndex = useRef(0)
   const move = useRef<gsap.core.Tween | null>(null)
@@ -272,6 +304,25 @@ export function CameraRig({ stops, moon }: CameraRigProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [glDom, stops])
 
+  /**
+   * Le curseur, en fraction de la demi-largeur du cadre (−1 à gauche, +1 à
+   * droite). Écouté sur la fenêtre plutôt que sur la scène : le regard doit
+   * répondre même quand le curseur passe au-dessus d'une bulle ou de la barre
+   * de menu, qui couvrent une bonne part de l'écran et ne sont pas des
+   * obstacles au regard.
+   *
+   * `pointermove` et non `mousemove` : un stylet et un doigt le déclenchent
+   * aussi, et un doigt qui traîne sur l'écran est un geste de regard tout à
+   * fait légitime.
+   */
+  useEffect(() => {
+    const onMove = (e: PointerEvent) => {
+      cursorX.current = (e.clientX / window.innerWidth) * 2 - 1
+    }
+    window.addEventListener('pointermove', onMove, { passive: true })
+    return () => window.removeEventListener('pointermove', onMove)
+  }, [])
+
   // --- Placement initial (+ deep link ?stop=) : instantané, déterministe ---------------
   //
   // La phase compte autant que la pose. Elle démarre à TOURING et ne passait à
@@ -432,15 +483,52 @@ export function CameraRig({ stops, moon }: CameraRigProps) {
         hfov: +pose.hfov.toFixed(2),
         phase,
         moving: !!move.current,
+        // Le regard autour du sujet : l'angle courant et la position qu'il
+        // donne. Sans la position, vérifier qu'un arrêt REFUSE le regard
+        // demanderait de comparer des captures à l'œil — or l'absence de
+        // mouvement est exactement ce qu'une image ne montre pas.
+        yaw: +yaw.current.toFixed(3),
+        pos: [
+          +camera.position.x.toFixed(4),
+          +camera.position.y.toFixed(4),
+          +camera.position.z.toFixed(4),
+        ],
       }
     }
 
     // PANEL_OPEN / TELESCOPE own the camera (frozen or excursion tween).
     if (phase === 'panel' || phase === 'telescope' || returning.current) return
 
+    // Le regard autour du sujet (2026-08-25).
+    //
+    // **La coupure sous « mouvement réduit » est la PREMIÈRE chose évaluée**,
+    // exactement comme la boucle du chat. Un élément qui suit le curseur bouge
+    // à chaque mouvement de souris, pour n'importe quelle raison : c'est le cas
+    // d'école de ce que le réglage vise. Et c'est aussi ce qui garde la boucle
+    // de comparaison déterministe, puisqu'elle capture en mouvement réduit.
+    //
+    // La cible est 0 partout ailleurs qu'à l'arrêt : le regard se DÉROULE au
+    // départ d'un mouvement au lieu d'être coupé net, et il n'y a donc rien à
+    // annuler quelque part.
+    const radius = pivots[targetIndex.current] ?? 0
+    const target =
+      phase === 'parked' && !move.current && radius > 0 && !reducedMotion()
+        ? lookYaw(cursorX.current ?? 0, pose.hfov)
+        : 0
+    yaw.current = approachYaw(yaw.current, target)
+
     // UNE écriture de caméra par image, depuis LA pose. Le mouvement, lui, ne
     // touche jamais la caméra : il ne fait que déplacer la pose.
-    applyPose(camera, pose)
+    //
+    // Le regard se compose ICI et ne rentre jamais dans `pose` : celle-ci
+    // reste la pose que Blender a autorisée. L'y fondre la ferait dériver à
+    // chaque mouvement de souris, et le mouvement suivant partirait d'un
+    // ailleurs que personne n'a composé.
+    if (Math.abs(yaw.current) < LOOK_EPSILON_DEG) {
+      applyPose(camera, pose)
+    } else {
+      applyPose(camera, orbitPose(looked, pose, radius, yaw.current))
+    }
   })
 
   return null
