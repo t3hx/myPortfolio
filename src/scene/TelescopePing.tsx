@@ -63,8 +63,22 @@ export function TelescopePing({ scene, portal }: TelescopePingProps) {
   return (
     <Html position={anchor} center portal={portal} zIndexRange={[40, 0]}>
       <span className="ping" aria-hidden="true">
-        <span className="ping__ring" />
-        <span className="ping__dot" />
+        {/* Une main qui clique, et non plus une pastille. Le point disait
+            « ici » ; la main dit « ici, et clique » — la seule chose que le
+            télescope attend, et que rien d'autre dans la pièce n'enseigne.
+
+            `currentColor` : la couleur vient du CSS, avec le reste du halo. */}
+        <svg
+          className="ping__hand"
+          viewBox="0 0 256 256"
+          xmlns="http://www.w3.org/2000/svg"
+          focusable="false"
+        >
+          <path
+            fill="currentColor"
+            d="M60 76a56 56 0 0 1 112 0a4 4 0 0 1-8 0a48 48 0 0 0-96 0a4 4 0 1 1-8 0m136 48a23.88 23.88 0 0 0-16.07 6.19A24 24 0 0 0 140 114.13V76a24 24 0 0 0-48 0v94l-11.26-18.06A24 24 0 0 0 39.22 176l29.32 50a4 4 0 0 0 6.9-4l-29.31-50a16 16 0 0 1 27.72-16l.07.12l18.68 30A4 4 0 0 0 100 184V76a16 16 0 0 1 32 0v68a4 4 0 0 0 8 0v-12a16 16 0 0 1 32 0v20a4 4 0 0 0 8 0v-4a16 16 0 0 1 32 0v36c0 22.66-7.51 38.06-7.58 38.21a4 4 0 0 0 1.79 5.37a4.05 4.05 0 0 0 1.79.42a4 4 0 0 0 3.58-2.21c.34-.69 8.42-17.13 8.42-41.79v-36a24 24 0 0 0-24-24"
+          />
+        </svg>
       </span>
     </Html>
   )

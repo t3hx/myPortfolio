@@ -54,7 +54,7 @@
   --t-cv-out: 200ms;      /* même sortie qu'une bulle — voir CV_OUT_MS */
   --t-decrypt: 1600ms;    /* déchiffrement du nom — voir DECRYPT_MS */
   --t-cascade: 420ms;     /* déchiffrement d'un titre — voir CASCADE_MS */
-  --t-ping: 2400ms;       /* cycle de la pastille qui désigne un objet */
+  --t-ping: 1700ms;       /* battement de la main qui désigne un objet */
   --t-scope-in: 620ms;    /* ouverture de la visée du télescope */
   --t-scope-out: 260ms;   /* fermeture — voir SCOPE_OUT_MS */
   --t-sweep: 700ms;       /* balayage d'une cartouche au survol */
@@ -825,34 +825,45 @@
    contiennent aucun indice d'interface — tout ce qu'on dessinerait dans la
    scène au repos ferait dériver la mesure de l'arrêt. */
 .ping {
-  position: relative; display: block; width: 10px; height: 10px;
+  position: relative; display: block; width: 26px; height: 26px;
   pointer-events: none;
 }
-.ping__dot {
-  position: absolute; inset: 0; border-radius: 50%;
-  background: var(--glow);
-  /* Même recette de halo que l'aura des bulles (#128) : des couches empilées,
-     chacune plus large et plus transparente. Une ombre unique de 10 px donnait
-     un point net posé sur la scène ; celles-ci lui donnent une lumière — et
-     c'est ce qu'on attend d'un témoin dont le seul rôle est de dire « clique
-     ici » au milieu d'une pièce meublée. */
-  box-shadow:
-    0 0 4px rgba(var(--glow-rgb), .95),
-    0 0 11px rgba(var(--glow-rgb), .7),
-    0 0 24px rgba(var(--glow-rgb), .45),
-    0 0 48px rgba(var(--glow-rgb), .24);
+
+/* LA MAIN (2026-08-24). Elle a remplacé une pastille : le point disait « ici »,
+   la main dit « ici, et clique » — la seule chose que le télescope attend, et
+   que rien d'autre dans la pièce n'enseigne.
+
+   Le halo passe par `drop-shadow` et non par `box-shadow` : une ombre de boîte
+   éclairerait le CARRÉ du svg, dont l'essentiel est transparent, et on verrait
+   un rectangle lumineux avec une main dedans. `drop-shadow` suit la FORME. Le
+   prix est connu — c'est un filtre, donc du remplissage, mais sur 26 px et un
+   seul élément à l'écran, il ne se discute pas.
+
+   Même recette empilée que l'aura des bulles (#128) : plusieurs couches, chacune
+   plus large et plus transparente, pour une retombée douce plutôt qu'un cerne. */
+.ping__hand {
+  display: block; width: 100%; height: 100%;
+  color: var(--glow);
+  filter:
+    drop-shadow(0 0 3px rgba(var(--glow-rgb), .9))
+    drop-shadow(0 0 8px rgba(var(--glow-rgb), .6))
+    drop-shadow(0 0 18px rgba(var(--glow-rgb), .35));
+  animation: ping-pulse var(--t-ping) ease-in-out infinite;
+  transform-origin: 50% 30%;
 }
-/* L'anneau part du point et s'efface en s'écartant — le geste d'un radar. Il
-   s'éteint AVANT d'avoir fini de grandir : un anneau qui disparaît net à son
-   diamètre maximal se lit comme un cercle qui clignote, pas comme une onde. */
-.ping__ring {
-  position: absolute; inset: 0; border-radius: 50%;
-  border: 1px solid rgba(var(--glow-rgb), .9);
-  animation: ping-out var(--t-ping) var(--ease-out) infinite;
+
+/* Une pulsation RÉGULIÈRE, et c'est le changement demandé. L'anneau précédent
+   grandissait sur 70 % du cycle puis restait éteint le reste du temps : un
+   battement suivi d'un silence, donc un rythme boiteux. Ici la courbe est
+   symétrique et le cycle n'a pas de temps mort — la main respire.
+
+   L'origine de la transformation est HAUTE (30 %) : une main qui grossit depuis
+   son centre s'enfonce dans l'objet qu'elle désigne, alors que le doigt, lui,
+   doit rester posé au même endroit. */
+@keyframes ping-pulse {
+  0%, 100% { transform: scale(1);    opacity: .78; }
+  50%      { transform: scale(1.16); opacity: 1; }
 }
-@keyframes ping-out {
-  0%        { transform: scale(1);   opacity: .9; }
-  70%, 100% { transform: scale(3.4); opacity: 0; }
 }
 
 /* ===== Visée du télescope (#106) =====
@@ -1011,7 +1022,9 @@
   /* pastille : l'anneau tourne en boucle tout seul, il part. Le POINT reste —
      l'indication n'est pas du mouvement, et la retirer priverait d'affordance
      précisément les personnes qui ont demandé moins d'animation. */
-  .ping__ring { animation: none !important; opacity: 0 !important; }
+  /* La main reste — c'est une affordance, et la couper priverait d'indication
+     les personnes sensibles au mouvement. Seule sa respiration s'arrête. */
+  .ping__hand { animation: none !important; opacity: 1 !important; }
   /* visée : l'ouverture répond à un clic, elle est donc conservée — mais
      réduite à un fondu. Le resserrement du cercle, lui, part tout seul une
      fois le clic donné, et c'est du mouvement plein cadre. */

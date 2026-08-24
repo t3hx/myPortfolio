@@ -211,12 +211,33 @@ describe('la pastille de désignation', () => {
     expect(ping).toContain('hovered')
   })
 
-  it('garde le point sous mouvement réduit, et perd l’anneau', () => {
-    // L'anneau tourne en boucle tout seul : il part. Le point reste —
-    // l'indication n'est pas du mouvement.
+  it('garde la main sous mouvement réduit, et perd sa respiration', () => {
+    // La main respire toute seule : sa pulsation part. La main, elle, reste —
+    // c'est une affordance, pas une décoration, et la couper priverait
+    // d'indication les personnes sensibles au mouvement.
     const reduced = reducedMotionBlocks(tokens)
-    expect(reduced).toContain('.ping__ring')
-    expect(reduced).not.toContain('.ping__dot')
+    expect(reduced).toMatch(/\.ping__hand[^}]*animation:\s*none/)
+    expect(reduced).toMatch(/\.ping__hand[^}]*opacity:\s*1/)
+  })
+
+  it('éclaire la FORME de la main, pas sa boîte', () => {
+    // Une `box-shadow` éclairerait le carré du svg, dont l'essentiel est
+    // transparent : on verrait un rectangle lumineux avec une main dedans.
+    // `drop-shadow` suit le tracé.
+    const hand = tokens.slice(tokens.indexOf('.ping__hand {'))
+    expect(hand.slice(0, hand.indexOf('}'))).toContain('drop-shadow')
+  })
+
+  it('bat sans temps mort', () => {
+    // Le changement demandé le 2026-08-24. L'anneau précédent grandissait sur
+    // 70 % du cycle puis restait éteint le reste du temps — un battement suivi
+    // d'un silence, donc un rythme boiteux. Une pulsation régulière n'a que
+    // deux étapes, et la seconde est au milieu.
+    const kf = tokens.slice(tokens.indexOf('@keyframes ping-pulse'))
+    const bloc = kf.slice(0, kf.indexOf('\n}'))
+    expect(bloc).toContain('0%, 100%')
+    expect(bloc).toContain('50%')
+    expect(bloc).not.toMatch(/\d+%,\s*100%\s*\{[^}]*opacity:\s*0/)
   })
 })
 
