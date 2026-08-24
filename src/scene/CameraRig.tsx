@@ -3,7 +3,17 @@ import gsap from 'gsap'
 import { useEffect, useRef } from 'react'
 import { PerspectiveCamera, Quaternion, Vector3 } from 'three'
 import { feedWheel, idleGesture } from '@/lib/gesture'
-import { applyProgress, nextStopIndex, verticalFov, type StopTransform } from '@/lib/stops'
+import {
+  applyPose,
+  blendPose,
+  copyPose,
+  emptyPose,
+  feelParam,
+  moveDuration,
+  nextStopIndex,
+  verticalFov,
+  type StopTransform,
+} from '@/lib/stops'
 import { stopParamIndex } from '@/lib/viewMode'
 import { useInteraction } from '@/state/interaction'
 import {
@@ -22,9 +32,9 @@ import {
  * no settle phase — the "second movement on arrival" of the scrub model is
  * structurally impossible here because there is only one easing curve.
  *
- *   wheel flick / hold  ──►  gesture detector  ──►  goToIndex(current ± 1)
- *   arrow keys / rail clicks ────────────────────►  goToIndex(i)
- *   ?stop= deep link ────────────────────────────►  instant applyProgress
+ *   molette / flèches ──► détecteur de geste ──► moveToIndex(courant ± 1)
+ *   barre de menu, rail du HUD ─────────────────► moveToIndex(i)
+ *   lien profond ?stop= ────────────────────────► pose posée, sans mouvement
  *
  * La règle du geste vit dans `lib/gesture.ts`, pure et testée : **un geste
  * vaut exactement UN pas, quelle que soit son intensité** (#116). Il se clôt
@@ -34,15 +44,11 @@ import {
  */
 
 // --- Feel tuning ----------------------------------------------------------------------
-const STEP_DURATION = 1.2 // seconds per stop-to-stop stroke
-// Marked acceleration/deceleration: long slow ends, franc through the middle.
-// Try 'power2.inOut' (softer) or 'expo.inOut' (most dramatic) to taste.
-const STEP_EASE = 'power3.inOut'
-// Un SAUT (barre de menu, rail du HUD) ne suit pas le parcours : il va droit à
-// l'arrêt visé. Un peu plus long qu'un pas, parce qu'il couvre en général plus
-// de distance — mais une seule course, donc lisible d'un bout à l'autre.
-const JUMP_DURATION = 1.6
-const JUMP_EASE = 'power2.inOut'
+// La COURBE du mouvement. Sa durée, elle, ne se règle plus ici : elle se
+// déduit de la distance parcourue (`moveDuration`, mesurée sur la scène) —
+// un pivot sur place et une traversée de la pièce ne peuvent pas durer pareil.
+const MOVE_EASE = 'power2.inOut'
+
 interface CameraRigProps {
   stops: StopTransform[]
   /**
@@ -66,106 +72,73 @@ export function CameraRig({ stops, moon }: CameraRigProps) {
   const camera = useThree((s) => s.camera) as PerspectiveCamera
   const glDom = useThree((s) => s.gl.domElement)
 
-  // Continuous tour position in segment space [0, N-1]; the single source of
-  // truth the camera renders from.
-  const pos = useRef({ p: 0 }).current
+  /**
+   * La pose que le tour affiche — LA source de vérité du rendu, et la seule.
+   *
+   * Elle remplace `pos.p`, une position continue sur la POLYLIGNE des arrêts.
+   * Ce nombre mélangeait deux choses : *où est la caméra* et *quel chemin elle
+   * suit*. Tant qu'elles étaient la même variable, tout déplacement était
+   * forcément un déplacement LE LONG DU TOUR — c'est pour ça qu'un clic de menu
+   * rembobinait la pièce, et pourquoi le vol direct de #113 n'a pu exister
+   * qu'en sortant de la variable le temps du vol, avec un second moteur.
+   * Une pose ne dit que le premier des deux, donc n'importe quel couple
+   * (départ, arrivée) devient exprimable.
+   */
+  const pose = useRef(emptyPose()).current
+  const from = useRef(emptyPose()).current
   const targetIndex = useRef(0)
-  const stroke = useRef<gsap.core.Tween | null>(null)
+  const move = useRef<gsap.core.Tween | null>(null)
   // L'état du détecteur de geste. Il vit dans une ref parce qu'il change
   // plusieurs fois par image et ne doit rien re-rendre ; la RÈGLE, elle, est
   // dans `lib/gesture.ts`, pure et testée (#116).
   const gesture = useRef(idleGesture())
-  // Le vol direct d'un saut, et le drapeau qui fait taire la boucle du tour
-  // pendant qu'il écrit la caméra lui-même.
-  const flight = useRef<gsap.core.Tween | null>(null)
-  const flying = useRef(false)
-
-  /** One fluid stroke to a stop. The only mover of `pos` during the tour. */
-  function goToIndex(index: number, duration = STEP_DURATION) {
-    const clamped = Math.min(Math.max(index, 0), stops.length - 1)
-    if (clamped === targetIndex.current && !stroke.current) return
-    targetIndex.current = clamped
-    const store = useInteraction.getState()
-    store.setPhase('touring')
-    store.setStopIndex(clamped)
-    stroke.current?.kill()
-    // Un pas pendant un vol : le vol perd, mais il doit d'abord rendre la main
-    // à la boucle, sinon `pos.p` avancerait sans que rien ne l'affiche.
-    flight.current?.kill()
-    flight.current = null
-    flying.current = false
-    stroke.current = gsap.to(pos, {
-      p: clamped,
-      duration,
-      ease: STEP_EASE,
-      onComplete: () => {
-        stroke.current = null
-        useInteraction.getState().setPhase('parked')
-        // Rien n'est réarmé ici, et c'est le cœur de #116. Le détecteur
-        // reprenait la main à la fin de la course, ce qui permettait au geste
-        // EN COURS de tirer un pas de plus. Un geste vaut un pas ; enchaîner
-        // demande un geste neuf, donc un silence.
-      },
-    })
-  }
 
   /**
-   * Un SAUT vers un arrêt quelconque : la caméra va DROIT à sa pose, sans
-   * repasser par les arrêts intermédiaires.
+   * Le mouvement de la caméra pendant le tour. **Un seul, pour tous les cas** :
+   * un pas de molette, une flèche, un clic dans la barre, le bouclage du
+   * dernier arrêt vers le premier. Ce qui les distingue est une DURÉE, pas un
+   * moteur (#115).
    *
-   * `goToIndex` interpole `pos.p`, une position continue sur la POLYLIGNE des
-   * arrêts : aller de 9 à 0 traverse donc réellement 8, 7, 6… La caméra
-   * rembobinait tout le parcours en 1,2 s, c'est-à-dire trop vite pour qu'on y
-   * lise quoi que ce soit — et pour rien, puisqu'on a demandé un endroit précis.
+   * Il y en avait deux avant : un pas interpolait `pos.p` sur la polyligne,
+   * un saut écrivait la caméra lui-même. Deux chemins pour « déplacer la
+   * caméra d'un arrêt à un autre », c'est un réglage appliqué à l'un qui manque
+   * à l'autre — et c'était déjà le cas, `STEP_DURATION` et `JUMP_DURATION`
+   * n'ayant aucun rapport l'une avec l'autre.
    *
-   * Le vol direct est impératif, sur le modèle de l'excursion du télescope :
-   * il écrit la caméra lui-même, `flying` fait taire la boucle du tour pendant
-   * ce temps, et `pos.p` n'est recalé sur l'arrêt visé qu'à l'arrivée — la
-   * boucle reprend donc la main sur un état cohérent.
-   *
-   * Mesuré avant de l'écrire : entre deux arrêts éloignés, le segment droit
-   * reste dans le volume de la pièce (tous les arrêts sont dedans et regardent
-   * vers les murs). Le pire cas, Accueil → Scoreboard, frôle la bibliothèque
-   * à mi-course sans la traverser.
+   * La caméra va DROIT à la pose visée. Mesuré avant de s'y fier : tous les
+   * arrêts sont à l'intérieur du volume et regardent vers les murs, donc une
+   * droite entre deux points de vue reste dans le vide. Le pire cas,
+   * Accueil → Scoreboard, frôle la bibliothèque à mi-course sans la traverser.
    */
-  function jumpToIndex(index: number) {
+  function moveToIndex(index: number) {
     const clamped = Math.min(Math.max(index, 0), stops.length - 1)
-    const target = stops[clamped]
-    if (!target) return
-    stroke.current?.kill()
-    stroke.current = null
-    flight.current?.kill()
+    const to = stops[clamped]
+    if (!to) return
+    if (clamped === targetIndex.current && !move.current) return
+
+    move.current?.kill()
+    copyPose(from, pose)
+    targetIndex.current = clamped
 
     const store = useInteraction.getState()
     store.setPhase('touring')
-    // Comme `goToIndex` : l'item du menu s'allume au DÉPART, pas à l'arrivée.
+    // L'item du menu s'allume au DÉPART, pas à l'arrivée.
     store.setStopIndex(clamped)
-    targetIndex.current = clamped
 
-    const fromP = camera.position.clone()
-    const fromQ = camera.quaternion.clone()
-    const fromFov = camera.fov
-    const toFov = verticalFov(target.hfov, camera.aspect)
     const t = { v: 0 }
-    flying.current = true
-    flight.current = gsap.to(t, {
+    move.current = gsap.to(t, {
       v: 1,
-      duration: JUMP_DURATION,
-      ease: JUMP_EASE,
-      onUpdate: () => {
-        camera.position.lerpVectors(fromP, target.position, t.v)
-        camera.quaternion.copy(fromQ).slerp(target.quaternion, t.v)
-        camera.fov = fromFov + (toFov - fromFov) * t.v
-        camera.updateProjectionMatrix()
-      },
+      duration: moveDuration(from, to),
+      ease: feelParam()?.ease ?? MOVE_EASE,
+      onUpdate: () => blendPose(pose, from, to, t.v),
       onComplete: () => {
-        flight.current = null
-        flying.current = false
-        // La boucle du tour reprend ICI, et sur la bonne case : sans ce recalage
-        // le premier défilement repartirait de l'arrêt qu'on avait quitté.
-        pos.p = clamped
+        move.current = null
+        // Exactement la pose autorisée par Blender, sans reste d'interpolation.
+        copyPose(pose, to)
         useInteraction.getState().setPhase('parked')
-        // Comme pour un pas (#116) : l'arrivée ne réarme rien.
+        // Rien n'est réarmé ici, et c'est le cœur de #116 : le détecteur
+        // reprenait la main à la fin de la course, ce qui permettait au geste
+        // EN COURS de tirer un pas de plus.
       },
     })
   }
@@ -181,13 +154,11 @@ export function CameraRig({ stops, moon }: CameraRigProps) {
    * a cessé de produire. Il part donc en vol direct.
    */
   function stepBy(dir: 1 | -1) {
-    const from = targetIndex.current
-    const next = nextStopIndex(from, dir, stops.length)
+    const next = nextStopIndex(targetIndex.current, dir, stops.length)
     if (next === null) return
-    // Un pas vers un arrêt VOISIN suit le parcours ; le bouclage, lui, n'est
-    // pas voisin et part en vol direct.
-    if (Math.abs(next - from) === 1) goToIndex(next)
-    else jumpToIndex(next)
+    // Voisin ou bouclage, c'est le même mouvement : seule la distance change,
+    // et c'est elle qui décide de la durée.
+    moveToIndex(next)
   }
 
   // --- Input: owned wheel with gesture detection + keyboard ---------------------------
@@ -262,9 +233,14 @@ export function CameraRig({ stops, moon }: CameraRigProps) {
     if (stops.length === 0) return
     const target = stopParamIndex()
     const clamped = Math.min(Math.max(target ?? 0, 0), stops.length - 1)
-    pos.p = clamped
     targetIndex.current = clamped
-    applyProgress(camera, stops, clamped)
+    // Posée, pas jouée : un lien profond doit être déterministe, c'est ce qui
+    // rend les captures de la boucle de comparaison reproductibles.
+    const stop = stops[clamped]
+    if (stop) {
+      copyPose(pose, stop)
+      applyPose(camera, pose)
+    }
     useInteraction.getState().setStopIndex(clamped)
     useInteraction.getState().setPhase('parked')
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -281,8 +257,8 @@ export function CameraRig({ stops, moon }: CameraRigProps) {
       if (stops.length === 0 || !moon) return
 
       if (state.phase === 'telescope' && prev.phase !== 'telescope') {
-        stroke.current?.kill()
-        stroke.current = null
+        move.current?.kill()
+        move.current = null
         excursion.current?.kill()
         fromPos.current.copy(camera.position)
         fromQuat.current.copy(camera.quaternion)
@@ -344,21 +320,23 @@ export function CameraRig({ stops, moon }: CameraRigProps) {
         const backPos = camera.position.clone()
         const backQuat = camera.quaternion.clone()
         const backFov = camera.fov
-        // Sample where the tour currently points. The scratch camera must
-        // carry the REAL viewport aspect, or applyProgress would compute its
-        // vertical fov for a square frame and the return would land zoomed.
-        const railCam = new PerspectiveCamera()
-        railCam.aspect = camera.aspect
-        applyProgress(railCam, stops, pos.p)
+        // Là où le tour pointe : c'est la pose, directement. Il fallait une
+        // caméra jetable tant que la pose du tour n'existait que comme une
+        // progression sur la polyligne — et cette caméra devait porter le VRAI
+        // rapport d'écran, sans quoi le champ vertical était calculé pour un
+        // cadre carré et le retour arrivait zoomé. Le piège disparaît avec
+        // elle : `applyPose` est le seul endroit qui convertit, et il lit le
+        // rapport de la caméra de rendu.
+        const railFov = verticalFov(pose.hfov, camera.aspect)
         const t = { v: 0 }
         excursion.current = gsap.to(t, {
           v: 1,
           duration: 1.2,
           ease: 'power2.inOut',
           onUpdate: () => {
-            camera.position.lerpVectors(backPos, railCam.position, t.v)
-            camera.quaternion.copy(backQuat).slerp(railCam.quaternion, t.v)
-            camera.fov = backFov + (railCam.fov - backFov) * t.v
+            camera.position.lerpVectors(backPos, pose.position, t.v)
+            camera.quaternion.copy(backQuat).slerp(pose.quaternion, t.v)
+            camera.fov = backFov + (railFov - backFov) * t.v
             camera.updateProjectionMatrix()
           },
           onComplete: () => {
@@ -388,7 +366,7 @@ export function CameraRig({ stops, moon }: CameraRigProps) {
     // droite.
     const requested = consumeStopRequest()
     if (requested !== null && (phase === 'touring' || phase === 'parked')) {
-      jumpToIndex(requested)
+      moveToIndex(requested)
     }
 
     // La sonde est écrite AVANT les sorties anticipées, sinon elle se fige à
@@ -398,18 +376,19 @@ export function CameraRig({ stops, moon }: CameraRigProps) {
     // encore l'arrêt de départ pendant les 1,6 s d'un saut.
     if (import.meta.env.DEV) {
       ;(window as unknown as Record<string, unknown>).__rigDebug = {
-        p: pos.p,
         target: targetIndex.current,
+        hfov: +pose.hfov.toFixed(2),
         phase,
-        stroking: !!stroke.current,
-        flying: flying.current,
+        moving: !!move.current,
       }
     }
 
     // PANEL_OPEN / TELESCOPE own the camera (frozen or excursion tween).
-    if (phase === 'panel' || phase === 'telescope' || returning.current || flying.current) return
+    if (phase === 'panel' || phase === 'telescope' || returning.current) return
 
-    applyProgress(camera, stops, pos.p)
+    // UNE écriture de caméra par image, depuis LA pose. Le mouvement, lui, ne
+    // touche jamais la caméra : il ne fait que déplacer la pose.
+    applyPose(camera, pose)
   })
 
   return null

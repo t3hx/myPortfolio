@@ -1,6 +1,17 @@
-import { Object3D, PerspectiveCamera } from 'three'
+import { Object3D, PerspectiveCamera, Vector3 } from 'three'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { applyProgress, extractStops, nextStopIndex, orderedStops, verticalFov } from '@/lib/stops'
+import {
+  MOVE_MAX_S,
+  MOVE_MIN_S,
+  applyPose,
+  blendPose,
+  emptyPose,
+  extractStops,
+  moveDuration,
+  nextStopIndex,
+  orderedStops,
+  verticalFov,
+} from '@/lib/stops'
 
 /**
  * `src/lib/stops.ts` porte le cadrage de toute la visite, et s'est déjà trompé
@@ -175,7 +186,13 @@ describe('orderedStops', () => {
   })
 })
 
-describe('applyProgress', () => {
+/**
+ * `blendPose` + `applyPose` ont remplacé `applyProgress` (#115) : la première
+ * mélange deux poses, la seconde en écrit une dans la caméra. Ce que ces tests
+ * verrouillent n'a pas changé — l'interpolation porte sur le champ HORIZONTAL,
+ * l'arrivée est exacte, et le cadrage ne dépend pas du rapport d'écran.
+ */
+describe('blendPose et applyPose', () => {
   const paliers = [
     { position: { x: 0 }, hfov: 40 },
     { position: { x: 10 }, hfov: 80 },
@@ -197,7 +214,8 @@ describe('applyProgress', () => {
     const stops = deuxStops()
     const cam = new PerspectiveCamera(50, 16 / 9)
 
-    applyProgress(cam, stops, 0.5)
+    const [a, b] = stops
+    applyPose(cam, blendPose(emptyPose(), a, b, 0.5))
 
     expect(cam.fov).toBeCloseTo(verticalFov(60, 16 / 9), 5)
   })
@@ -206,7 +224,8 @@ describe('applyProgress', () => {
     const stops = deuxStops()
     const cam = new PerspectiveCamera(50, 16 / 9)
 
-    applyProgress(cam, stops, 1)
+    const [a, b] = stops
+    applyPose(cam, blendPose(emptyPose(), a, b, 1))
 
     expect(cam.fov).toBeCloseTo(verticalFov(80, 16 / 9), 5)
     expect(cam.position.x).toBeCloseTo(10, 5)
@@ -219,8 +238,9 @@ describe('applyProgress', () => {
     const large = new PerspectiveCamera(50, 21 / 9)
     const carre = new PerspectiveCamera(50, 1)
 
-    applyProgress(large, stops, 0)
-    applyProgress(carre, stops, 0)
+    const [a] = stops
+    applyPose(large, a)
+    applyPose(carre, a)
 
     const hLarge = 2 * Math.atan(Math.tan((large.fov * RAD) / 2) * large.aspect) * DEG
     const hCarre = 2 * Math.atan(Math.tan((carre.fov * RAD) / 2) * carre.aspect) * DEG
@@ -228,25 +248,28 @@ describe('applyProgress', () => {
     expect(hLarge).toBeCloseTo(40, 5)
   })
 
-  it('borne la progression aux extrémités de la visite', () => {
+  it('rend exactement les poses d’origine aux deux bouts', () => {
+    // Le mélange ne doit rien laisser traîner : à t = 1, la caméra est sur le
+    // cadrage autorisé par Blender, pas à un epsilon de lui. C'est ce que le
+    // mouvement recopie à l'arrivée pour repartir d'un état propre.
     const stops = deuxStops()
-    const cam = new PerspectiveCamera(50, 16 / 9)
+    const [a, b] = stops
 
-    applyProgress(cam, stops, -5)
-    expect(cam.position.x).toBeCloseTo(0, 5)
+    const debut = blendPose(emptyPose(), a, b, 0)
+    expect(debut.position.x).toBeCloseTo(0, 10)
+    expect(debut.hfov).toBeCloseTo(paliers[0].hfov, 10)
 
-    applyProgress(cam, stops, 99)
-    expect(cam.position.x).toBeCloseTo(10, 5)
+    const fin = blendPose(emptyPose(), a, b, 1)
+    expect(fin.position.x).toBeCloseTo(10, 10)
+    expect(fin.hfov).toBeCloseTo(paliers[1].hfov, 10)
   })
 
-  it('ne touche pas à la caméra si la visite est vide', () => {
-    const cam = new PerspectiveCamera(50, 16 / 9)
-    cam.position.set(1, 2, 3)
-
-    applyProgress(cam, [], 0.5)
-
-    expect(cam.fov).toBe(50)
-    expect(cam.position.toArray()).toEqual([1, 2, 3])
+  it('borne les index, pas les poses', () => {
+    // Le bornage a changé d'endroit avec #115 : il n'y a plus de progression
+    // continue à écrêter, seulement un index d'arrêt. `nextStopIndex` refuse
+    // de sortir du tour, et le mouvement borne l'index qu'on lui demande.
+    expect(nextStopIndex(0, -1, 2)).toBeNull()
+    expect(nextStopIndex(1, 1, 2)).toBe(1)
   })
 })
 
@@ -272,5 +295,43 @@ describe('nextStopIndex', () => {
   it('ne boucle pas sur un tour qui n’a que l’accueil', () => {
     expect(nextStopIndex(0, 1, 1)).toBeNull()
     expect(nextStopIndex(0, 1, 0)).toBeNull()
+  })
+})
+
+describe('moveDuration', () => {
+  const pose = (x: number, hfov: number, yaw = 0) => {
+    const p = emptyPose()
+    p.position.set(x, 0, 0)
+    p.hfov = hfov
+    p.quaternion.setFromAxisAngle(new Vector3(0, 1, 0), yaw)
+    return p
+  }
+
+  it('reste dans ses bornes', () => {
+    expect(moveDuration(pose(0, 50), pose(0, 50))).toBeCloseTo(MOVE_MIN_S, 5)
+    expect(moveDuration(pose(0, 50), pose(100, 50))).toBeCloseTo(MOVE_MAX_S, 5)
+  })
+
+  it('ne se laisse pas piloter par la seule distance', () => {
+    // Le fait mesuré qui justifie les trois termes : sur cette scène, le pas
+    // le plus COURT (0,72 m) est un demi-tour de 157°, et le plus LONG
+    // (3,04 m) ne tourne que de 26°. Sur la distance seule, le demi-tour
+    // serait le mouvement le plus rapide de la visite.
+    const demiTour = moveDuration(pose(0, 50), pose(0.72, 50, Math.PI * 0.87))
+    const traversee = moveDuration(pose(0, 50), pose(3.04, 50, 0.46))
+    expect(demiTour).toBeGreaterThan(traversee * 0.9)
+  })
+
+  it('compte un changement de focale comme un mouvement', () => {
+    // Un zoom se lit comme un travelling, même sans un centimètre parcouru.
+    const surPlace = moveDuration(pose(0, 20), pose(0, 20))
+    const zoom = moveDuration(pose(0, 20), pose(0, 64))
+    expect(zoom).toBeGreaterThan(surPlace)
+  })
+
+  it('est symétrique : l’aller et le retour durent autant', () => {
+    const a = pose(0, 30)
+    const b = pose(2, 60, 1.1)
+    expect(moveDuration(a, b)).toBeCloseTo(moveDuration(b, a), 10)
   })
 })
