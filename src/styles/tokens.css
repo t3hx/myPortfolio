@@ -154,7 +154,7 @@
 
 .bubble__aura {
   position: absolute; inset: -1px; pointer-events: none;
-  border: 1.5px solid var(--glow-deep);
+  border: 2px solid var(--glow-deep);
   border-radius: inherit;
   /* Le HALO. Quatre ombres empilées plutôt qu'une, chacune plus large et plus
      transparente : c'est la façon d'obtenir une retombée DOUCE vers l'alpha,
@@ -166,11 +166,12 @@
      trait flouté serait recoupé net par le secteur qui progresse — le bord
      d'attaque du tracé redeviendrait dur, ce qu'on cherche justement à éviter. */
   box-shadow:
-    0 0 5px rgba(var(--glow-rgb), .55),
-    0 0 15px rgba(var(--glow-rgb), .34),
-    0 0 32px rgba(var(--glow-rgb), .2),
-    0 0 62px rgba(var(--glow-rgb), .09),
-    inset 0 0 10px rgba(var(--glow-rgb), .15);
+    0 0 4px rgba(var(--glow-rgb), .95),
+    0 0 12px rgba(var(--glow-rgb), .7),
+    0 0 28px rgba(var(--glow-rgb), .48),
+    0 0 56px rgba(var(--glow-rgb), .3),
+    0 0 100px rgba(var(--glow-rgb), .16),
+    inset 0 0 18px rgba(var(--glow-rgb), .3);
   /* Les deux secteurs opposés. Le second part à 180deg : c'est ce qui fait le
      départ « centre bas », et les deux tournent dans le même sens. */
   --aura-mask: conic-gradient(
@@ -254,6 +255,15 @@
 .bubble__tick { position: absolute; top: 50%; width: 44px; height: 1px; }
 .bubble__tick--right { left: 100%; background: linear-gradient(270deg, rgba(var(--cream-rgb), .55), rgba(var(--cream-rgb), 0)); }
 .bubble__tick--left  { right: 100%; background: linear-gradient(90deg,  rgba(var(--cream-rgb), .55), rgba(var(--cream-rgb), 0)); }
+/* Variante VERTICALE (2026-08-24) : pour une bulle posée sous son sujet, un
+   rappel horizontal pointerait à côté. Celui-ci part du milieu du bord haut et
+   monte — il désigne ce qui est au-dessus. Le dégradé est opaque contre la
+   bulle et s'éteint en s'éloignant, comme les deux autres. */
+.bubble__tick--top {
+  top: auto; bottom: 100%; left: 50%; transform: translateX(-50%);
+  width: 1px; height: 44px;
+  background: linear-gradient(0deg, rgba(var(--cream-rgb), .55), rgba(var(--cream-rgb), 0));
+}
 
 @keyframes bubble-in {
   from { opacity: 0; transform: translateY(10px); clip-path: inset(0 0 100% 0); }

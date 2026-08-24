@@ -23,7 +23,7 @@ export interface BubbleCardProps {
   /** Combien de caractères en sont visibles. */
   shown: number
   /** Rappel de 44 px vers le sujet, du côté indiqué. */
-  tick?: 'left' | 'right'
+  tick?: 'left' | 'right' | 'top'
   /** Il reste une page après celle-ci. */
   hasNext?: boolean
   /** Contenu supplémentaire posé dans la boîte (rien aujourd'hui). */

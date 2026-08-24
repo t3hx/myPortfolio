@@ -55,7 +55,7 @@ export interface BubbleProps {
   /** `max-width` de la table de placement, en px content-box ; `null` = libre. */
   maxWidth?: number | null
   /** Ligne de rappel de 44 px vers l'objet, du côté indiqué. */
-  tick?: 'left' | 'right'
+  tick?: 'left' | 'right' | 'top'
   /** Variante `--tilted` : rotation en degrés (guitare : −11,15°). */
   tilt?: number
   /** Classes supplémentaires ajoutées à `.bubble`. */

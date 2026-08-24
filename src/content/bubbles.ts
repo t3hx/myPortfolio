@@ -88,7 +88,7 @@ export interface BubbleContent {
    * est la variante sans titre, centrée en bas, et elle ne désigne aucun objet
    * — elle dit « faites défiler ». Un rappel horizontal y pointerait vers rien.
    */
-  tick?: 'left' | 'right'
+  tick?: 'left' | 'right' | 'top'
   /** Variante `--tilted` : rotation en degrés, mesurée sur la maquette. */
   tilt?: number
 }
@@ -112,7 +112,9 @@ export const BUBBLES: BubbleContent[] = [
   {
     stop: 'Desk',
     objects: ['Desk_Merged'],
-    center: { x: 0.5, y: 0.8304 },
+    // Descendue de 20 px dans le cadre du design (0,8304 → 0,8582 sur 720)
+    // pour dégager le bureau, et son rappel passe au-dessus (2026-08-24).
+    center: { x: 0.5, y: 0.8582 },
     maxWidth: 460,
     subject: { fr: 'Le bureau', en: 'The desk' },
     text: [
@@ -136,7 +138,7 @@ export const BUBBLES: BubbleContent[] = [
         en: 'And the mug has been cold for an hour. It rarely stays that way much longer.',
       },
     ],
-    tick: 'right',
+    tick: 'top',
   },
   {
     stop: 'CV',
