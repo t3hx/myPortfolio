@@ -49,6 +49,26 @@ describe('le déverrouillage du défilement', () => {
     expect(css).toMatch(/:root\[data-experience='classic'\][\s\S]{0,200}overflow: visible/)
   })
 
+  it('est posé AVANT la première peinture', () => {
+    // Mesuré image par image : avec un `useEffect`, qui s'exécute après la
+    // peinture, la page classique était peinte au moins une trame entière dans
+    // un document encore bloqué — `overflow: hidden`, `scrollHeight: 900`.
+    // Une image ne se voit pas ; mais tout ce qui MESURE la page au montage la
+    // lit dans cet état, et un observateur qui se trompe une fois ne se
+    // reprend pas : il a déjà cessé de regarder.
+    //
+    // `lang`, juste à côté, reste un `useEffect` : une langue fausse pendant
+    // une image ne coûte rien, un document bloqué coûte une mise en page.
+    // On regarde quel crochet OUVRE le bloc qui écrit l'attribut : le dernier
+    // `useEffect(` ou `useLayoutEffect(` avant l'écriture. Un test qui se
+    // contenterait de chercher `useLayoutEffect` dans le fichier passerait le
+    // jour où il servirait à autre chose.
+    const write = app.indexOf("dataset.experience = 'classic'")
+    expect(write, "l'écriture de data-experience est introuvable").toBeGreaterThan(0)
+    const before = app.slice(0, write)
+    expect(before.lastIndexOf('useLayoutEffect(')).toBeGreaterThan(before.lastIndexOf('useEffect('))
+  })
+
   it("est retiré quand on quitte l'expérience classique", () => {
     // Rouvrir la pré-sélection puis choisir la 3D laisserait sinon une page qui
     // défile sous un canvas fixe — la molette commanderait le tour ET le

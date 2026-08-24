@@ -84,6 +84,13 @@ function Cap({ locale }: { locale: Locale }) {
  * Le survol n'ouvre rien sur une formation, et c'est pourquoi ce composant ne
  * sert qu'aux expériences : un diplôme n'a pas de missions à dérouler, et lui
  * donner une réaction serait une promesse non tenue.
+ *
+ * **La cartouche n'est PAS focalisable.** Un `tabIndex` dessus aurait mis
+ * quatre arrêts dans l'ordre de tabulation qui n'annoncent rien et n'ouvrent
+ * rien sous Entrée — un faux bouton coûte plus cher qu'une absence de bouton.
+ * Les missions sont dans le DOM quoi qu'il arrive : on les atteint en lisant,
+ * pas en ouvrant. Le vrai composant à divulgation est une décision
+ * d'accessibilité à part entière (#49), pas un effet de bord de cette page.
  */
 function ExperienceCards({ locale }: { locale: Locale }) {
   const [ref, revealed] = useReveal<HTMLDivElement>()
@@ -99,11 +106,6 @@ function ExperienceCards({ locale }: { locale: Locale }) {
           }`}
           style={revealDelay(i * REVEAL_STEP_CARD_MS)}
           onMouseEnter={() => setOpen(i)}
-          // Le focus clavier ouvre aussi : sans ça, les missions ne sont
-          // atteignables qu'à la souris. La cartouche n'est pas un bouton pour
-          // autant — elle n'ouvre rien de plus, elle déroule ce qu'elle contient.
-          onFocus={() => setOpen(i)}
-          tabIndex={0}
         >
           <div className="classic-card__head">
             <div>

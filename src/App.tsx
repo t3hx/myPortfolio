@@ -1,4 +1,4 @@
-import { Suspense, lazy, useEffect, useState } from 'react'
+import { Suspense, lazy, useEffect, useLayoutEffect, useState } from 'react'
 import {
   clearStoredChoice,
   isWebGLAvailable,
@@ -64,7 +64,19 @@ export default function App() {
   // attributs de la racine. Retiré au départ, pour que rouvrir la
   // pré-sélection puis choisir la 3D ne laisse pas une page qui défile sous un
   // canvas fixe.
-  useEffect(() => {
+  //
+  // **`useLayoutEffect` et non `useEffect`, et c'est mesuré.** Un effet
+  // ordinaire s'exécute APRÈS la peinture : la page classique était peinte au
+  // moins une image entière dans un document encore bloqué — relevé image par
+  // image, `overflow: hidden` et `scrollHeight: 900` sur la trame 2, corrigé
+  // sur la trame 3. Une image, personne ne la voit ; mais tout ce qui MESURE la
+  // page au montage la lit dans cet état, et un observateur qui se trompe une
+  // fois ne se reprend pas — il a déjà cessé de regarder.
+  //
+  // C'est la différence avec `lang` juste au-dessus, qui reste un `useEffect` :
+  // un attribut de langue faux pendant une image ne coûte rien à personne, un
+  // document bloqué coûte une mise en page.
+  useLayoutEffect(() => {
     if (!classic) return
     document.documentElement.dataset.experience = 'classic'
     return () => {

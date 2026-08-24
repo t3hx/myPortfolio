@@ -1,5 +1,27 @@
 # Handoff : Portfolio « Lueur » — Thibault Dubois
 
+> **Note de reprise (#29, 2026-08-24).** Ce document est la spécification livrée
+> par la session design ; il fait foi pour les tokens, les timings, les easings
+> et la table des retards. Trois choses ont bougé depuis, et il n'a pas été
+> réécrit pour autant — c'est la trace de ce qui a été demandé.
+>
+> - **Les fichiers du bundle ont été rangés.** Le prototype et son runtime sont
+>   dans `design/classic/` (`portfolio-2d.dc.html`, `support.js`,
+>   `image-slot.js`) — délibérément PAS dans `design/screens/`, dont
+>   `tests/bubbleAnchors.test.ts` balaie les `*.html`. Le `DESIGN.md` joint était
+>   la copie octet pour octet de `docs/DESIGN.md` et n'a pas été dupliqué.
+> - **Les cubes filaires restent en CSS 3D**, contrairement à la préférence
+>   notée ci-dessous. `App.tsx` importe la scène en dynamique pour que
+>   three/r3f ne partent jamais sur la route classique, et c'est cette route qui
+>   reçoit le visiteur sans WebGL : lui monter un canvas reviendrait à demander
+>   un contexte WebGL à la seule personne qui a prouvé ne pas pouvoir en
+>   obtenir. Voir `src/ui/classic/WireCube.tsx`.
+> - **Les contenus `[placeholder]` ne sont pas repris d'ici.** Le parcours, les
+>   projets et les savoir-faire viennent de `src/content/cv.ts` et
+>   `src/content/projects.ts`, partagés avec la scène 3D. Les projets y sont
+>   réels ; le CV attend encore la plume de son auteur, comme la liste des
+>   savoir-faire et le texte du « cap », que l'auteur réécrit.
+
 ## Overview
 
 Portfolio one-page mobile-first pour développeur front créatif. Objectif : démontrer la capacité à « donner de la vie » à une interface — micro-interactions, animations orchestrées, accents 3D. Direction visuelle : verre fumé teinté bois-brûlé, accent cyan froid, ambiance sombre et épurée (dérivée de `DESIGN.md`, joint).
