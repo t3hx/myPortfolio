@@ -46,6 +46,16 @@ interface InteractionState {
    */
   telescopeSettled: boolean
   /**
+   * La lune est arrivée : le second temps de l'excursion (le grossissement)
+   * est terminé et elle remplit la visée.
+   *
+   * Distinct de `telescopeSettled`, qui dit seulement qu'on est derrière
+   * l'oculaire — à cet instant, la visée s'ouvre sur un ciel encore lointain.
+   * L'encadré de la lune attend CE signal-ci : il parle d'un sujet qu'il faut
+   * d'abord voir.
+   */
+  moonRevealed: boolean
+  /**
    * Le télescope est survolé — la seule chose que `RoomModel` sait, et la seule
    * dont le cerne a besoin.
    *
@@ -87,6 +97,7 @@ interface InteractionState {
   enterTelescope: () => void
   /** Appelé par `CameraRig` à la fin de l'excursion, jamais au clic. */
   settleTelescope: () => void
+  revealMoon: () => void
   hoverTelescope: (hovered: boolean) => void
   /** Appelé par `CameraRig` à la fin du retour, jamais à la touche `Échap`. */
   showDetailedMoon: (shown: boolean) => void
@@ -98,6 +109,7 @@ export const useInteraction = create<InteractionState>((set, get) => ({
   stopIndex: 0,
   ready: false,
   telescopeSettled: false,
+  moonRevealed: false,
   telescopeHovered: false,
   moonDetailed: false,
   pendingStopRequest: null,
@@ -139,13 +151,21 @@ export const useInteraction = create<InteractionState>((set, get) => ({
       // `telescopeHovered` est éteint ICI et pas au prochain mouvement de
       // souris : après le clic, la souris ne bouge plus, et le cerne restait
       // allumé pendant toute l'excursion — visible en plein cadre sur le tube.
-      set({ phase: 'telescope', telescopeSettled: false, telescopeHovered: false })
+      set({
+        phase: 'telescope',
+        telescopeSettled: false,
+        moonRevealed: false,
+        telescopeHovered: false,
+      })
     }
   },
   settleTelescope: () => {
     // L'écran est noir ici : c'est le seul instant de la séquence où l'échange
     // de lune est invisible par construction.
     if (get().phase === 'telescope') set({ telescopeSettled: true, moonDetailed: true })
+  },
+  revealMoon: () => {
+    if (get().phase === 'telescope') set({ moonRevealed: true })
   },
   showDetailedMoon: (moonDetailed) => {
     if (get().moonDetailed !== moonDetailed) set({ moonDetailed })
@@ -154,6 +174,7 @@ export const useInteraction = create<InteractionState>((set, get) => ({
     if (get().telescopeHovered !== telescopeHovered) set({ telescopeHovered })
   },
   exitTelescope: () => {
-    if (get().phase === 'telescope') set({ phase: 'parked', telescopeSettled: false })
+    if (get().phase === 'telescope')
+      set({ phase: 'parked', telescopeSettled: false, moonRevealed: false })
   },
 }))

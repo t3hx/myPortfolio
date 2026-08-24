@@ -25,17 +25,22 @@ Two directories:
 
 ## Available reference stops
 
-Les 11, re-rendues le 2026-08-20 en 1920 × 1080 :
+Les dix arrêts du tour, re-rendus le 2026-08-20 en 1920 × 1080 :
 
-`home`, `vertical_monitor`, `desk`, `scoreboard`, `bookshelf`, `cabinet`,
-`cat`, `guitare`, `poster`, `telescope`, `moon`.
+`home`, `desk`, `vertical_monitor`, `cabinet`, `bookshelf`, `cat`, `guitare`,
+`poster`, `telescope`, `scoreboard`.
+
+`moon.png` est versionnée à côté d'eux **sans être comparée**, comme
+`overview.png` : la lune n'est plus une étape du tour depuis #113 — on y accède
+en cliquant le télescope — mais son rendu reste le fond de la maquette
+`design/screens/10-moon.html`.
 
 Re-render every reference whenever the Blender cameras move. Four framings changed between v12 and v13 (bookshelf, cv, scoreboard, home), which silently invalidated the previous set — a stale reference makes the comparison loop report drift that isn't there, or hide drift that is.
 
 ## The automated loop (issues #44, #45, #46)
 
 ```
-pnpm test:e2e            # les 11 arrêts, capturés et comparés
+pnpm test:e2e            # les dix arrêts, capturés et comparés
 pnpm test:e2e --ui       # le même, en mode inspection
 ```
 

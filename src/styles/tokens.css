@@ -792,6 +792,19 @@
   color: rgba(var(--cream-rgb), .55);
 }
 
+/* L'encadré de la lune (#113) : `.bubble` fait tout le travail — verre fumé,
+   rayon, typo, entrée. Cette règle ne fait que le POSER, en bas à droite de la
+   vignette, là où il ne recouvre ni le sujet ni le rappel de sortie (coin
+   opposé). `position: absolute` dans `.scope`, donc il se resserre avec
+   l'ouverture au lieu de rester seul sur l'écran noir. */
+.scope__bubble {
+  /* En bas à GAUCHE (arbitrage produit, 2026-08-24) : le côté droit appartient
+     à la barre de menu, sous laquelle la bulle passait — elle est à
+     `--z-bubble`, la barre à `--z-bar`. À gauche, la question ne se pose plus,
+     et le rappel de sortie occupe l'autre coin. */
+  left: 42px; bottom: 42px; max-width: 330px;
+}
+
 /* Déclaré APRÈS `.scope` : à spécificité égale, le dernier gagne, et la sortie
    l'emporte sur l'entrée. Même règle que `.cv--out` et `.sheet--out`. */
 .scope--out { animation: scope-out var(--t-scope-out) linear both; }

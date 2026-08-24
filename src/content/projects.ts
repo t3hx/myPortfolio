@@ -146,11 +146,11 @@ export const PROJECTS: Project[] = [
     highlights: {
       fr: [
         'Rendu entièrement pré-cuit : aucune lumière au runtime, tout est dans les textures.',
-        'La caméra suit onze cadrages composés dans Blender, jamais réécrits en code.',
+        'La caméra suit dix cadrages composés dans Blender, jamais réécrits en code.',
       ],
       en: [
         'Fully pre-baked render: no runtime lights, everything lives in the textures.',
-        'The camera follows eleven framings composed in Blender, never rewritten in code.',
+        'The camera follows ten framings composed in Blender, never rewritten in code.',
       ],
     },
     links: [{ label: { fr: 'Code', en: 'Code' }, href: 'https://github.com/t3hx/myPortfolio' }],

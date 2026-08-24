@@ -72,6 +72,22 @@ export const UI = {
     photo: { fr: 'photo', en: 'photo' } as Localized,
   },
   telescope: {
+    /**
+     * La phrase de la lune. Elle était la bulle du 11ᵉ arrêt du tour ; la lune
+     * n'étant plus une étape (#113), elle se dit là où on regarde la lune —
+     * dans l'instrument. Texte repris mot pour mot de `BUBBLES`, les deux
+     * langues comprises : le sujet n'a pas changé, seulement l'endroit.
+     */
+    /**
+     * Le titre de l'encadré. C'était le `subject` de la bulle du tour ; il la
+     * suit dans la visée. Sans numéro : la numérotation suit le RANG dans le
+     * tour, et la lune n'y est plus.
+     */
+    subject: { fr: 'La lune', en: 'The moon' } as Localized,
+    moon: {
+      fr: 'À 384 000 km, le seul sujet qui accepte de poser par nuit claire.',
+      en: 'At 384,000 km, the only subject that will pose on a clear night.',
+    } as Localized,
     /** Le rappel de sortie, affiché dans la visée. Rien d'autre n'en sort :
      *  un clic ailleurs ne fait rien, et personne ne devine `Échap` seul. */
     exit: { fr: 'pour revenir', en: 'to go back' } as Localized,

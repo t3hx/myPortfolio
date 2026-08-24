@@ -82,5 +82,17 @@ export function stopParamIndex(): number | null {
   const index = CAMERA_STOPS.findIndex(
     (s) => s.label.toLowerCase() === value || s.label.toLowerCase().startsWith(value),
   )
-  return index === -1 ? null : index
+  if (index === -1) {
+    // Même discipline que le menu et `extractStops` : un `?stop=` qui ne
+    // correspond à rien retombait sur l'accueil sans un mot. C'est le mode de
+    // panne exact que #113 rend probable — `?stop=Moon` était un lien valide
+    // et partageable jusqu'à ce que la lune quitte le tour, et un ancien lien
+    // qui atterrit ailleurs en silence ne dit pas au visiteur qu'il a raté
+    // quelque chose.
+    console.warn(
+      `[stops] "?stop=${value}" ne correspond à aucun arrêt de CAMERA_STOPS — accueil par défaut.`,
+    )
+    return null
+  }
+  return index
 }

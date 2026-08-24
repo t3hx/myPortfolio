@@ -34,6 +34,7 @@ export function TelescopeScope() {
   // regardait dans un télescope avant d'y être arrivé.
   const visible = useInteraction((s) => s.telescopeSettled)
   const locale = useLocale((s) => s.locale)
+  const moonRevealed = useInteraction((st) => st.moonRevealed)
 
   // Démontage différé, comme la bulle, la fiche et le CV : `visible` à false
   // lance le fondu, le démontage suit. Démonter tout de suite emporterait la
@@ -61,6 +62,25 @@ export function TelescopeScope() {
         <span className="scope__tick scope__tick--w" />
         <span className="scope__tick scope__tick--e" />
       </div>
+
+      {/* L'encadré de la lune : la MÊME bulle que partout ailleurs, pas une
+          légende à part. La lune a cessé d'être un arrêt (#113), elle n'a pas
+          cessé de se raconter comme les autres objets de la pièce — seul
+          l'endroit change.
+
+          En bas à droite, et seulement quand la lune est là (`moonRevealed`) :
+          la visée s'ouvre sur un ciel lointain, et le grossissement dure encore
+          une seconde et demie après. Elle vit DANS le cache, comme le rappel de
+          sortie, pour fondre et se resserrer avec lui. */}
+      {moonRevealed && (
+        <article className="bubble scope__bubble">
+          <header className="bubble__kicker">
+            <span className="bubble__dot" />
+            <span className="bubble__label">{t(UI.telescope.subject, locale)}</span>
+          </header>
+          <p className="bubble__text">{t(UI.telescope.moon, locale)}</p>
+        </article>
+      )}
 
       {/* Le rappel de sortie. `Échap` est la SEULE issue de cette vue — un clic
           ailleurs ne fait rien — et personne ne devine une touche qu'on ne lui

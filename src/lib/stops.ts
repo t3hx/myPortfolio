@@ -38,60 +38,76 @@ export function verticalFov(hfov: number, aspect: number): number {
 }
 
 /**
- * Reads each `CameraStop_*` node's world transform straight from the loaded
- * scene graph (so there is no Blender Z-up → glTF Y-up conversion to get wrong).
- * The .glb's cameras are never made active — we only sample their transforms
- * and tween OUR render camera to match.
+ * Lit le transform monde d'UNE caméra du `.glb`, par le nom exact de son nœud
+ * (donc sans conversion Z-up → Y-up de Blender à se tromper). Les caméras du
+ * `.glb` ne sont jamais activées : on échantillonne leur pose et on interpole
+ * NOTRE caméra de rendu jusqu'à elle.
  *
- * Returns transforms in CAMERA_STOPS order. Missing stops are skipped with a
- * console warning (the degraded re-export case from the design doc's test plan).
+ * Ce helper existe pour être appelé DEUX fois de sources différentes : par
+ * `extractStops()` pour chaque arrêt du tour, et par le télescope pour
+ * `CameraStop_TelescopeMoon`, qui est une caméra du `.glb` **hors tour**
+ * (#113). C'est la dérivation du champ horizontal qui ne doit exister qu'une
+ * fois — la recopier ailleurs, ce serait une deuxième source de vérité sur une
+ * focale, et `tests/stops.test.ts` ne verrouille que celle-ci.
+ *
+ * `null` avec un avertissement si le nœud manque, ou s'il porte le bon nom
+ * sans porter de caméra.
+ */
+export function readStopTransform(scene: Object3D, cameraName: string): StopTransform | null {
+  const node = scene.getObjectByName(cameraName)
+  if (!node) {
+    console.warn(`[stops] Missing camera node "${cameraName}" in the .glb — skipping stop.`)
+    return null
+  }
+
+  // The node may itself be a camera, or hold one as a child.
+  const cams: PerspectiveCamera[] = []
+  node.traverse((c: Object3D) => {
+    if ((c as PerspectiveCamera).isCamera) cams.push(c as PerspectiveCamera)
+  })
+  const cam = cams[0] ?? null
+
+  // A node with the right name but NO camera used to fall through to a
+  // 45° default. That is the worst kind of failure: the stop parks at the
+  // right spot, warns about nothing, and shows a framing nobody authored —
+  // so it looks plausible and reads as a Blender decision. Skip it loudly
+  // instead, exactly like a stop missing from the graph.
+  if (!cam) {
+    console.warn(
+      `[stops] "${cameraName}" exists in the .glb but carries no camera ` +
+        '(an Empty with the right name?) — skipping. Its focal length cannot ' +
+        'be derived, and a default one would be silently wrong.',
+    )
+    return null
+  }
+
+  const position = new Vector3()
+  const quaternion = new Quaternion()
+  cam.getWorldPosition(position)
+  cam.getWorldQuaternion(quaternion)
+  // glTF `yfov` + `aspectRatio`, as loaded into three's camera.fov/.aspect.
+  // Convert to the horizontal field, which is what the framing really is.
+  const aspect = cam.aspect > 0 ? cam.aspect : 1
+  const hfov = 2 * Math.atan(Math.tan((cam.fov * RAD) / 2) * aspect) * DEG
+  return { position, quaternion, hfov }
+}
+
+/**
+ * Les arrêts du tour, lus dans le graphe chargé. Renvoie les transforms indexés
+ * par nom de caméra ; un arrêt manquant est sauté avec un avertissement (le cas
+ * du ré-export dégradé prévu au plan de test du design doc).
+ *
+ * Ne lit QUE `CAMERA_STOPS` : une caméra du `.glb` absente de ce tableau n'est
+ * jamais extraite ici. C'est voulu — le tour est ce tableau — et c'est pourquoi
+ * la lune passe par `readStopTransform()` de son côté depuis #113.
  */
 export function extractStops(scene: Object3D): Map<string, StopTransform> {
   scene.updateMatrixWorld(true)
   const stops = new Map<string, StopTransform>()
 
   for (const stop of CAMERA_STOPS) {
-    const node = scene.getObjectByName(stop.camera)
-    if (!node) {
-      console.warn(`[stops] Missing camera node "${stop.camera}" in the .glb — skipping stop.`)
-      continue
-    }
-
-    // The node may itself be a camera, or hold one as a child.
-    const cams: PerspectiveCamera[] = []
-    node.traverse((c: Object3D) => {
-      if ((c as PerspectiveCamera).isCamera) cams.push(c as PerspectiveCamera)
-    })
-    const cam = cams[0] ?? null
-
-    // A node with the right name but NO camera used to fall through to a
-    // 45° default. That is the worst kind of failure: the stop parks at the
-    // right spot, warns about nothing, and shows a framing nobody authored —
-    // so it looks plausible and reads as a Blender decision. Skip it loudly
-    // instead, exactly like a stop missing from the graph.
-    // A node with the right name but NO camera used to fall through to a
-    // 45° default. That is the worst kind of failure: the stop parks at the
-    // right spot, warns about nothing, and shows a framing nobody authored —
-    // so it looks plausible and reads as a Blender decision. Skip it loudly
-    // instead, exactly like a stop missing from the graph.
-    if (!cam) {
-      console.warn(
-        `[stops] "${stop.camera}" exists in the .glb but carries no camera ` +
-          '(an Empty with the right name?) — skipping. Its focal length cannot ' +
-          'be derived, and a default one would be silently wrong.',
-      )
-      continue
-    }
-
-    const position = new Vector3()
-    const quaternion = new Quaternion()
-    cam.getWorldPosition(position)
-    cam.getWorldQuaternion(quaternion)
-    // glTF `yfov` + `aspectRatio`, as loaded into three's camera.fov/.aspect.
-    // Convert to the horizontal field, which is what the framing really is.
-    const aspect = cam.aspect > 0 ? cam.aspect : 1
-    const hfov = 2 * Math.atan(Math.tan((cam.fov * RAD) / 2) * aspect) * DEG
-    stops.set(stop.camera, { position, quaternion, hfov })
+    const transform = readStopTransform(scene, stop.camera)
+    if (transform) stops.set(stop.camera, transform)
   }
 
   if (stops.size === 0) {
@@ -103,10 +119,6 @@ export function extractStops(scene: Object3D): Map<string, StopTransform> {
   return stops
 }
 
-/** CAMERA_STOPS order, holes removed. Blender is the single source of truth
- *  for poses AND focal lengths: name a camera `CameraStop_*` there, add its
- *  order/label to CAMERA_STOPS here, done. (The hardcoded STOP_POSES fallback
- *  table is gone — it only existed while an export shipped without cameras.) */
 export function orderedStops(map: Map<string, StopTransform>): StopTransform[] {
   return CAMERA_STOPS.map((s) => map.get(s.camera)).filter(
     (t): t is StopTransform => t !== undefined,
@@ -138,3 +150,32 @@ export function applyProgress(cam: PerspectiveCamera, stops: StopTransform[], p:
   cam.fov = verticalFov(a.hfov + (b.hfov - a.hfov) * t, cam.aspect)
   cam.updateProjectionMatrix()
 }
+
+/**
+ * L'index visé par un PAS du tour, dans la direction donnée.
+ *
+ * Deux décisions produit tiennent dans cette fonction, et aucune ne survit à
+ * une « simplification » en modulo (2026-08-24) :
+ *
+ *  - **Le tour boucle en avant, du dernier arrêt vers le PREMIER ARRÊT**, pas
+ *    vers l'accueil. L'accueil est le seuil du parcours : son cadrage remplit
+ *    l'image d'un écran pour que la première vue se lise comme une image plate,
+ *    et le premier défilement recule et révèle la pièce. Rejouer cette
+ *    révélation à chaque tour la viderait de son effet.
+ *  - **Il ne boucle pas en arrière.** Reculer depuis l'accueil ne fait rien —
+ *    on y retourne en reculant depuis le premier arrêt, ou par la barre de
+ *    menu, jamais en avançant.
+ *
+ * `null` quand le pas ne mène nulle part.
+ */
+export function nextStopIndex(from: number, dir: 1 | -1, count: number): number | null {
+  if (count <= 0) return null
+  const last = count - 1
+  const next = from + dir
+  if (next < 0) return null
+  if (next > last) return last >= LOOP_FIRST ? LOOP_FIRST : null
+  return next
+}
+
+/** Le premier arrêt du tour, celui sur lequel on boucle. L'accueil est 0. */
+export const LOOP_FIRST = 1
