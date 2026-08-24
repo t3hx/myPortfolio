@@ -112,9 +112,9 @@ export const BUBBLES: BubbleContent[] = [
   {
     stop: 'Desk',
     objects: ['Desk_Merged'],
-    // Descendue de 20 px dans le cadre du design (0,8304 → 0,8582 sur 720)
+    // Descendue de 40 px dans le cadre du design (0,8304 → 0,8860 sur 720)
     // pour dégager le bureau, et son rappel passe au-dessus (2026-08-24).
-    center: { x: 0.5, y: 0.8582 },
+    center: { x: 0.5, y: 0.886 },
     maxWidth: 460,
     subject: { fr: 'Le bureau', en: 'The desk' },
     text: [

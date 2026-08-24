@@ -171,7 +171,11 @@
     0 0 28px rgba(var(--glow-rgb), .48),
     0 0 56px rgba(var(--glow-rgb), .3),
     0 0 100px rgba(var(--glow-rgb), .16),
-    inset 0 0 18px rgba(var(--glow-rgb), .3);
+    /* L'ombre INTERNE est ce qui mordait sur le texte : à .3 sur 18 px, elle
+       teintait le verre fumé jusque sous les mots et la bulle paraissait
+       rétrécie de l'intérieur. Un halo se voit DEHORS ; dedans, il n'a qu'à
+       poser un liseré. */
+    inset 0 0 8px rgba(var(--glow-rgb), .12);
   /* Les deux secteurs opposés. Le second part à 180deg : c'est ce qui fait le
      départ « centre bas », et les deux tournent dans le même sens. */
   --aura-mask: conic-gradient(
@@ -827,7 +831,16 @@
 .ping__dot {
   position: absolute; inset: 0; border-radius: 50%;
   background: var(--glow);
-  box-shadow: 0 0 10px rgba(var(--glow-rgb), .65);
+  /* Même recette de halo que l'aura des bulles (#128) : des couches empilées,
+     chacune plus large et plus transparente. Une ombre unique de 10 px donnait
+     un point net posé sur la scène ; celles-ci lui donnent une lumière — et
+     c'est ce qu'on attend d'un témoin dont le seul rôle est de dire « clique
+     ici » au milieu d'une pièce meublée. */
+  box-shadow:
+    0 0 4px rgba(var(--glow-rgb), .95),
+    0 0 11px rgba(var(--glow-rgb), .7),
+    0 0 24px rgba(var(--glow-rgb), .45),
+    0 0 48px rgba(var(--glow-rgb), .24);
 }
 /* L'anneau part du point et s'efface en s'écartant — le geste d'un radar. Il
    s'éteint AVANT d'avoir fini de grandir : un anneau qui disparaît net à son
