@@ -26,7 +26,14 @@ export interface CameraStop {
 }
 
 export const CAMERA_STOPS: CameraStop[] = [
-  { camera: 'CameraStop_Home', label: 'Home' },
+  // L'accueil ne bouge pas, et c'est la plus forte des trois exceptions : son
+  // cadrage existe POUR SE LIRE COMME UNE IMAGE PLATE — il remplit l'écran d'un
+  // moniteur, et c'est le premier défilement qui recule et révèle la pièce en
+  // volume. Or la parallaxe est précisément ce qui dit « ceci est en trois
+  // dimensions » : un regard à l'accueil vendrait la mèche avant le geste qui
+  // devait la vendre, et la révélation d'ouverture n'aurait plus rien à
+  // révéler. Décision de l'auteur, 2026-08-25.
+  { camera: 'CameraStop_Home', label: 'Home', lookAround: false },
   // L'ordre du tour (décision produit, 2026-08-24). Le tableau EST le parcours,
   // et son rang décide aussi du numéro des bulles : réordonner ici renumérote
   // tout seul, `bubbleKicker()` ne lit rien d'autre que ce rang.

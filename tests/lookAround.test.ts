@@ -168,7 +168,16 @@ describe('les exceptions', () => {
     // propriété ne peut valoir que `false`.
     const opted = CAMERA_STOPS.filter((s) => s.lookAround === false)
     expect(opted.length).toBeLessThan(CAMERA_STOPS.length / 2)
-    expect(opted.map((s) => s.label).sort()).toEqual(['CV', 'Scoreboard'])
+    expect(opted.map((s) => s.label).sort()).toEqual(['CV', 'Home', 'Scoreboard'])
+  })
+
+  it("excluent l'accueil, dont le cadrage doit se lire comme PLAT", () => {
+    // La plus forte des trois. Le cadrage de l'accueil remplit l'écran d'un
+    // moniteur pour que la première vue passe pour une image en deux
+    // dimensions ; c'est le premier défilement qui recule et révèle la pièce.
+    // Or la parallaxe est exactement ce qui dit « ceci est en volume » : un
+    // regard y vendrait la mèche avant le geste qui devait la vendre.
+    expect(CAMERA_STOPS.find((s) => s.label === 'Home')?.lookAround).toBe(false)
   })
 
   it('excluent le CV, qui n’est pas ancré dans le monde', () => {
