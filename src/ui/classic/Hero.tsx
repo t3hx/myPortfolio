@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useRef } from 'react'
+import { Fragment, useEffect, useRef, type CSSProperties } from 'react'
 import {
   CUBE_PARALLAX_X,
   CUBE_PARALLAX_Y,
@@ -198,7 +198,12 @@ export function Hero({ locale }: { locale: Locale }) {
         {/* « Défiler » est une CONSIGNE — le seul mot de la page qui demande
             quelque chose — donc il porte l'accent en permanence et le balayage
             repasse, tant qu'on ne l'a pas suivi. */}
-        <span className="classic-cue" style={cueDelay(4600)}>
+        <span
+          className="cue"
+          style={
+            { ...cueDelay(4600), '--t-cue-laser': 'var(--t-classic-cue-loop)' } as CSSProperties
+          }
+        >
           {t(UI.classic.scroll, locale)}
         </span>
         <i />

@@ -82,6 +82,10 @@ export function orbitPose(
   yawDeg: number,
 ): StopTransform {
   out.hfov = pose.hfov
+  // La politique de cadrage voyage avec la pose : le regard ne la concerne
+  // pas, mais la perdre en chemin la relâcherait en silence.
+  out.yfov = pose.yfov
+  out.contain = pose.contain
 
   if (yawDeg === 0 || radius <= 0) {
     out.position.copy(pose.position)

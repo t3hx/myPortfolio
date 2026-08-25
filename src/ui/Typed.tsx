@@ -43,7 +43,7 @@ export function Typed({ text, shown }: { text: string; shown: number }) {
           </>
         )
         return seg.cue ? (
-          <span className="bubble__cue" key={début}>
+          <span className="cue" key={début}>
             {contenu}
           </span>
         ) : (

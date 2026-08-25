@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { type CSSProperties, useEffect, useState } from 'react'
 import { PROJECTS } from '@/content/projects'
 import { UI } from '@/content/ui'
 import { t } from '@/lib/locale'
@@ -63,7 +63,23 @@ export function ProjectSheet() {
       aria-labelledby="sheet-title"
     >
       <div className="sheet__close">
-        <span className="sheet__key">{t(UI.sheet.escape, locale)}</span>
+        {/* La touche montrait ce qu'il fallait presser sans dire ce que ça
+            faisait, là où la visée du télescope, elle, le disait (#136). Deux
+            écrans qui se ferment pareil doivent le dire pareil. */}
+        <span className="sheet__key sheet__key--cue">
+          <span className="cue" style={{ '--cue-delay': 'var(--t-sheet-in)' } as CSSProperties}>
+            {t(UI.sheet.escape, locale)}
+          </span>
+        </span>
+        {/* Une CONSIGNE, au sens de #129 : elle demande un geste, donc elle
+            porte l'accent et le balayage repasse — le traitement de « défiler »
+            sur le site classique, pas celui d'une phrase qui raconte. */}
+        <span
+          className="sheet__exit cue"
+          style={{ '--cue-delay': 'var(--t-sheet-in)' } as CSSProperties}
+        >
+          {t(UI.sheet.exit, locale)}
+        </span>
         <button
           className="sheet__close-btn"
           type="button"

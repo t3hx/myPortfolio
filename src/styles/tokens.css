@@ -258,7 +258,18 @@
   .bubble__next { animation: none; opacity: .8; }
 }
 
-/* LA CONSIGNE (#129). Certaines phrases ne racontent pas la pièce : elles
+/* LA CONSIGNE (#129), et depuis #136 une classe du DESIGN SYSTEM plutôt qu'une
+   pièce de la bulle : elle marque aussi bien un mot au milieu d'une phrase que
+   l'indice de sortie d'un panneau ou le « défiler » du site classique. Trois
+   surfaces, une seule définition — la recette était recopiée dans
+   `classic.css`, elle ne l'est plus.
+
+   Le tempo est réglable par `--t-cue-laser` : une consigne au milieu d'un récit
+   respire (3,2 s), une consigne seule dans un coin doit rester repérable et
+   repasse plus vite. Ce qui ne change pas, c'est la FORME — traverser vite,
+   attendre longtemps.
+
+   LA CONSIGNE (suite). Certaines phrases ne racontent pas la pièce : elles
    demandent quelque chose au visiteur. Ces mots-là portent l'accent, et un
    balayage blanc les parcourt régulièrement.
 
@@ -274,7 +285,7 @@
 
    La couleur de base est répétée aux deux extrémités du dégradé pour que la
    boucle ne se voie pas : sans ça, le retour du balayage se lit comme un saut. */
-.bubble__cue {
+.cue {
   color: var(--glow);
   /* L'axe est HORIZONTAL et non incliné : sur un mot large de quelques dizaines
      de pixels et haut d'une ligne, une bande inclinée traverse surtout par le
@@ -306,8 +317,8 @@
      « plus clair ». Il déborde les lettres, donc il se voit là où la couleur
      ne peut plus rien. */
   animation:
-    cue-laser var(--t-cue-laser) linear infinite,
-    cue-bloom var(--t-cue-laser) linear infinite;
+    cue-laser var(--t-cue-laser) linear var(--cue-delay, 0ms) infinite,
+    cue-bloom var(--t-cue-laser) linear var(--cue-delay, 0ms) infinite;
 }
 
 /* La lueur ne dure QUE la traversée (0 → 22 %), et son sommet tombe au milieu,
@@ -347,7 +358,7 @@
    que « mouvement réduit » vise, alors que la couleur porte une information
    qu'on ne peut pas retirer sans appauvrir la phrase. */
 @media (prefers-reduced-motion: reduce) {
-  .bubble__cue {
+  .cue {
     animation: none;
     background-image: none;
     -webkit-text-fill-color: var(--glow);
@@ -721,6 +732,21 @@
 .sheet__key {
   font-family: ui-monospace, monospace; font-size: 10.5px; color: rgba(var(--cream-rgb), .5);
   border: 1px solid rgba(var(--cream-rgb), .18); border-radius: 5px; padding: 3px 7px;
+}
+/* La pastille d'une consigne (#136). Le CADRE reste sur elle et le glyphe passe
+   dans un enfant : `background-clip: text` s'applique au fond de l'élément, et
+   posé sur la pastille il effacerait sa bordure et son remplissage — le mot
+   flotterait sans son cadre. Le cadre prend l'accent pour que la touche et sa
+   phrase se lisent comme UNE seule indication, et non comme une étiquette
+   suivie d'un commentaire. */
+.sheet__key--cue {
+  border-color: rgba(var(--glow-rgb), .45);
+  background: rgba(var(--glow-rgb), .06);
+}
+/* La phrase à côté de la touche (#136). Même graisse et même teinte que la
+   méta de la visée : c'est le même indice, dit au même endroit du regard. */
+.sheet__exit {
+  font-size: var(--fs-meta); letter-spacing: .04em; color: rgba(var(--cream-rgb), .55);
 }
 .sheet__close-btn {
   appearance: none; background: rgba(var(--cream-rgb), .07); border: 1px solid rgba(var(--cream-rgb), .14);

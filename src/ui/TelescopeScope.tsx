@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { type CSSProperties, useEffect, useState } from 'react'
 import { UI } from '@/content/ui'
 import { t } from '@/lib/locale'
 import { reducedMotion, useTyping } from '@/lib/clock'
@@ -102,8 +102,22 @@ export function TelescopeScope() {
           montre pas. Il reprend la touche capée de la fiche projet, qui dit
           déjà exactement la même chose ailleurs. */}
       <p className="scope__exit">
-        <span className="sheet__key">{t(UI.sheet.escape, locale)}</span>
-        {t(UI.telescope.exit, locale)}
+        <span className="sheet__key sheet__key--cue">
+          <span className="cue" style={{ '--cue-delay': 'var(--t-scope-in)' } as CSSProperties}>
+            {t(UI.sheet.escape, locale)}
+          </span>
+        </span>
+        {/* Une CONSIGNE, au sens de #129 : elle demande un geste. Elle porte
+            donc l'accent en permanence et le balayage repasse tant qu'on ne l'a
+            pas suivie — le même traitement que « défiler » sur le site
+            classique, et non le faisceau d'une phrase qui raconte.
+
+            Sur la PHRASE, jamais sur la pastille : celle-ci a un fond et une
+            bordure, et `background-clip: text` la viderait de son cadre. Le
+            retard cale la première traversée après l'ouverture de la visée. */}
+        <span className="cue" style={{ '--cue-delay': 'var(--t-scope-in)' } as CSSProperties}>
+          {t(UI.sheet.exit, locale)}
+        </span>
       </p>
     </div>
   )

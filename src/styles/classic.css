@@ -52,10 +52,13 @@
      `tests/classic.test.ts` est la seule chose qui relie les deux. */
   --t-classic-decrypt: 1700ms;
   --t-classic-reveal: 850ms;
-  /* Le balayage de l'accueil. Deux régimes pour un seul effet : l'accroche
-     n'est traversée qu'une fois — c'est le faisceau `.beam` du design system,
-     parce qu'elle raconte et ne demande rien ; « défiler » est une CONSIGNE, il
-     porte donc l'accent et le balayage repasse tant qu'on ne l'a pas suivi. */
+  /* Les deux marquages de l'accueil viennent du design system, et ils ne disent
+     pas la même chose. L'accroche RACONTE : elle garde sa couleur et le
+     faisceau (`.beam`) ne fait que la traverser, une fois. « Défiler » DEMANDE :
+     c'est une consigne (`.cue`), elle porte l'accent et le balayage repasse
+     tant qu'on ne l'a pas suivie. Seul son tempo est propre à cette page — une
+     consigne seule dans un coin doit rester repérable plus souvent qu'un mot au
+     milieu d'un récit. */
   --t-classic-cue-loop: 1800ms;
   --ease-classic-reveal: cubic-bezier(0.2, 0.7, 0.2, 1);
   /* L'accélération du glissement prénom/nom : forte au départ, forte à
@@ -533,38 +536,6 @@
   }
 }
 
-/* --- Le balayage, deux emplois qui ne disent pas la même chose (#131) ------------- */
-/* LA CONSIGNE — « défiler ». Reprise exacte de `.bubble__cue` : la pièce marque
-   partout de la même façon ce qui demande quelque chose au visiteur. La RECETTE
-   est recopiée — six lignes de dégradé — mais le MOUVEMENT ne l'est pas : les
-   keyframes `cue-laser` et `cue-bloom` vivent dans `tokens.css` et sont les
-   mêmes, parce que c'est le mouvement qui a été mesuré et arbitré, pas le
-   dégradé. `tests/classic.test.ts` vérifie que les deux dégradés n'ont pas
-   divergé.
-
-   Le laser est un dégradé DÉCOUPÉ sur le texte et déplacé, jamais un calque
-   posé par-dessus : un calque demanderait la géométrie exacte des mots, qui
-   change à chaque retour à la ligne et à chaque traduction. */
-.classic-cue {
-  color: var(--glow);
-  background-image: linear-gradient(
-    90deg,
-    var(--glow) 0%,
-    var(--glow) 43%,
-    #fff 50%,
-    var(--glow) 57%,
-    var(--glow) 100%
-  );
-  background-size: 220% 100%;
-  background-position: 130% 0;
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-  animation:
-    cue-laser var(--t-classic-cue-loop) linear var(--cue-delay, 0ms) infinite,
-    cue-bloom var(--t-classic-cue-loop) linear var(--cue-delay, 0ms) infinite;
-}
-
 /* --- Les sections ------------------------------------------------------------------ */
 .classic-section {
   position: relative;
@@ -1010,16 +981,8 @@
     animation: none;
   }
 
-  /* Le balayage part, la COULEUR reste : une boucle de deux secondes est le cas
-     d'école de ce que « mouvement réduit » vise, alors que l'accent porte une
-     information — ceci vous demande quelque chose — qu'on ne peut pas retirer
-     sans appauvrir la phrase. Même arbitrage que `.bubble__cue`. */
-  .classic-cue {
-    animation: none;
-    background-image: none;
-    -webkit-text-fill-color: var(--glow);
-    filter: none;
-  }
+  /* `.cue` et `.beam` sont neutralisés par `tokens.css`, qui les définit : la
+     règle suit la classe, elle n'est pas recopiée par surface. */
 }
 
 /* --- Mobile (≤ 720px) -------------------------------------------------------------- */

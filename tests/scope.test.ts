@@ -287,8 +287,50 @@ describe('le rappel de sortie', () => {
     // et personne ne devine une touche qu'on ne lui montre pas.
     expect(component).toContain('scope__exit')
     expect(component).toContain('UI.sheet.escape')
-    expect(component).toContain('UI.telescope.exit')
+    expect(component).toContain('UI.sheet.exit')
     expect(tokens).toContain('.scope__exit')
+  })
+
+  it('le dit avec les mêmes mots que la fiche projet', () => {
+    // Deux surfaces se ferment par `Échap` et une seule le DISAIT (#136) : la
+    // fiche montrait la touche sans dire ce qu'elle fait. La phrase vit donc
+    // à côté de la touche, dans `UI.sheet`, et non chez l'une des deux.
+    const sheet = readFileSync('src/ui/ProjectSheet.tsx', 'utf8')
+    expect(sheet).toContain('UI.sheet.exit')
+    expect(sheet).toContain('UI.sheet.escape')
+    // Une seule définition : deux endroits finiraient par en dire deux.
+    const ui = readFileSync('src/content/ui.ts', 'utf8')
+    expect(ui.match(/exit: \{ fr: 'pour revenir'/g)?.length ?? 0).toBe(1)
+  })
+
+  it('est marqué comme une CONSIGNE, pas comme un récit', () => {
+    // Elle demande un geste : elle porte donc l'accent en permanence et le
+    // balayage repasse tant qu'on ne l'a pas suivie — le traitement de
+    // « défiler » sur le site classique. Un faisceau, qui ne fait que traverser
+    // un texte gardant sa couleur, dirait le contraire : « ceci raconte ».
+    const sheet = readFileSync('src/ui/ProjectSheet.tsx', 'utf8')
+    expect(component).toMatch(/className="cue"/)
+    expect(sheet).toMatch(/className="sheet__exit cue"/)
+    // **La TOUCHE aussi**, et pas seulement la phrase : c'est elle qu'on
+    // cherche des yeux. Son cadre reste sur la pastille et le glyphe passe dans
+    // un enfant — `background-clip: text` posé sur la pastille effacerait sa
+    // bordure et son fond, et le mot flotterait sans son cadre.
+    for (const src of [component, sheet]) {
+      expect(src).toContain('sheet__key sheet__key--cue')
+      const cap = src.slice(src.indexOf('sheet__key--cue'))
+      expect(cap.slice(0, 220)).toContain('className="cue"')
+    }
+    expect(tokens).toContain('.sheet__key--cue')
+    expect(component).not.toMatch(/className="beam"/)
+    expect(sheet).not.toMatch(/className="sheet__exit beam"/)
+  })
+
+  it('cale sa première traversée après l’ouverture du panneau', () => {
+    // Partie pendant le fondu d'entrée, elle traverserait un texte encore
+    // transparent — le premier passage, celui qu'on remarque, serait perdu.
+    const sheet = readFileSync('src/ui/ProjectSheet.tsx', 'utf8')
+    expect(component).toMatch(/--cue-delay[\s\S]{0,60}--t-scope-in/)
+    expect(sheet).toMatch(/--cue-delay[\s\S]{0,60}--t-sheet-in/)
   })
 
   it('vit DANS le cache, pour partir avec lui', () => {

@@ -23,6 +23,18 @@ export interface CameraStop {
    * l'aura — l'oubli va dans le bon sens.
    */
   lookAround?: false
+  /**
+   * `contain` : le champ vertical ne dépasse jamais celui que Blender a
+   * composé. Absent = la règle du tour, l'ajustement horizontal.
+   *
+   * **C'est une liste d'exceptions, comme `lookAround`.** L'ajustement
+   * horizontal reste la bonne politique pour une vue de pièce : sur une fenêtre
+   * plus courte, recadrer en haut et en bas vaut mieux que reculer et perdre le
+   * plan. Il ne devient un défaut que lorsque le cadrage est un TRÈS gros plan
+   * dont le sujet a des bords — là, montrer plus, c'est montrer ce qu'il ne
+   * faut pas voir.
+   */
+  fit?: 'contain'
 }
 
 export const CAMERA_STOPS: CameraStop[] = [
@@ -33,7 +45,17 @@ export const CAMERA_STOPS: CameraStop[] = [
   // dimensions » : un regard à l'accueil vendrait la mèche avant le geste qui
   // devait la vendre, et la révélation d'ouverture n'aurait plus rien à
   // révéler. Décision de l'auteur, 2026-08-25.
-  { camera: 'CameraStop_Home', label: 'Home', lookAround: false },
+  // `fit: 'contain'` (#135) — l'accueil est un gros plan sur l'écran du PC, et
+  // toute sa raison d'être est de passer pour une image plate. Sous
+  // l'ajustement horizontal, une fenêtre plus HAUTE que le cadrage composé fait
+  // grandir le champ vertical : on voit le mur au-dessus et le bureau en
+  // dessous, et l'illusion tombe avant le premier défilement.
+  //
+  // Mesuré par bissection sur le rendu : l'aspect critique est **1,735**. Le
+  // 16:9 (1,778) passe de justesse — le cadrage a été composé pour remplir
+  // l'écran pile, ce qui explique qu'il n'y ait aucune marge. Un écran
+  // 2560×1440 est exactement 16:9 et ne voit donc jamais le défaut.
+  { camera: 'CameraStop_Home', label: 'Home', lookAround: false, fit: 'contain' },
   // L'ordre du tour (décision produit, 2026-08-24). Le tableau EST le parcours,
   // et son rang décide aussi du numéro des bulles : réordonner ici renumérote
   // tout seul, `bubbleKicker()` ne lit rien d'autre que ce rang.
