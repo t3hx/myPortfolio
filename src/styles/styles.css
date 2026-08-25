@@ -235,11 +235,14 @@ body,
 
      Le plancher à 1 px garantit qu'en dessous de 1280 RIEN ne change : c'est
      exactement la largeur du cadre du design. Le plafond à 1,35 px est atteint
-     dès 1728 de large, et il protège la table de placement de la session
-     design — une bulle plus grosse est une BOÎTE plus grosse, et
-     `clampToSafeArea` décollerait du bord celles dont la marge est la plus
-     courte. Mesuré arrêt par arrêt : à 1,35, aucune bulle n'est clampée, ni à
-     1920×1080 ni à 2560×1440.
+     dès 1728 de large.
+
+     **La LARGEUR maximale, elle, ne suit pas cette unité** (correction du
+     2026-08-25) : elle est composée contre la SCÈNE et non contre le texte. En
+     la faisant grossir aussi, la bulle de l'étagère venait mordre le montant de
+     la bibliothèque à 2560 — une bulle désigne son sujet, elle ne le recouvre
+     pas. La boîte grandit donc en HAUTEUR, où elle n'a personne à recouvrir.
+     Voir `Bubble.tsx`.
 
      Elle vit ICI et non dans `tokens.css` : les maquettes gardent les tailles
      que la session design a validées, et c'est le calque projeté — lui seul —

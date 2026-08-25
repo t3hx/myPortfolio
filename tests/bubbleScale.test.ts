@@ -76,11 +76,14 @@ describe('les tailles réécrites disent la même chose que les jetons', () => {
     expect(shell).toMatch(/padding: calc\(16 \* var\(--u\)\)/)
   })
 
-  it('met à l’échelle la largeur maximale, sous peine de réécrire le design', () => {
-    // Grossir la police sans grossir la largeur réécrirait les retours à la
-    // ligne composés en session design — une phrase de deux lignes en ferait
-    // trois, et la table de placement décrit des bulles de deux lignes.
-    expect(bubble).toContain('`calc(${maxWidth} * var(--u))`')
+  it('ne met PAS la largeur maximale à l’échelle', () => {
+    // Elle est composée contre la SCÈNE, pas contre le texte : la table de
+    // placement la mesure dans le cadre où l'objet occupe une place donnée.
+    // Mise à l'échelle, la bulle de l'étagère venait mordre le montant de la
+    // bibliothèque à 2560 — une bulle DÉSIGNE son sujet, elle ne le recouvre
+    // pas. La boîte grandit en hauteur, où elle n'a personne à recouvrir.
+    expect(bubble).not.toContain('calc(${maxWidth}')
+    expect(bubble).toContain("maxWidth: maxWidth ?? 'none'")
   })
 })
 
