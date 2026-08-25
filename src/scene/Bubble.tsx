@@ -193,6 +193,20 @@ export function Bubble({
   // la rotation passe par la propriété individuelle `rotate`, jamais par
   // `transform`, que l'animation `bubble-in` remplacerait (DESIGN.md).
   const style: CSSProperties = {
+    /**
+     * **La largeur ne suit PAS l'unité du dialogue, et c'est la correction du
+     * 2026-08-25.** Elle la suivait, et la bulle grossissait alors dans les deux
+     * sens : à 2560 celle de l'étagère venait mordre le montant de la
+     * bibliothèque, ce qui ne doit jamais arriver — une bulle DÉSIGNE son sujet,
+     * elle ne le recouvre pas.
+     *
+     * La largeur est composée contre la SCÈNE, pas contre le texte : la table
+     * de placement de la session design la mesure dans le cadre où l'objet
+     * occupe une place donnée. Le texte, lui, n'a d'autre contrainte que d'être
+     * lisible. Les deux n'ont donc pas à grandir ensemble — la boîte grandit en
+     * HAUTEUR, où elle n'a personne à recouvrir, et le nombre de lignes change.
+     * C'est le prix, et il est moins cher que le sujet caché.
+     */
     maxWidth: maxWidth ?? 'none',
     ...(tilt !== undefined ? { '--bubble-rotate': `${tilt}deg` } : {}),
   } as CSSProperties
