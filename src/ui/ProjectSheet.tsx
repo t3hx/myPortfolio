@@ -66,7 +66,11 @@ export function ProjectSheet() {
         {/* La touche montrait ce qu'il fallait presser sans dire ce que ça
             faisait, là où la visée du télescope, elle, le disait (#136). Deux
             écrans qui se ferment pareil doivent le dire pareil. */}
-        <span className="sheet__key">{t(UI.sheet.escape, locale)}</span>
+        <span className="sheet__key sheet__key--cue">
+          <span className="cue" style={{ '--cue-delay': 'var(--t-sheet-in)' } as CSSProperties}>
+            {t(UI.sheet.escape, locale)}
+          </span>
+        </span>
         {/* Une CONSIGNE, au sens de #129 : elle demande un geste, donc elle
             porte l'accent et le balayage repasse — le traitement de « défiler »
             sur le site classique, pas celui d'une phrase qui raconte. */}

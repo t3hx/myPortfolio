@@ -733,6 +733,16 @@
   font-family: ui-monospace, monospace; font-size: 10.5px; color: rgba(var(--cream-rgb), .5);
   border: 1px solid rgba(var(--cream-rgb), .18); border-radius: 5px; padding: 3px 7px;
 }
+/* La pastille d'une consigne (#136). Le CADRE reste sur elle et le glyphe passe
+   dans un enfant : `background-clip: text` s'applique au fond de l'élément, et
+   posé sur la pastille il effacerait sa bordure et son remplissage — le mot
+   flotterait sans son cadre. Le cadre prend l'accent pour que la touche et sa
+   phrase se lisent comme UNE seule indication, et non comme une étiquette
+   suivie d'un commentaire. */
+.sheet__key--cue {
+  border-color: rgba(var(--glow-rgb), .45);
+  background: rgba(var(--glow-rgb), .06);
+}
 /* La phrase à côté de la touche (#136). Même graisse et même teinte que la
    méta de la visée : c'est le même indice, dit au même endroit du regard. */
 .sheet__exit {

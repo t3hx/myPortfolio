@@ -311,6 +311,16 @@ describe('le rappel de sortie', () => {
     const sheet = readFileSync('src/ui/ProjectSheet.tsx', 'utf8')
     expect(component).toMatch(/className="cue"/)
     expect(sheet).toMatch(/className="sheet__exit cue"/)
+    // **La TOUCHE aussi**, et pas seulement la phrase : c'est elle qu'on
+    // cherche des yeux. Son cadre reste sur la pastille et le glyphe passe dans
+    // un enfant — `background-clip: text` posé sur la pastille effacerait sa
+    // bordure et son fond, et le mot flotterait sans son cadre.
+    for (const src of [component, sheet]) {
+      expect(src).toContain('sheet__key sheet__key--cue')
+      const cap = src.slice(src.indexOf('sheet__key--cue'))
+      expect(cap.slice(0, 220)).toContain('className="cue"')
+    }
+    expect(tokens).toContain('.sheet__key--cue')
     expect(component).not.toMatch(/className="beam"/)
     expect(sheet).not.toMatch(/className="sheet__exit beam"/)
   })

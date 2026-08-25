@@ -102,7 +102,11 @@ export function TelescopeScope() {
           montre pas. Il reprend la touche capée de la fiche projet, qui dit
           déjà exactement la même chose ailleurs. */}
       <p className="scope__exit">
-        <span className="sheet__key">{t(UI.sheet.escape, locale)}</span>
+        <span className="sheet__key sheet__key--cue">
+          <span className="cue" style={{ '--cue-delay': 'var(--t-scope-in)' } as CSSProperties}>
+            {t(UI.sheet.escape, locale)}
+          </span>
+        </span>
         {/* Une CONSIGNE, au sens de #129 : elle demande un geste. Elle porte
             donc l'accent en permanence et le balayage repasse tant qu'on ne l'a
             pas suivie — le même traitement que « défiler » sur le site
