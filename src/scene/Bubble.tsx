@@ -193,7 +193,11 @@ export function Bubble({
   // la rotation passe par la propriété individuelle `rotate`, jamais par
   // `transform`, que l'animation `bubble-in` remplacerait (DESIGN.md).
   const style: CSSProperties = {
-    maxWidth: maxWidth ?? 'none',
+    // La largeur suit l'unité du dialogue (#137), et il le FAUT : grossir la
+    // police sans grossir la largeur réécrirait les retours à la ligne que la
+    // session design a composés — une phrase de deux lignes en ferait trois, et
+    // la table de placement décrit des bulles de deux lignes.
+    maxWidth: maxWidth === null || maxWidth === undefined ? 'none' : `calc(${maxWidth} * var(--u))`,
     ...(tilt !== undefined ? { '--bubble-rotate': `${tilt}deg` } : {}),
   } as CSSProperties
 

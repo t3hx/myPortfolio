@@ -210,23 +210,75 @@ body,
   pointer-events: none;
   z-index: 100;
   overflow: hidden;
+
+  /* L'UNITÉ du dialogue (#137) — « un pixel du design, redimensionné ».
+
+     La bulle était figée aux tailles de la session design, mesurées dans un
+     cadre de 1280 : sur un écran de 2560 la phrase occupe deux fois moins de
+     champ visuel et devient pénible à lire. Tout ce qui la dimensionne est donc
+     réécrit en multiples de cette unité — `calc(19 * var(--u))` se lit comme
+     « les 19 px du design », et non comme un nombre magique de plus.
+
+     **C'est une LONGUEUR, pas un facteur, et le détour est obligatoire.** Écrite
+     `clamp(1, calc(100vw / 1280), 1.35)`, elle mélange des nombres et une
+     longueur — `100vw / 1280` est une longueur — et le `clamp` entier devient
+     invalide. Mesuré : la police retombait alors à 16 px, la taille par défaut
+     du navigateur, ce qui ressemble à s'y méprendre à un réglage qui n'a pas
+     pris. En longueur, les trois bornes sont du même type et `calc(19 * var(--u))`
+     est valide, parce qu'un nombre multiplié par une longueur EST une longueur.
+
+     Elle suit la LARGEUR, jamais `min(vw, vh)` — même raison que la visée du
+     télescope : le tour ajuste son champ horizontalement, donc c'est la largeur
+     qui décide de la taille apparente de tout ce que la scène montre. Indexée
+     sur la hauteur, la bulle grossirait sur un écran étroit et haut, où il y a
+     justement le moins de place.
+
+     Le plancher à 1 px garantit qu'en dessous de 1280 RIEN ne change : c'est
+     exactement la largeur du cadre du design. Le plafond à 1,35 px est atteint
+     dès 1728 de large, et il protège la table de placement de la session
+     design — une bulle plus grosse est une BOÎTE plus grosse, et
+     `clampToSafeArea` décollerait du bord celles dont la marge est la plus
+     courte. Mesuré arrêt par arrêt : à 1,35, aucune bulle n'est clampée, ni à
+     1920×1080 ni à 2560×1440.
+
+     Elle vit ICI et non dans `tokens.css` : les maquettes gardent les tailles
+     que la session design a validées, et c'est le calque projeté — lui seul —
+     qui s'adapte à la fenêtre. */
+  --u: clamp(1px, calc(100vw / 1280), 1.35px);
 }
 
-/* --- Bulle (issue #47) — anatomie et tokens : src/styles/tokens.css --------------- */
-/* Dans la couche projetée, l'ancre drei (un div 0×0 dont le translate3d est
-   recalculé chaque frame) fait tout le positionnement : la bulle redevient un
-   bloc en flux pour que `center` la centre réellement sur le point projeté —
-   en `position: absolute` (la règle des maquettes), le conteneur mesurerait
-   0×0 et le translate(-50%,-50%) du centrage serait sans effet. En maquette,
-   .bubble reste absolue dans la page ; la règle ne vit donc qu'ici. */
+/* Tout ce qui fait la TAILLE de la bulle suit la même unité. Grossir la seule
+   police laisserait un cadre trop serré autour d'un texte trop grand : le
+   rembourrage et le rayon sont de l'anatomie, pas de la décoration.
+   Les nombres reprennent ceux de `tokens.css` ; `tests/bubbleScale.test.ts`
+   échoue si les deux se mettent à dire autre chose. */
+/* Bloc en flux pour que `center` centre réellement la bulle sur le point
+   projeté — en `position: absolute` (la règle des maquettes), le conteneur
+   mesurerait 0×0 et le translate(-50%,-50%) du centrage serait sans effet. En
+   maquette, `.bubble` reste absolue dans la page ; la règle ne vit donc qu'ici. */
 .bubble-layer .bubble {
   position: relative;
   width: max-content;
   /* Les largeurs du design (max-width 380, table de placement de #48) sont
      mesurées en content-box — les maquettes ne posent aucun reset. Sous le
-     border-box global de l'app elles rétréciraient de 46 px (padding 22×2 +
-     bord 1×2). Voir DESIGN.md, notes d'implémentation. */
+     border-box global de l'app elles rétréciraient du rembourrage et du bord.
+     Voir DESIGN.md, notes d'implémentation. */
   box-sizing: content-box;
+  padding: calc(16 * var(--u)) calc(22 * var(--u)) calc(15 * var(--u));
+  border-radius: calc(10 * var(--u));
+}
+
+.bubble-layer .bubble__text {
+  font-size: calc(19 * var(--u));
+}
+
+.bubble-layer .bubble__label {
+  font-size: calc(11 * var(--u));
+}
+
+.bubble-layer .bubble__dot {
+  width: calc(7 * var(--u));
+  height: calc(7 * var(--u));
 }
 
 /* Les maquettes posent ce reset en style inline sur chaque <p>. */
