@@ -103,12 +103,15 @@ export function TelescopeScope() {
           déjà exactement la même chose ailleurs. */}
       <p className="scope__exit">
         <span className="sheet__key">{t(UI.sheet.escape, locale)}</span>
-        {/* Le faisceau traverse la PHRASE, pas la touche : la pastille de
-            `Échap` a un fond et une bordure, et `background-clip: text` la
-            viderait de son cadre. Le retard le fait partir après l'ouverture de
-            la visée, sinon il traverse un texte encore transparent et l'unique
-            passage est perdu. */}
-        <span className="beam" style={{ '--beam-delay': 'var(--t-scope-in)' } as CSSProperties}>
+        {/* Une CONSIGNE, au sens de #129 : elle demande un geste. Elle porte
+            donc l'accent en permanence et le balayage repasse tant qu'on ne l'a
+            pas suivie — le même traitement que « défiler » sur le site
+            classique, et non le faisceau d'une phrase qui raconte.
+
+            Sur la PHRASE, jamais sur la pastille : celle-ci a un fond et une
+            bordure, et `background-clip: text` la viderait de son cadre. Le
+            retard cale la première traversée après l'ouverture de la visée. */}
+        <span className="cue" style={{ '--cue-delay': 'var(--t-scope-in)' } as CSSProperties}>
           {t(UI.sheet.exit, locale)}
         </span>
       </p>

@@ -235,15 +235,44 @@ describe('les groupes de révélation ne s’imbriquent pas', () => {
   })
 })
 
-describe('le balayage de consigne', () => {
-  /** Le MOUVEMENT n'est pas recopié — `cue-laser` vit dans `tokens.css` et les
-   *  deux pages l'utilisent. C'est lui qui a été mesuré et arbitré (#131). */
-  it('réutilise les keyframes de la bulle pour sa boucle', () => {
-    expect(tokens).toContain('@keyframes cue-laser')
-    expect(css).toMatch(/\.classic-cue \{[\s\S]{0,700}animation:[\s\S]{0,120}cue-laser/)
+describe('les deux marquages de l’accueil', () => {
+  /**
+   * Ils ne disent PAS la même chose, et c'est tout l'intérêt de les distinguer.
+   * Une CONSIGNE porte l'accent : la couleur est de l'information, elle dit
+   * « ceci vous demande quelque chose » (#129). Un FAISCEAU ne fait que
+   * traverser un texte qui garde sa couleur — il souligne sans requalifier.
+   */
+  it('viennent tous deux du design system, jamais recopiés ici', () => {
+    // La recette de la consigne a vécu recopiée dans `classic.css`, avec un
+    // test pour surveiller qu'elle ne dérive pas. Une seule définition rend ce
+    // test inutile, ce qui vaut mieux qu'un test qui passe.
+    expect(tokens).toContain('.cue {')
+    expect(tokens).toContain('.beam {')
+    expect(css).not.toContain('.classic-cue')
+    expect(css).not.toContain('.classic-sweep')
+    expect(css).not.toMatch(/linear-gradient\([\s\S]{0,40}var\(--glow\) 43%/)
   })
 
-  it('traverse une seule fois, et sur toute la durée', () => {
+  it('marquent l’accroche et « défiler » différemment', () => {
+    const hero = readFileSync('src/ui/classic/Hero.tsx', 'utf8')
+    // L'accroche raconte : elle est TRAVERSÉE et garde sa couleur.
+    const tagline = hero.slice(hero.indexOf('classic-hero__tagline'))
+    expect(tagline).toContain('className="beam"')
+    // « Défiler » demande : c'est la seule consigne de la page.
+    const scroll = hero.slice(hero.indexOf('classic-hero__scroll'))
+    expect(scroll).toContain('className="cue"')
+  })
+
+  it('donnent à « défiler » son propre tempo, sans changer sa forme', () => {
+    // Une consigne seule dans un coin doit rester repérable plus souvent qu'un
+    // mot au milieu d'un récit. Seule la DURÉE est surchargée : la forme —
+    // traverser vite, attendre longtemps — reste celle du design system.
+    const hero = readFileSync('src/ui/classic/Hero.tsx', 'utf8')
+    expect(hero).toContain("'--t-cue-laser': 'var(--t-classic-cue-loop)'")
+    expect(css).toMatch(/--t-classic-cue-loop:\s*\d+ms/)
+  })
+
+  it('traverse l’accroche une seule fois, et sur toute la durée', () => {
     // Les keyframes d'une consigne traversent en 22 % puis attendent : cette
     // attente n'a de sens qu'en boucle. Un faisceau doit occuper sa durée.
     expect(tokens).toMatch(/\.beam \{[\s\S]{0,700}animation:[\s\S]{0,120}beam-pass/)
@@ -251,11 +280,7 @@ describe('le balayage de consigne', () => {
     expect(tokens).toMatch(/\.beam \{[\s\S]{0,700}1 both/)
   })
 
-  it('ne peint PAS ce qu’il traverse dans l’accent', () => {
-    // Une phrase qui raconte ne demande rien. Peinte en cyan, elle dirait —
-    // dans le vocabulaire de #131 — « ceci vous demande quelque chose ». Le
-    // dégradé d'un faisceau est donc l'INVERSE de celui d'une consigne : la
-    // couleur du texte aux extrémités, l'accent au cœur.
+  it('ne peint PAS ce qu’un faisceau traverse dans l’accent', () => {
     const beam = tokens.slice(tokens.indexOf('.beam {'))
     const stops = beam.match(/linear-gradient\(([\s\S]*?)\);/)![1]
     expect(stops).toMatch(/currentColor 0%/)
@@ -264,36 +289,6 @@ describe('le balayage de consigne', () => {
     // couleurs différentes — la crème pleine de l'accroche, la crème à 50 %
     // d'une méta de pré-sélection — et une couleur écrite les repeindrait.
     expect(stops).not.toMatch(/#[0-9a-f]{6}/i)
-
-    const hero = readFileSync('src/ui/classic/Hero.tsx', 'utf8')
-    const tagline = hero.slice(hero.indexOf('classic-hero__tagline'))
-    expect(tagline).toContain('className="beam"')
-    expect(tagline.slice(0, 400)).not.toContain('classic-cue')
-  })
-
-  it('rejoue à chaque changement de vedette sur la pré-sélection', () => {
-    // Un faisceau ne passe qu'une fois : laissé en place, il ne traverserait
-    // qu'au tout premier rendu et plus jamais. C'est le retrait puis la remise
-    // de la classe qui le relance, et la clé qui force le remontage — sans
-    // elle React réutilise le nœud et le navigateur ne voit pas de nouvelle
-    // animation quand la classe revient dans la même image.
-    const presel = readFileSync('src/ui/Preselection.tsx', 'utf8')
-    expect(presel).toMatch(/key=\{featured \? 'lit' : 'dim'\}/)
-    expect(presel).toMatch(/featured \? 'presel-card__meta beam' : 'presel-card__meta'/)
-  })
-
-  it('n’allume qu’une seule carte de pré-sélection à la fois', () => {
-    // Le halo était porté par `:hover` ET par `:focus-visible` : `autoFocus`
-    // posant le focus sur la carte 3D dès le chargement, survoler la seconde en
-    // allumait deux — un écran qui pose une question en montrant deux réponses
-    // cochées. Deux pseudo-classes ne peuvent pas s'exclure ; une variable, si.
-    const presel = readFileSync('src/ui/Preselection.tsx', 'utf8')
-    const shell = readFileSync('src/styles/styles.css', 'utf8')
-    expect(shell).toContain('.presel-card--lit')
-    expect(shell).not.toMatch(/\.presel-card:hover/)
-    expect(presel).toContain("useState<ExperienceChoice>('3d')")
-    // Sortir des deux rend la vedette à la 3D : cet écran recommande.
-    expect(presel).toMatch(/onPointerLeave=\{\(\) => setFeatured\('3d'\)\}/)
   })
 
   it('éclaire la consigne autant qu’il la traverse', () => {
@@ -308,27 +303,20 @@ describe('le balayage de consigne', () => {
     expect(bloom).toMatch(/drop-shadow\([^)]*--glow-rgb/)
     // Exactement synchrone avec la traversée : même durée, même retard.
     expect(tokens).toMatch(
-      /cue-laser var\(--t-cue-laser\)[\s\S]{0,60}cue-bloom var\(--t-cue-laser\)/,
-    )
-    expect(css).toMatch(
-      /cue-laser var\(--t-classic-cue-loop\)[\s\S]{0,90}cue-bloom var\(--t-classic-cue-loop\)/,
+      /cue-laser var\(--t-cue-laser\)[\s\S]{0,80}cue-bloom var\(--t-cue-laser\)/,
     )
   })
 
-  it('perd son balayage sous mouvement réduit, jamais sa couleur', () => {
+  it('perdent leur balayage sous mouvement réduit, jamais leur couleur', () => {
+    const reduced = tokens.slice(tokens.lastIndexOf('.cue {'))
+    expect(reduced.slice(0, 220)).toContain('animation: none')
     // L'accent porte une information — ceci vous demande quelque chose — qu'on
-    // ne peut pas retirer sans appauvrir la phrase. Même arbitrage que la bulle.
-    const reduced = css.slice(css.indexOf('@media (prefers-reduced-motion: reduce)'))
-    expect(reduced).toMatch(/\.classic-cue \{[\s\S]{0,200}animation: none/)
-    expect(reduced).toMatch(/\.classic-cue \{[\s\S]{0,200}text-fill-color: var\(--glow\)/)
-    // La lueur part avec le balayage — sinon le mot reste un néon fixe.
-    expect(reduced).toMatch(/\.classic-cue \{[\s\S]{0,200}filter: none/)
-    // `lastIndexOf` : la DERNIÈRE occurrence est celle du bloc « mouvement
-    // réduit ». La première est la définition, qui contient au contraire le filtre.
-    const bubbleReduced = tokens.slice(tokens.lastIndexOf('.bubble__cue {'))
-    expect(bubbleReduced.slice(0, 220)).toContain('filter: none')
+    // ne peut pas retirer sans appauvrir la phrase.
+    expect(reduced.slice(0, 220)).toContain('text-fill-color: var(--glow)')
+    // La lueur part avec le balayage, sinon le mot reste un néon fixe.
+    expect(reduced.slice(0, 220)).toContain('filter: none')
     // Le faisceau, lui, n'a rien à garder : la couleur du texte est déjà la
-    // bonne, il n'était que du mouvement. On rend la phrase au texte simple.
+    // bonne, il n'était que du mouvement.
     const beamReduced = tokens.slice(tokens.lastIndexOf('.beam {'))
     expect(beamReduced.slice(0, 260)).toContain('text-fill-color: inherit')
     expect(beamReduced.slice(0, 260)).toContain('animation: none')

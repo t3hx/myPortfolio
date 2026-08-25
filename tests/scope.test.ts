@@ -303,13 +303,24 @@ describe('le rappel de sortie', () => {
     expect(ui.match(/exit: \{ fr: 'pour revenir'/g)?.length ?? 0).toBe(1)
   })
 
-  it('est traversé une fois, après l’ouverture du panneau', () => {
-    // `.beam` ne passe QU'UNE fois : parti pendant le fondu d'entrée, il
-    // traverse un texte encore transparent et l'unique passage est perdu —
-    // exactement le défaut déjà corrigé sur l'accroche du site classique.
+  it('est marqué comme une CONSIGNE, pas comme un récit', () => {
+    // Elle demande un geste : elle porte donc l'accent en permanence et le
+    // balayage repasse tant qu'on ne l'a pas suivie — le traitement de
+    // « défiler » sur le site classique. Un faisceau, qui ne fait que traverser
+    // un texte gardant sa couleur, dirait le contraire : « ceci raconte ».
     const sheet = readFileSync('src/ui/ProjectSheet.tsx', 'utf8')
-    expect(component).toMatch(/className="beam"[\s\S]{0,120}--t-scope-in/)
-    expect(sheet).toMatch(/beam"[\s\S]{0,120}--t-sheet-in/)
+    expect(component).toMatch(/className="cue"/)
+    expect(sheet).toMatch(/className="sheet__exit cue"/)
+    expect(component).not.toMatch(/className="beam"/)
+    expect(sheet).not.toMatch(/className="sheet__exit beam"/)
+  })
+
+  it('cale sa première traversée après l’ouverture du panneau', () => {
+    // Partie pendant le fondu d'entrée, elle traverserait un texte encore
+    // transparent — le premier passage, celui qu'on remarque, serait perdu.
+    const sheet = readFileSync('src/ui/ProjectSheet.tsx', 'utf8')
+    expect(component).toMatch(/--cue-delay[\s\S]{0,60}--t-scope-in/)
+    expect(sheet).toMatch(/--cue-delay[\s\S]{0,60}--t-sheet-in/)
   })
 
   it('vit DANS le cache, pour partir avec lui', () => {
