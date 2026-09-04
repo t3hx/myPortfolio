@@ -5,6 +5,9 @@ import App from '@/App'
 // lisent depuis là — une seule source de vérité, dans les deux sens.
 // Importé AVANT styles.css pour qu'à spécificité égale les règles propres à
 // l'app gagnent (c'est ce qui fait gagner `.bubble--out` sur `bubble-in`).
+// Les @font-face d'abord : ils ne dépendent de rien, et tokens.css nomme les
+// familles qu'ils déclarent. Servies par l'app, jamais par Google (#140).
+import '@/styles/fonts.css'
 import '@/styles/tokens.css'
 import '@/styles/styles.css'
 // Le site classique en DERNIER : il doit pouvoir déverrouiller le
