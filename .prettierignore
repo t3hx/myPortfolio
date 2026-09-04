@@ -12,3 +12,7 @@ public/draco
 # la seconde ligne, `pnpm format` en réécrit les 46 ko d'un coup.
 design
 src/styles/tokens.css
+
+# Le plan du lab (#141) : 2 346 tracés SVG, une donnée générée, jamais
+# éditée à la main. Reformatée par Prettier, elle devient illisible en diff.
+src/content/labPlan.json
