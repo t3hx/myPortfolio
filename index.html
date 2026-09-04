@@ -17,21 +17,18 @@
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <!-- Typo du design system « Lueur » (src/styles/tokens.css) : Space Grotesk
          (UI) + Newsreader italique (la voix). Mêmes graisses que les maquettes.
-
          IBM Plex Mono s'y ajoute avec le site classique (#29), où la chasse
          fixe n'est pas un effet mais une CONTRAINTE : le nom d'accueil se
          déchiffre caractère par caractère, et en chasse proportionnelle chaque
          glyphe tiré au sort change la largeur du mot — le nom gigote au lieu
          de se résoudre. Elle sert aussi les méta, les kickers et les périodes,
          comme dans les maquettes. La scène 3D, elle, garde la mono du système
-         (`ui-monospace`) : elle n'a pas besoin d'une requête réseau de plus
-         avant sa première image. -->
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;600&family=Newsreader:ital,opsz,wght@0,6..72,300;0,6..72,400;1,6..72,300;1,6..72,400;1,6..72,500&display=swap"
-      rel="stylesheet"
-    />
+         (`ui-monospace`) : elle n'a pas besoin d'une requête de plus avant sa
+         première image.
+
+         Aucune balise <link> ici : les polices sont SERVIES PAR L'APP (#140),
+         déclarées dans src/styles/fonts.css et stockées dans public/fonts/.
+         Rien ne part vers Google. -->
   </head>
   <body>
     <div id="root"></div>
