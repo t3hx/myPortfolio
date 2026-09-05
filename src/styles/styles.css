@@ -214,20 +214,67 @@ body,
   overflow: hidden;
 }
 
-/* La boîte couvre tout l'écran, d'encre (CLEAR_COLOR, posé par le composant) ;
-   le cadre 16:9 est contenu et centré dedans, avec une marge
-   (INTRO_SCREEN_MARGIN). Jamais rogné, jamais étiré. */
+/* La boîte de l'écran : SANS FOND — le moniteur est le fond de l'animation
+   (décision du 2026-09-06). Elle ne fait que rogner ce qui déborde de l'écran.
+   Le cadre 16:9 est contenu et centré dedans, avec une marge
+   (INTRO_SCREEN_MARGIN), jamais rogné ni étiré — et il ne rogne rien lui-même,
+   sinon les étoiles s'arrêtent net à son bord et dessinent un rectangle. */
 .intro-screen {
   display: flex;
   align-items: center;
   justify-content: center;
+  overflow: hidden;
 }
 
-/* Échafaudage de #142 : le cadre vide, juste assez tracé pour vérifier la
-   pose à Home, Desk et Overview. Les phases (#144 à #146) le remplissent. */
 .intro-frame {
-  outline: 1px solid rgba(var(--glow-rgb), 0.35);
-  outline-offset: -1px;
+  position: relative;
+  overflow: visible;
+}
+
+/* La scène de l'intro : un canvas pour le raster, un SVG pour le vecteur, du
+   HTML pour le texte, dans le repère du cadre. L'accent vient d'une variable
+   posée par le composant (provisoire jusqu'à #147). */
+.intro-stage {
+  position: absolute;
+  inset: 0;
+  overflow: visible;
+  font-family: var(--font-ui);
+}
+
+/* Les calques du monde A sont posés sur l'ÉCRAN entier (taille et décalage
+   inline), pas sur le cadre. */
+.intro-world {
+  position: absolute;
+}
+
+.intro-canvas,
+.intro-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.intro-svg {
+  overflow: visible;
+}
+
+/* Le flash du big-bang, sur tout l'écran : blanc au centre, accent, puis rien. */
+.intro-flash {
+  position: absolute;
+  background: radial-gradient(circle at 50% 50%, #fff 0%, var(--intro-accent) 22%, transparent 62%);
+}
+
+/* Un mot de phase : discret, lettre par lettre, dans l'accent. */
+.intro-word {
+  position: absolute;
+  width: 460px;
+  font-size: 19px;
+  font-weight: 500;
+  letter-spacing: 0.62em;
+  color: var(--intro-accent);
+  text-shadow: 0 0 12px color-mix(in srgb, var(--intro-accent) 33%, transparent);
+  white-space: pre;
 }
 
 /* Stable portal layer for world-anchored bubbles — sits between the canvas (0)

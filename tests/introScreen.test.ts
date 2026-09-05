@@ -126,6 +126,19 @@ describe('the intro layer in the stacking order', () => {
     expect(rule![1]).toMatch(/pointer-events:\s*none/)
   })
 
+  it('paints no background: the monitor is the background', () => {
+    // Décision du 2026-09-06 : rien n'est peint sur l'écran, ni encre ni
+    // vignette ; un fond dessinait un rectangle dans le moniteur.
+    const screen = styles.match(/\.intro-screen\s*{([^}]*)}/)![1]
+    expect(screen).not.toMatch(/background/)
+    expect(screen).toMatch(/overflow:\s*hidden/)
+    const frame = styles.match(/\.intro-frame\s*{([^}]*)}/)![1]
+    expect(frame).not.toMatch(/overflow:\s*hidden/)
+    expect(styles).not.toMatch(/intro-vignette/)
+    const screenTsx = readFileSync('src/scene/IntroScreen.tsx', 'utf8')
+    expect(screenTsx).not.toMatch(/background/)
+  })
+
   it('reserves exactly what the menu bar takes on the right edge', () => {
     // La barre : `.menu { right: 12px; ... width: 52px }` dans tokens.css.
     const menu = tokens.match(/\n\.menu\s*{([^}]*)}/)![1]
