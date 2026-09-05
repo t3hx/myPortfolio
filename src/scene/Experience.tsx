@@ -16,6 +16,7 @@ import { CabinetDrawer } from '@/scene/CabinetDrawer'
 import { CameraRig } from '@/scene/CameraRig'
 import { CatAlive } from '@/scene/CatAlive'
 import { DeskAlive } from '@/scene/DeskAlive'
+import { IntroClock } from '@/scene/IntroClock'
 import { IntroScreen } from '@/scene/IntroScreen'
 import { Curtains } from '@/scene/Curtains'
 import { NanoLeaf } from '@/scene/NanoLeaf'
@@ -64,6 +65,7 @@ export function Experience({ bubbleLayer, introLayer }: ExperienceProps) {
   const dialoguePage = useInteraction((s) => s.dialoguePage)
   const startDialogue = useInteraction((s) => s.startDialogue)
   const revealed = useInteraction((s) => s.revealed)
+  const introReleased = useInteraction((s) => s.introReleased)
   const locale = useLocale((s) => s.locale)
 
   const onReady = useCallback(
@@ -91,7 +93,7 @@ export function Experience({ bubbleLayer, introLayer }: ExperienceProps) {
    * revisitée rouvrirait sur sa dernière page.
    */
   useEffect(() => {
-    if (!parkedStop || !revealed) return
+    if (!parkedStop || !revealed || !introReleased) return
     const bubble = BUBBLES.find((b) => b.stop === parkedStop)
     if (!bubble) return
     // Sous « mouvement réduit », des durées nulles : ça dit exactement ce qu'on
@@ -101,7 +103,9 @@ export function Experience({ bubbleLayer, introLayer }: ExperienceProps) {
     startDialogue(reducedMotion() ? pages.map(() => 0) : pages.map(typeDuration))
     // `revealed` est une dépendance : le dialogue ne part QU'UNE FOIS l'écran
     // découvert, sinon la première phrase s'écrit derrière le préchargeur.
-  }, [parkedStop, locale, revealed, startDialogue])
+    // `introReleased` aussi (#143) : à Home, l'intro parle d'abord, et la bulle
+    // ne dit « faites défiler » qu'une seconde après sa dernière image.
+  }, [parkedStop, locale, revealed, introReleased, startDialogue])
 
   return (
     <>
@@ -145,6 +149,10 @@ export function Experience({ bubbleLayer, introLayer }: ExperienceProps) {
           la boucle de comparaison capture le tampon WebGL, où la référence
           Blender ne contient aucun indice d'interface. */}
       {scene && <TelescopePing scene={scene} portal={bubbleLayer} />}
+
+      {/* L'horloge de l'intro (#143) : départ, dernière image, geste de saut,
+          bulle libérée. Ne rend rien ; le dessin lit T dans sa propre boucle. */}
+      {stops.length > 0 && <IntroClock />}
 
       {/* L'intro sur l'écran principal (#142) : du DOM épinglé au plan de
           l'écran, que la caméra Home désigne. Rien dans la scène — la boucle

@@ -107,6 +107,20 @@ interface InteractionState {
    * cadre à la sortie.
    */
   moonDetailed: boolean
+  /**
+   * L'INTRO (#143) — voir CONTEXT.md pour les mots.
+   *
+   * `introStartedAt` est l'origine du temps T (`performance.now()` du T = 0),
+   * `null` tant qu'elle n'a pas démarré. `introDone` : la dernière image est
+   * atteinte — par le temps, par un geste de saut, ou d'emblée (mouvement
+   * réduit, lien direct ailleurs qu'à Home). `introReleased` : la bulle peut
+   * parler, une seconde après la dernière image. Trois drapeaux et pas une
+   * phase : l'intro ne possède aucun routage d'entrée à elle — le geste de
+   * saut est pris avant le rig, et le tour garde la main partout ailleurs.
+   */
+  introStartedAt: number | null
+  introDone: boolean
+  introReleased: boolean
   /** HUD → CameraRig bridge: request a snap to this stop index. */
   pendingStopRequest: number | null
   /** Le tiroir de la commode — voir `CabinetState`. */
@@ -120,6 +134,14 @@ interface InteractionState {
   setReady: () => void
   /** Appelé par le préchargeur au moment où il se démonte. */
   setRevealed: () => void
+  /** T = 0, à cette heure. */
+  startIntro: (now: number) => void
+  /** La dernière image, par le temps ou par un geste. Idempotent. */
+  finishIntro: () => void
+  /** La bulle peut parler. Sans effet avant la dernière image. */
+  releaseIntro: () => void
+  /** Tout à zéro : l'outil d'arbitrage (#147) rejoue depuis le début. */
+  replayIntro: () => void
   setCabinet: (state: CabinetState) => void
   selectProject: (slug: string | null) => void
   requestStop: (index: number) => void
@@ -176,6 +198,9 @@ export const useInteraction = create<InteractionState>((set, get) => ({
   moonRevealed: false,
   telescopeHovered: false,
   moonDetailed: false,
+  introStartedAt: null,
+  introDone: false,
+  introReleased: false,
   pendingStopRequest: null,
   cabinet: 'closed',
   selectedProject: null,
@@ -186,6 +211,16 @@ export const useInteraction = create<InteractionState>((set, get) => ({
   },
   setReady: () => set({ ready: true }),
   setRevealed: () => set({ revealed: true }),
+  startIntro: (now) => {
+    if (get().introStartedAt === null && !get().introDone) set({ introStartedAt: now })
+  },
+  finishIntro: () => {
+    if (!get().introDone) set({ introDone: true })
+  },
+  releaseIntro: () => {
+    if (get().introDone && !get().introReleased) set({ introReleased: true })
+  },
+  replayIntro: () => set({ introStartedAt: null, introDone: false, introReleased: false }),
   setCabinet: (cabinet) => {
     if (get().cabinet !== cabinet) set({ cabinet })
   },
