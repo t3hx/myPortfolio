@@ -3,14 +3,15 @@ import { useThree } from '@react-three/fiber'
 import { useMemo, type RefObject } from 'react'
 import { Matrix4, Quaternion, Vector3, type Object3D } from 'three'
 import {
+  INTRO_ACCENT,
   INTRO_FRAME,
   INTRO_SAFE_INSET_PX,
   INTRO_SCREEN_MARGIN,
   SCREEN_MATERIAL,
 } from '@/config/intro'
-import { CLEAR_COLOR } from '@/config/renderPipeline'
 import { screenLayout } from '@/lib/introLayout'
 import { findScreenPlane } from '@/lib/screenPlane'
+import { IntroStage } from '@/scene/intro/IntroStage'
 import { poseVerticalFov, type StopTransform } from '@/lib/stops'
 
 /**
@@ -93,19 +94,20 @@ export function IntroScreen({ scene, home, portal }: IntroScreenProps) {
       zIndexRange={[40, 0]}
       pointerEvents="none"
     >
-      {/* L'encre de l'intro est celle du fond de la pièce : une seule source. */}
+      {/* SANS FOND (décision du 2026-09-06) : l'écran du moniteur est le fond
+          de l'animation, rien n'est peint dessus. La boîte de l'écran ne fait
+          que rogner ce qui déborde du moniteur ; le cadre n'est qu'une boîte
+          de composition, invisible. */}
       <div
         className="intro-screen"
-        style={{
-          width: layout.screen.width,
-          height: layout.screen.height,
-          background: CLEAR_COLOR,
-        }}
+        style={{ width: layout.screen.width, height: layout.screen.height }}
       >
         <div
           className="intro-frame"
           style={{ width: layout.frame.width, height: layout.frame.height }}
-        />
+        >
+          <IntroStage accent={INTRO_ACCENT} screen={layout.screen} />
+        </div>
       </div>
     </Html>
   )

@@ -63,3 +63,16 @@ export const INTRO_DELAY_MS = 800
  * Doit suivre `--t-intro-bubble` (tokens.css) — verrouillé par tests/intro.test.ts.
  */
 export const INTRO_BUBBLE_DELAY_MS = 1000
+
+/**
+ * L'accent de l'intro. PROVISOIRE : `#00C0E8` est le choix du handoff, distinct
+ * du `--glow` du design system (`#8FDBE4`), et il se tranchera en le voyant
+ * projeté sur l'écran (#147, avec `?accent=` et les boutons du HUD).
+ */
+export const INTRO_ACCENT = '#00C0E8'
+/** Le crème du texte, celui du design system. */
+export const INTRO_CREAM = '#EFE5D3'
+/** Le cœur blanc-cyan des néons et des grosses particules. */
+export const INTRO_CORE = '#EAFBFF'
+/** Le nombre de particules de la nova et du tourbillon (réglage final du handoff). */
+export const INTRO_PARTICLES = 900
