@@ -194,15 +194,26 @@ export function blendPose(
 export function applyPose(cam: PerspectiveCamera, pose: StopTransform): void {
   cam.position.copy(pose.position)
   cam.quaternion.copy(pose.quaternion)
-  // L'ajustement HORIZONTAL, la règle du tour : le champ horizontal composé
-  // dans Blender est conservé partout, et une fenêtre plus courte recadre en
-  // haut et en bas plutôt que de reculer et perdre le plan.
-  const free = verticalFov(pose.hfov, cam.aspect)
-  // Sauf là où cadrer trop large montrerait ce qu'il ne faut pas voir (#135).
-  // La borne ne mord QUE sur une fenêtre plus haute que celle composée : sur
-  // 16:9 et au-delà, `free` est déjà sous `yfov` et le minimum ne change rien.
-  cam.fov = free + (Math.min(free, pose.yfov) - free) * pose.contain
+  cam.fov = poseVerticalFov(pose, cam.aspect)
   cam.updateProjectionMatrix()
+}
+
+/**
+ * Le champ vertical qu'une pose donne à une fenêtre de ce rapport, en degrés.
+ *
+ * L'ajustement HORIZONTAL, la règle du tour : le champ horizontal composé dans
+ * Blender est conservé partout, et une fenêtre plus courte recadre en haut et
+ * en bas plutôt que de reculer et perdre le plan. Sauf là où cadrer trop large
+ * montrerait ce qu'il ne faut pas voir (#135) : la borne `yfov` ne mord QUE sur
+ * une fenêtre plus haute que celle composée — sur 16:9 et au-delà, `free` est
+ * déjà sous `yfov` et le minimum ne change rien.
+ *
+ * Exposé à part parce que l'intro (#142) doit savoir ce que la caméra Home
+ * montre de l'écran, et le calculer autrement ici et là finirait par diverger.
+ */
+export function poseVerticalFov(pose: StopTransform, aspect: number): number {
+  const free = verticalFov(pose.hfov, aspect)
+  return free + (Math.min(free, pose.yfov) - free) * pose.contain
 }
 
 /** Une pose neutre, à remplir. */

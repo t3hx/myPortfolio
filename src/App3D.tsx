@@ -29,6 +29,9 @@ export default function App3D() {
   // Stable portal target for world-anchored <Html> content (bubbles) — kept
   // outside the canvas container so the HUD/panel stacking order is ours.
   const bubbleLayer = useRef<HTMLDivElement>(null!)
+  // La couche de l'intro (#142), sous les bulles : le DOM posé sur l'écran
+  // principal, qui suit la caméra par transform CSS.
+  const introLayer = useRef<HTMLDivElement>(null!)
 
   return (
     <div className="stage">
@@ -45,9 +48,10 @@ export default function App3D() {
       >
         <color attach="background" args={[CLEAR_COLOR]} />
         <Suspense fallback={null}>
-          <Experience bubbleLayer={bubbleLayer} />
+          <Experience bubbleLayer={bubbleLayer} introLayer={introLayer} />
         </Suspense>
       </Canvas>
+      <div ref={introLayer} className="intro-layer" />
       <div ref={bubbleLayer} className="bubble-layer" />
       {/* Le HUD est l'outillage du spike : bandeau de phase, rail de stops,
           boutons de test des phases. `?debug` le déclarait déjà (viewMode.ts)

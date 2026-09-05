@@ -202,6 +202,34 @@ body,
   color: #6fd0ff;
 }
 
+/* La couche de l'intro (#142) : du DOM posé dans la 3D sur l'écran principal,
+   par un drei <Html transform>. Sous les bulles (100) : la bulle d'accueil se
+   pose devant le moniteur, et le menu reste au-dessus de tout. Rien n'y est
+   cliquable — la scène écoute, pas l'écran. */
+.intro-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: var(--z-intro);
+  overflow: hidden;
+}
+
+/* La boîte couvre tout l'écran, d'encre (CLEAR_COLOR, posé par le composant) ;
+   le cadre 16:9 est contenu et centré dedans, avec une marge
+   (INTRO_SCREEN_MARGIN). Jamais rogné, jamais étiré. */
+.intro-screen {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Échafaudage de #142 : le cadre vide, juste assez tracé pour vérifier la
+   pose à Home, Desk et Overview. Les phases (#144 à #146) le remplissent. */
+.intro-frame {
+  outline: 1px solid rgba(var(--glow-rgb), 0.35);
+  outline-offset: -1px;
+}
+
 /* Stable portal layer for world-anchored bubbles — sits between the canvas (0)
    and the HUD (200) so panels/nav always paint above bubbles. */
 .bubble-layer {
