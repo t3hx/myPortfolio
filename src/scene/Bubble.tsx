@@ -111,6 +111,9 @@ export function Bubble({
   const startedAt = useInteraction((st) => st.dialogueStartedAt)
   const done = useInteraction((st) => st.dialogueDone)
   const revealed = useInteraction((st) => st.revealed)
+  // La bulle attend aussi la fin de l'intro, plus une seconde (#143) : à Home
+  // deux choses ne parlent pas en même temps, et l'écran parle en premier.
+  const released = useInteraction((st) => st.introReleased)
   // La durée vient du STORE, pas d'un `typeDuration(children)` recalculé ici.
   // Recalculée, elle ignorait le « mouvement réduit » — que l'appelant exprime
   // par des durées nulles — et la bulle écrivait quand même.
@@ -127,7 +130,7 @@ export function Bubble({
     return () => window.clearTimeout(timer)
   }, [startedAt, duration])
 
-  const now = useNow(visible && revealed && !done && !finished)
+  const now = useNow(visible && revealed && released && !done && !finished)
   const shown =
     done || finished ? plainText(children).length : typedLength(children, now - startedAt, duration)
 
@@ -178,7 +181,7 @@ export function Bubble({
   // Tant que le préchargeur couvre l'écran, la bulle n'existe pas : une frappe
   // lancée derrière lui s'écrit sans spectateur, et la phrase était déjà à
   // moitié faite quand elle devenait visible (mesuré : 42 caractères sur 69).
-  if (!mounted || !revealed || !portal.current) return null
+  if (!mounted || !revealed || !released || !portal.current) return null
 
   const cls = [
     'bubble',

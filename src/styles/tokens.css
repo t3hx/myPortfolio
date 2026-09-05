@@ -61,6 +61,8 @@
   --t-scope-in: 620ms;    /* ouverture de la visée du télescope */
   --t-scope-out: 260ms;   /* fermeture — voir SCOPE_OUT_MS */
   --t-sweep: 700ms;       /* balayage d'une cartouche au survol */
+  --t-intro-delay: 800ms; /* découverte → départ de l'intro — voir INTRO_DELAY_MS */
+  --t-intro-bubble: 1000ms; /* dernière image → la bulle parle — voir INTRO_BUBBLE_DELAY_MS */
   --ease-out: cubic-bezier(.2, .8, .2, 1);
 }
 

@@ -47,3 +47,19 @@ export const INTRO_SCREEN_MARGIN = 0.03
  * si les tokens et ce nombre divergent.
  */
 export const INTRO_SAFE_INSET_PX = 64
+
+/**
+ * La latence entre la découverte (le préchargeur est parti) et le départ de
+ * l'intro, en ms. Jamais sur la même image : le visiteur voit d'abord l'écran,
+ * puis l'écran s'allume. Sous une seconde (décision du 2026-09-05).
+ * Doit suivre `--t-intro-delay` (tokens.css) — verrouillé par tests/intro.test.ts.
+ */
+export const INTRO_DELAY_MS = 800
+
+/**
+ * Ce que la bulle Home attend après la dernière image avant de parler, en ms.
+ * Que l'intro finisse par le temps ou par un geste de saut, la bulle suit une
+ * seconde plus tard (décision du 2026-09-05).
+ * Doit suivre `--t-intro-bubble` (tokens.css) — verrouillé par tests/intro.test.ts.
+ */
+export const INTRO_BUBBLE_DELAY_MS = 1000
