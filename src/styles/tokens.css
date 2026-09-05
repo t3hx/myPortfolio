@@ -31,7 +31,7 @@
   --r-item: 18px;
 
   /* Empilement (contrainte code) */
-  --z-canvas: 0; --z-bubble: 100; --z-bar: 200; --z-panel: 300; --z-preload: 400;
+  --z-canvas: 0; --z-intro: 50; --z-bubble: 100; --z-bar: 200; --z-panel: 300; --z-preload: 400;
 
 
   /* Motion — budgets */

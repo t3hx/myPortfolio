@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState, type RefObject } from 'react'
 import type { Object3D, Vector3 } from 'three'
 import { CAMERA_STOPS } from '@/config/cameraStops'
+import { INTRO_HOME_STOP } from '@/config/intro'
 import { BUBBLES, bubbleKicker, bubblePages } from '@/content/bubbles'
 import { PROJECTS } from '@/content/projects'
 import { resolveBubbleAnchors } from '@/lib/bubbleAnchors'
@@ -15,6 +16,7 @@ import { CabinetDrawer } from '@/scene/CabinetDrawer'
 import { CameraRig } from '@/scene/CameraRig'
 import { CatAlive } from '@/scene/CatAlive'
 import { DeskAlive } from '@/scene/DeskAlive'
+import { IntroScreen } from '@/scene/IntroScreen'
 import { Curtains } from '@/scene/Curtains'
 import { NanoLeaf } from '@/scene/NanoLeaf'
 import { TelescopeHover } from '@/scene/TelescopeHover'
@@ -39,9 +41,11 @@ import { useInteraction } from '@/state/interaction'
 interface ExperienceProps {
   /** Stable DOM layer OUTSIDE the ScrollControls scroller — see App.tsx. */
   bubbleLayer: RefObject<HTMLDivElement>
+  /** La couche de l'intro (#142), sous les bulles. */
+  introLayer: RefObject<HTMLDivElement>
 }
 
-export function Experience({ bubbleLayer }: ExperienceProps) {
+export function Experience({ bubbleLayer, introLayer }: ExperienceProps) {
   const [stops, setStops] = useState<StopTransform[]>([])
   // La lune est lue à part : sa caméra existe dans le `.glb` mais pas dans le
   // tour (#113). Une seule lecture, au chargement, comme les ancres de bulles.
@@ -77,6 +81,8 @@ export function Experience({ bubbleLayer }: ExperienceProps) {
   )
 
   const parkedStop = phase === 'parked' ? CAMERA_STOPS[stopIndex]?.label : undefined
+  // `stops` suit l'ordre de CAMERA_STOPS (orderedStops) : même index.
+  const homeStop = stops[CAMERA_STOPS.findIndex((s) => s.label === INTRO_HOME_STOP)]
 
   /**
    * Le dialogue repart au premier temps à CHAQUE arrivée (#122). Les dix
@@ -139,6 +145,11 @@ export function Experience({ bubbleLayer }: ExperienceProps) {
           la boucle de comparaison capture le tampon WebGL, où la référence
           Blender ne contient aucun indice d'interface. */}
       {scene && <TelescopePing scene={scene} portal={bubbleLayer} />}
+
+      {/* L'intro sur l'écran principal (#142) : du DOM épinglé au plan de
+          l'écran, que la caméra Home désigne. Rien dans la scène — la boucle
+          de comparaison capture `home` à 0,000 %, et doit continuer. */}
+      {scene && homeStop && <IntroScreen scene={scene} home={homeStop} portal={introLayer} />}
 
       {/* Contours spike: ?outline=off|hull|edges|both — see Outlines.tsx. */}
       {stops.length > 0 && <Outlines />}

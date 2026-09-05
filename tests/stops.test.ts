@@ -10,6 +10,7 @@ import {
   moveDuration,
   nextStopIndex,
   orderedStops,
+  poseVerticalFov,
   verticalFov,
 } from '@/lib/stops'
 
@@ -333,5 +334,21 @@ describe('moveDuration', () => {
     const a = pose(0, 30)
     const b = pose(2, 60, 1.1)
     expect(moveDuration(a, b)).toBeCloseTo(moveDuration(b, a), 10)
+  })
+})
+
+describe('poseVerticalFov', () => {
+  const pose = { ...emptyPose(), hfov: 53.13, yfov: 31.42 }
+
+  it('keeps the horizontal fit on a free stop, whatever the window', () => {
+    // Fenêtre plus haute que 16:9 : le champ vertical GRANDIT, rien ne le borne.
+    expect(poseVerticalFov({ ...pose, contain: 0 }, 1.6)).toBeCloseTo(verticalFov(53.13, 1.6), 6)
+    expect(poseVerticalFov({ ...pose, contain: 0 }, 1.6)).toBeGreaterThan(31.42)
+  })
+
+  it('caps a contained stop at its authored vertical field on a taller window', () => {
+    expect(poseVerticalFov({ ...pose, contain: 1 }, 1.6)).toBeCloseTo(31.42, 6)
+    // Et ne change rien sur une fenêtre au moins aussi large que composée.
+    expect(poseVerticalFov({ ...pose, contain: 1 }, 2.37)).toBeCloseTo(verticalFov(53.13, 2.37), 6)
   })
 })
