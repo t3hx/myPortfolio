@@ -433,7 +433,7 @@ export function CameraRig({ stops, moon, pivots }: CameraRigProps) {
     const stop = stops[clamped]
     if (stop) {
       copyPose(pose, stop)
-      applyPose(camera, pose)
+      applyPose(camera, pose, glDom.clientWidth)
     }
     useInteraction.getState().setStopIndex(clamped)
     useInteraction.getState().setPhase('parked')
@@ -615,10 +615,16 @@ export function CameraRig({ stops, moon, pivots }: CameraRigProps) {
     // reste la pose que Blender a autorisée. L'y fondre la ferait dériver à
     // chaque mouvement de souris, et le mouvement suivant partirait d'un
     // ailleurs que personne n'a composé.
+    // La largeur en pixels de la fenêtre, et pas seulement son rapport : la
+    // règle de la colonne lisible du CV se mesure en pixels de texte, pas en
+    // proportions. `applyPose` est le seul endroit qui convertit un champ en
+    // `camera.fov`, et il l'a maintenant en argument obligatoire — le
+    // compilateur a désigné les quatre appels le jour où elle est arrivée.
+    const widthPx = glDom.clientWidth
     if (Math.abs(yaw.current) < LOOK_EPSILON_DEG) {
-      applyPose(camera, pose)
+      applyPose(camera, pose, widthPx)
     } else {
-      applyPose(camera, orbitPose(looked, pose, radius, yaw.current))
+      applyPose(camera, orbitPose(looked, pose, radius, yaw.current), widthPx)
     }
   })
 

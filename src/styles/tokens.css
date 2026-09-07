@@ -820,7 +820,28 @@
    plus la classe `panel` : il n'a rien à faire défiler, la molette continue
    donc de commander le tour. */
 .cv {
-  position: absolute; left: 27.5%; width: 44.8%; top: 0; bottom: 0;
+  /* LA COLONNE SUIT LE CADRAGE, et les deux disent la même chose deux fois.
+     `lib/stops.ts` resserre le champ de l'arrêt CV jusqu'à ce que l'écran
+     vertical donne une colonne lisible ; cette largeur-ci est la même règle,
+     écrite pour le DOM : les 44,8 % du design, mais jamais moins que les
+     573 px pour lesquels le CV est écrit — ou toute la fenêtre moins 24 px de
+     chaque côté quand elle est plus étroite que ça.
+
+     Les trois nombres sont ceux de `CV_COLUMN_FRACTION`, `CV_COLUMN_PX` et
+     `CV_COLUMN_MARGIN_PX`, et `tests/stops.test.ts` échoue s'ils divergent :
+     un cadrage 3D et une boîte DOM qui ne s'accordent plus, ce serait un texte
+     posé à côté de l'écran qui est censé l'afficher.
+
+     Mesuré avant : 175 px de large sur un téléphone en portrait (390 × 844),
+     avec 444 px de contenu en trop. Après : 342 px, et le moniteur derrière a
+     grandi d'autant.
+
+     Elle est CENTRÉE plutôt qu'écrite à 27,5 % : les deux nombres du design
+     donnaient un centre à 49,95 %, soit un centrage à un dixième de pour cent
+     près — et deux nombres pour une chose qui n'en demande qu'un. */
+  --cv-column: max(44.8vw, min(573px, 100vw - 48px));
+  position: absolute; left: calc(50% - var(--cv-column) / 2); width: var(--cv-column);
+  top: 0; bottom: 0;
   z-index: var(--z-bubble);
   /* Le CV DÉFILE dans l'écran depuis le 2026-08-20, parce qu'il ne tient plus :
      885 px de contenu (966 accordéon ouvert) dans un cadre de 720. Ce n'est pas
@@ -960,6 +981,22 @@
    il n'y a aucun `onError` côté composant. Quand un SVG arrive il est rendu en
    `<img>`, donc EN COULEUR : une marque monochrome ne ressemble pas à la
    marque. L'asymétrie repli-monochrome / icône-couleur est voulue. */
+/* SOUS LA LARGEUR DU DESIGN, la rangée du haut se met en colonne. En dessous
+   de ~620 px de fenêtre, la colonne du CV ne peut plus atteindre les 573 px
+   pour lesquels elle est écrite (voir `--cv-column`) : les trois cartes se
+   partagent alors moins de 200 px chacune, et les étiquettes des six traits se
+   chevauchent — mesuré sur un téléphone en portrait, « Curiosité », « Rigueur »
+   et « Autonomie » se superposaient.
+
+   Le seuil est celui du site classique (720 px), et il est pris sur la FENÊTRE
+   plutôt que sur la carte : la colonne suit la fenêtre par construction, et une
+   requête de conteneur demanderait un `container-type` sur un élément qui
+   défile — un réglage de mise en page de plus, pour la même réponse. */
+@media (max-width: 720px) {
+  .cv__row { flex-direction: column; }
+  .cv__row .cv__card, .cv__card--traits { flex: 0 0 auto; }
+}
+
 .cv__tiles { display: grid; gap: 8px 6px; }
 .cv__tiles--traits { grid-template-columns: repeat(3, 1fr); }
 .cv__tiles--skills { grid-template-columns: repeat(auto-fit, minmax(46px, 1fr)); }

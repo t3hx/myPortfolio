@@ -95,3 +95,29 @@ describe('les replis', () => {
     expect(GENERIC_COVER_SRC.startsWith('/')).toBe(true)
   })
 })
+
+/**
+ * L'ORDRE DU TIROIR (décision de l'auteur, 2026-09-07). Le tableau EST la
+ * rangée de dossiers : `buildFolders` place le dossier n° i à `folderZ(i, n)`
+ * et ne lit rien d'autre. Rien dans la scène ne dit cet ordre, donc rien ne
+ * signalerait qu'il a bougé — sauf en ouvrant le tiroir.
+ */
+describe("l'ordre de la commode", () => {
+  it('range les dossiers dans l’ordre décidé', () => {
+    expect(PROJECTS.map((p) => p.slug)).toEqual([
+      'portfolio',
+      'owlog',
+      'solarsys',
+      'anima',
+      'odysong',
+    ])
+  })
+
+  it('garde les vraies adresses des dépôts malgré les renommages', () => {
+    // Un projet renommé dans le portfolio ne renomme pas son dépôt : les liens
+    // pointent vers ce qui existe, pas vers ce qu'on aimerait qui existe.
+    const links = PROJECTS.flatMap((p) => p.links ?? []).map((l) => l.href)
+    expect(links.every((href) => href.startsWith('https://github.com/'))).toBe(true)
+    expect(links).toContain('https://github.com/t3hx/celestial-walker-nuxt')
+  })
+})
