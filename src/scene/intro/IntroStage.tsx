@@ -1,12 +1,16 @@
-import { useEffect, useRef, type CSSProperties } from 'react'
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { INTRO_CORE, INTRO_CREAM, INTRO_FRAME, INTRO_PARTICLES } from '@/config/intro'
+import { LAB_PLAN_ORDER, loadLabPlan, type LabPlan as LabPlanData } from '@/content/labPlan'
 import { introTime } from '@/lib/intro'
+import { labPlanSvg, rasterDensity, rasterizeLabPlan } from '@/lib/labRaster'
 import {
   CX,
   CY,
+  LAB_SUBGROUPS,
   PHASE_WORDS,
   cameraA,
   flashOpacity,
+  labDashOffset,
   makeParticles,
   makeStars,
   novaActive,
@@ -16,12 +20,15 @@ import {
   rings,
   starAlpha,
   triangle1,
+  triangle2,
   worldA,
+  worldB,
   type Particle,
   type PhaseWordSpec,
   type StarGroup,
 } from '@/lib/introScene'
 import { useInteraction } from '@/state/interaction'
+import { LabPlan } from '@/scene/intro/LabPlan'
 import { NeonTriangle } from '@/scene/intro/NeonTriangle'
 import { applyTriangle } from '@/lib/neonTriangle'
 
@@ -50,17 +57,17 @@ interface IntroStageProps {
 
 const WORD_STYLE = {
   genesis: { left: 150, top: 168, textAlign: 'left' } as const,
+  incubation: { left: INTRO_FRAME.width - 610, top: INTRO_FRAME.height - 186, textAlign: 'right' },
 } satisfies Record<string, CSSProperties>
 
-function PhaseWord({
-  word,
-  style,
-  refs,
-}: {
-  word: string
-  style: CSSProperties
-  refs: { root: React.RefObject<HTMLDivElement | null>; letters: (HTMLSpanElement | null)[] }
-}) {
+interface WordRefs {
+  root: React.RefObject<HTMLDivElement | null>
+  letters: (HTMLSpanElement | null)[]
+}
+
+const wordRefs = (): WordRefs => ({ root: { current: null }, letters: [] })
+
+function PhaseWord({ word, style, refs }: { word: string; style: CSSProperties; refs: WordRefs }) {
   return (
     <div ref={refs.root} className="intro-word" style={style}>
       {word.split('').map((ch, i) => (
@@ -90,10 +97,90 @@ export function IntroStage({ accent, screen }: IntroStageProps) {
   const camera = useRef<SVGGElement>(null)
   const tri1 = useRef<SVGGElement>(null)
   const flash = useRef<HTMLDivElement>(null)
-  const genesis = useRef<{
-    root: React.RefObject<HTMLDivElement | null>
-    letters: (HTMLSpanElement | null)[]
-  }>({ root: { current: null }, letters: [] })
+  const worldBRoot = useRef<HTMLDivElement>(null)
+  const worldBCam = useRef<SVGGElement>(null)
+  const tri2 = useRef<SVGGElement>(null)
+  const genesis = useRef<WordRefs>(wordRefs())
+  const incubation = useRef<WordRefs>(wordRefs())
+
+  // Le plan est demandé à T = 0 et dessiné à 9,5 s : 94 Ko de chemins n'ont
+  // rien à faire dans le chunk d'App3D (#141). Un chargement en retard ne
+  // bloque pas l'horloge — le plan apparaît là où le tracé en est.
+  const [plan, setPlan] = useState<LabPlanData | null>(null)
+  useEffect(() => {
+    let alive = true
+    loadLabPlan().then(
+      (loaded) => {
+        if (alive) setPlan(loaded)
+      },
+      (error: unknown) => {
+        console.warn('[intro] le plan du lab ne se charge pas, la phase 2 restera vide', error)
+      },
+    )
+    return () => {
+      alive = false
+    }
+  }, [])
+
+  // Les 55 groupes de vagues, relevés une fois le plan monté : la boucle les
+  // adresse par leur rang dans la chronologie, jamais par l'ordre du document.
+  // `offsets` retient ce qui est écrit dans chacun, pour ne réécrire que ce
+  // qui change — et il n'enregistre QUE des écritures réelles, sinon les
+  // images jouées avant l'arrivée du plan prétendraient l'avoir dessiné.
+  const waves = useRef<(SVGGElement | null)[]>([])
+  const offsets = useRef(new Float64Array(LAB_PLAN_ORDER.length * LAB_SUBGROUPS).fill(NaN))
+  const drawLabRef = useRef<((T: number) => void) | null>(null)
+  useEffect(() => {
+    const found = worldBRoot.current?.querySelectorAll<SVGGElement>('.intro-lab > g[data-wave]')
+    waves.current = []
+    found?.forEach((g) => {
+      waves.current[Number(g.dataset.wave)] = g
+    })
+    // Et on dessine tout de suite, car la boucle peut très bien être arrêtée :
+    // sur la dernière image d'emblée (mouvement réduit, lien direct ailleurs
+    // qu'à Home) elle rend une seule image, AVANT que le plan n'existe. Sans
+    // ce tracé-là, le plan restait entièrement en pointillé sur les deux
+    // chemins où personne ne le voit se dessiner — donc où il doit être fini.
+    drawLabRef.current?.(introTime(useInteraction.getState(), performance.now()))
+  }, [plan])
+
+  // Le plan aplati en image, une fois qu'il ne se dessine plus. Tant que
+  // l'intro joue il reste vectoriel — il s'écrit ; à la dernière image il
+  // devient un bitmap, parce que la révélation qui suit re-rastériserait ses
+  // 2 346 tracés à chaque image du recul (voir lib/labRaster.ts : mesuré, un
+  // tiers des images du recul sous Gecko). La caméra ne peut pas partir plus
+  // tôt : pendant l'intro la molette est le geste de saut.
+  const introDone = useInteraction((s) => s.introDone)
+  const [flattened, setFlattened] = useState<string | null>(null)
+  useEffect(() => {
+    if (!plan || !introDone) return
+    let url: string | null = null
+    rasterizeLabPlan(labPlanSvg(plan, accent), rasterDensity(window.devicePixelRatio)).then(
+      (made) => {
+        url = made
+        setFlattened(made)
+      },
+      (error: unknown) => {
+        // Le plan reste vectoriel : moins fluide au recul, mais présent.
+        console.warn('[intro] le plan du lab reste vectoriel', error)
+      },
+    )
+    return () => {
+      if (url) URL.revokeObjectURL(url)
+      setFlattened(null)
+    }
+  }, [plan, introDone, accent])
+
+  // La poussière du monde B : le premier groupe d'étoiles, figé, très discret.
+  // Un fond parfaitement noir derrière le plan se lit comme un cache posé sur
+  // l'écran ; ces points disent qu'on est toujours dans le même espace.
+  const dust = useMemo(
+    () =>
+      makeStars()[0]
+        .points.map(([x, y]) => `M${x.toFixed(1)} ${y.toFixed(1)}h.01`)
+        .join(''),
+    [],
+  )
 
   useEffect(() => {
     const rootEl = root.current
@@ -151,7 +238,35 @@ export function IntroStage({ accent, screen }: IntroStageProps) {
         `translate(${CX - cam.fx * cam.scale} ${CY - cam.fy * cam.scale}) scale(${cam.scale})`,
       )
       if (tri1.current) applyTriangle(tri1.current, t)
+      if (tri2.current) applyTriangle(tri2.current, triangle2(T))
     }
+
+    const drawLab = (T: number) => {
+      const el = worldBRoot.current
+      if (!el) return
+      const wb = worldB(T)
+      el.style.opacity = String(wb.opacity)
+      worldBCam.current?.setAttribute(
+        'transform',
+        `translate(${CX - CX * wb.scale} ${CY - CY * wb.scale}) scale(${wb.scale})`,
+      )
+      for (let b = 0; b < LAB_PLAN_ORDER.length; b++) {
+        for (let wave = 0; wave < LAB_SUBGROUPS; wave++) {
+          const slot = b * LAB_SUBGROUPS + wave
+          const group = waves.current[slot]
+          if (!group) continue
+          const offset = labDashOffset(b, wave, T)
+          // Une vague pas encore partie (1) ou déjà finie (0) n'a plus rien à
+          // dire, et chaque écriture invalide le style des ~45 tracés du
+          // groupe : on ne réécrit que ce qui change.
+          if (offset === offsets.current[slot]) continue
+          offsets.current[slot] = offset
+          group.style.strokeDashoffset = offset.toFixed(4)
+        }
+      }
+    }
+
+    drawLabRef.current = drawLab
 
     const draw = (T: number) => {
       const wa = worldA(T)
@@ -165,7 +280,9 @@ export function IntroStage({ accent, screen }: IntroStageProps) {
         flash.current.style.display = f > 0.004 ? '' : 'none'
         flash.current.style.opacity = String(f)
       }
+      drawLab(T)
       applyWord(genesis.current, T, PHASE_WORDS.genesis)
+      applyWord(incubation.current, T, PHASE_WORDS.incubation)
     }
 
     let frame = 0
@@ -188,6 +305,7 @@ export function IntroStage({ accent, screen }: IntroStageProps) {
       cancelAnimationFrame(frame)
       unsubscribe()
       observer.disconnect()
+      drawLabRef.current = null
     }
   }, [accent, screen, ox, oy])
 
@@ -200,7 +318,42 @@ export function IntroStage({ accent, screen }: IntroStageProps) {
         <canvas ref={canvas} className="intro-canvas" />
         <svg className="intro-svg" viewBox={`${-ox} ${-oy} ${screen.width} ${screen.height}`}>
           <g ref={camera}>
+            <NeonTriangle ref={tri2} accent={accent} core={INTRO_CORE} />
             <NeonTriangle ref={tri1} accent={accent} core={INTRO_CORE} />
+          </g>
+        </svg>
+      </div>
+
+      {/* MONDE B — l'intérieur du triangle. Il vit dans le CADRE, pas sur
+          l'écran : à l'échelle 1 il le remplit exactement, c'est ce qui donne
+          au plan la taille pour laquelle il a été dessiné.
+
+          Il est monté dès que le plan est chargé, bien avant d'être visible,
+          et n'est jamais caché : poser 2 346 chemins dans le document coûte
+          une mise en page, et cette mise en page ne doit pas tomber sur la
+          plongée. Invisible, il ne coûte rien à peindre — tous ses traits sont
+          encore entièrement en pointillé.
+
+          Le zoom est un `transform` sur un `<g>`, vectoriel : un transform CSS
+          sur le calque re-rastériserait les 2 346 tracés à chaque image du
+          zoom (note de perf du handoff, mesurée sur le prototype). */}
+      <div ref={worldBRoot} className="intro-world-b" style={{ opacity: 0 }}>
+        <svg className="intro-svg" viewBox={`0 0 ${INTRO_FRAME.width} ${INTRO_FRAME.height}`}>
+          <g ref={worldBCam}>
+            <path className="intro-dust" d={dust} />
+            {/* On ne retire le vectoriel qu'une fois l'image PRÊTE : les
+                échanger sur un `introDone` ferait clignoter le plan. */}
+            {flattened ? (
+              <image
+                href={flattened}
+                x="0"
+                y="0"
+                width={INTRO_FRAME.width}
+                height={INTRO_FRAME.height}
+              />
+            ) : (
+              plan && <LabPlan plan={plan} />
+            )}
           </g>
         </svg>
       </div>
@@ -211,6 +364,7 @@ export function IntroStage({ accent, screen }: IntroStageProps) {
       <div ref={flash} className="intro-flash" style={{ ...cover, display: 'none' }} />
 
       <PhaseWord word="GENESIS" style={WORD_STYLE.genesis} refs={genesis.current} />
+      <PhaseWord word="INCUBATION" style={WORD_STYLE.incubation} refs={incubation.current} />
     </div>
   )
 }

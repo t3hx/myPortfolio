@@ -117,6 +117,86 @@ export function triangle1(T: number): TriangleState & { coreR: number; coreOp: n
   }
 }
 
+// ---------------------------------------------------------------- triangle 2
+/**
+ * Le second triangle : la cible du panoramique, puis la porte de la plongée.
+ * Il dérive au loin sur la même dérive lente que le point visé par la caméra
+ * — c'est le même point, et il ne peut pas y en avoir deux — et il porte DEUX
+ * côtés en emphase là où le premier n'en portait qu'un, ce qui suffit à ne pas
+ * le lire comme le même objet revenu.
+ *
+ * Il s'allume 7,0 → 8,0 s, donc AVANT que le panoramique ne le rejoigne à
+ * 8,8 s : une cible qui apparaîtrait à l'arrivée dirait que la caméra a bougé
+ * pour rien.
+ */
+export function triangle2(T: number): TriangleState {
+  const c = triangle2Centre(T)
+  return {
+    x: c.x,
+    y: c.y,
+    size: 120,
+    rot: 12 * Math.sin(T * 0.21),
+    glow: 1.1,
+    opacity: draw(0, 1, t1 + 0.5, t1 + 1.5)(T),
+    lit: [0, 1],
+    weight: 1,
+  }
+}
+
+// ---------------------------------------------------------------- monde B
+export interface WorldB {
+  /** L'échelle du monde, autour du centre du cadre. */
+  scale: number
+  opacity: number
+}
+
+/**
+ * Le monde B — l'intérieur du triangle — surgit pendant la plongée : une
+ * graine à 7 % qui s'ouvre jusqu'au cadre entier (9,35 → 10,65 s), et un
+ * fondu (9,5 → 10,15 s) qui CROISE celui du monde A (9,85 → 10,35 s). Le
+ * croisement est le point : à aucune image l'écran n'est vide.
+ *
+ * Le 2 % de croissance résiduelle sur la phase 3 est du handoff : un monde
+ * parfaitement immobile derrière le nom se lit comme une image, pas comme un
+ * lieu.
+ */
+export function worldB(T: number): WorldB {
+  return {
+    scale: draw(0.07, 1, plunge + 0.55, plunge + 1.85)(T) * (1 + 0.02 * clamp((T - t2) / 7, 0, 1)),
+    opacity: draw(0, 1, plunge + 0.7, plunge + 1.35)(T),
+  }
+}
+
+// ---------------------------------------------------------------- le plan
+/**
+ * Les vagues de tracé d'un lot. Un lot entier qui partirait d'un bloc se
+ * lirait comme un calque qu'on allume ; cinq vagues décalées de 0,06 s font
+ * un dessin qui se pose.
+ */
+export const LAB_SUBGROUPS = 5
+/** L'écart entre deux lots, en secondes. */
+const LAB_BATCH_STEP = 0.26
+/** L'écart entre deux vagues d'un même lot. */
+const LAB_WAVE_STEP = 0.06
+/** Le temps que met un trait à s'écrire. */
+const LAB_STROKE_S = 0.72
+
+/**
+ * Le décalage de tiret d'une vague : 1 = rien de tracé, 0 = tout. Avec
+ * `pathLength="1"` et `stroke-dasharray: 1 1`, c'est la seule grandeur qui
+ * bouge dans le plan — une par vague, cinquante-cinq en tout, là où il y a
+ * 2 346 tracés. Elle est écrite sur le groupe de la vague, dont les tracés
+ * l'héritent : mesuré, la faire transiter par une variable CSS posée sur le
+ * conteneur coûtait deux images perdues (~50 ms) au plus fort du tracé, quand
+ * les deux gros lots (H1 et V1, 1 182 traits) partent ensemble — une variable
+ * invalide le style de TOUS les descendants du conteneur, y compris les 2 300
+ * tracés que cette vague-là ne concerne pas.
+ */
+export function labDashOffset(batch: number, wave: number, T: number): number {
+  const start = INTRO_BEATS.draw + batch * LAB_BATCH_STEP + wave * LAB_WAVE_STEP
+  return 1 - draw(0, 1, start, start + LAB_STROKE_S)(T)
+}
+
 // ---------------------------------------------------------------- étoiles
 export interface StarGroup {
   points: [number, number][]

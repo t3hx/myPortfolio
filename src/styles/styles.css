@@ -259,6 +259,44 @@ body,
   overflow: visible;
 }
 
+/* Le monde B (#145) — l'intérieur du triangle. Posé sur le CADRE et non sur
+   l'écran : à l'échelle 1 il le remplit exactement, et c'est ce qui donne au
+   plan du lab la taille pour laquelle il a été dessiné. Son opacité est écrite
+   par la boucle d'images ; son zoom est un transform SVG, jamais CSS. */
+.intro-world-b {
+  position: absolute;
+  inset: 0;
+}
+
+/* La poussière du monde B : le premier groupe d'étoiles, figé et très
+   discret. Un noir parfait derrière le plan se lirait comme un cache posé sur
+   l'écran plutôt que comme un espace. */
+.intro-dust {
+  fill: none;
+  stroke: var(--cream);
+  stroke-width: 2;
+  stroke-linecap: round;
+  opacity: 0.14;
+}
+
+/* Le plan du lab : l'encre, le remplissage, la casse et le pointillé sont
+   déclarés UNE fois ici et hérités par les 2 346 tracés — chacun ne porte que
+   son `d`, son épaisseur et son `pathLength="1"`. C'est aussi ce qui permet à
+   l'accent de changer (#147) sans reconstruire un seul chemin.
+
+   `stroke-dasharray: 1 1` sur une longueur normalisée à 1 : le décalage de
+   tiret va de 1 (rien) à 0 (tout), et c'est la seule grandeur qui bouge, une
+   par vague. Le 1 déclaré ici est la valeur AVANT que la boucle n'écrive quoi
+   que ce soit : sans lui le décalage vaut 0, et le plan entier est déjà tracé
+   quand le monde B s'ouvre. */
+.intro-lab {
+  fill: none;
+  stroke: var(--intro-accent);
+  stroke-linecap: round;
+  stroke-dasharray: 1 1;
+  stroke-dashoffset: 1;
+}
+
 /* Le flash du big-bang, sur tout l'écran : blanc au centre, accent, puis rien. */
 .intro-flash {
   position: absolute;
