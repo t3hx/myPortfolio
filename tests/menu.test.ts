@@ -63,3 +63,33 @@ describe('la bascule de langue', () => {
     expect(reset).toContain('font: inherit')
   })
 })
+
+/**
+ * LE ROUTAGE DES SURFACES. Chaque surface posée sur la scène garde ce qu'elle
+ * a de propre : le panneau garde sa molette, la barre de menu ses flèches, et
+ * le HUD `?debug` les deux — sa liste d'arrêts navigue aux flèches, et ses
+ * boutons sont dans `.stage`, donc un clic dessus faisait AUSSI parler l'arrêt.
+ *
+ * Mesuré avant la correction : ouvrir la fiche projet depuis Bookshelf laissait
+ * la caméra sur Cat, parce que le dialogue de Bookshelf était épuisé et qu'un
+ * geste de plus, sur la dernière phrase, veut dire « arrêt suivant ».
+ *
+ * Ces exclusions sont des sélecteurs dans un écouteur : rien d'autre qu'une
+ * lecture du source ne peut dire qu'elles sont là, et leur oubli ne casse rien
+ * — il déplace la caméra.
+ */
+describe('input routing between the scene and the surfaces on top of it', () => {
+  const rig = readFileSync('src/scene/CameraRig.tsx', 'utf8')
+
+  it('leaves a click on a panel, on the menu bar or on the HUD to that surface', () => {
+    expect(rig).toContain("closest('.panel, .menu, .hud')")
+  })
+
+  it('leaves the arrows to the menu bar and to the HUD, which both navigate', () => {
+    expect(rig).toContain("closest('.menu, .hud')")
+  })
+
+  it('never lets a panel wheel reach the tour', () => {
+    expect(rig).toContain("closest('.panel')")
+  })
+})

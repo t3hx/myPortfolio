@@ -23,6 +23,7 @@ import { NanoLeaf } from '@/scene/NanoLeaf'
 import { TelescopeHover } from '@/scene/TelescopeHover'
 import { TelescopePing } from '@/scene/TelescopePing'
 import { Outlines } from '@/scene/Outlines'
+import { ReadyGate } from '@/scene/ReadyGate'
 import { RoomModel } from '@/scene/RoomModel'
 import { useInteraction } from '@/state/interaction'
 
@@ -77,7 +78,21 @@ export function Experience({ bubbleLayer, introLayer }: ExperienceProps) {
       // des boîtes englobantes, tous deux figés après le chargement.
       setAnchors(resolveBubbleAnchors(scene, ordered))
       setPivots(resolveLookPivots(scene, ordered))
-      setReady()
+      // La découverte n'est PAS annoncée ici : elle l'est par `ReadyGate`, une
+      // fois une image dessinée à la pose de l'arrêt. Annoncée au parsing, elle
+      // découvrait la pièce vue depuis la caméra par défaut de R3F — la
+      // mesure est dans `ReadyGate`.
+      //
+      // Sauf s'il n'y a aucun arrêt à poser : le `.glb` n'a alors pas une seule
+      // caméra `CameraStop_*`, `CameraRig` ne monte pas, et personne
+      // n'annoncerait jamais la découverte — un préchargeur éternel devant une
+      // pièce chargée. On la déclare donc tout de suite, en le disant : c'est
+      // le mode de panne de #16, où une pièce vide est partie sans que rien ne
+      // le signale.
+      if (ordered.length === 0) {
+        console.warn("[stops] aucun arrêt dans le .glb — la pièce s'affiche sans pose composée.")
+        setReady()
+      }
     },
     [setReady],
   )
@@ -161,6 +176,14 @@ export function Experience({ bubbleLayer, introLayer }: ExperienceProps) {
 
       {/* Contours spike: ?outline=off|hull|edges|both — see Outlines.tsx. */}
       {stops.length > 0 && <Outlines />}
+
+      {/* Le verrou de la découverte : il annonce `ready` — donc le fondu du
+          préchargeur — à la PREMIÈRE IMAGE dessinée, jamais à la fin du
+          parsing. Monté avec les arrêts, donc dans la même validation que
+          `CameraRig`, dont l'effet de mise en page a déjà posé la caméra ;
+          et monté EN DERNIER, pour que tout ce qui écrit une image (le rig,
+          le `<Html>` de l'intro) ait déjà tourné sur celle-là. */}
+      {stops.length > 0 && <ReadyGate />}
 
       {BUBBLES.map((bubble, i) => {
         const anchor = anchors[i]

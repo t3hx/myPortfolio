@@ -13,6 +13,25 @@
   --glow-deep: #6FD8E6;         /* accent saturé — halo survol */
   --glow-deep-rgb: 111, 216, 230;
 
+  /* L'intro (#147). Deux couleurs qui n'appartiennent qu'à elle, et qui sont
+     ici parce qu'elles ont été ARBITRÉES : l'accent a été tranché en le voyant
+     projeté sur l'écran dans la scène, parmi #8FDBE4, #00C0E8 et #BFF7FF.
+     `?accent=` reste, comme `?lw=`, pour en comparer une autre sans toucher au
+     code ; `IntroStage` écrit la valeur courante sur le calque, et c'est
+     celle-ci qu'il écrit par défaut.
+
+     Le doré est celui des trois mots de phase et de leurs tirets. Il est DÉRIVÉ
+     du crème — la seule couleur non cyan de la palette — dont il garde la
+     teinte (39 → 41°) en montant la saturation (47 → 68 %) et en baissant la
+     clarté (88 → 75 %) : il se démarque donc de l'accent, à 149° de teinte de
+     lui, sans sortir de la palette.
+
+     Les deux sont redéclarées dans `config/intro.ts`, que le canvas lit — il
+     peint en JavaScript et n'a pas de CSS. `tests/intro.test.ts` échoue si les
+     deux définitions divergent. */
+  --intro-accent: #00C0E8;
+  --intro-gold: #EBCF94;
+
   /* Typo */
   --font-ui: 'Space Grotesk', sans-serif;      /* menu, micro-étiquettes */
   --font-voice: 'Newsreader', serif;           /* la voix des bulles, italique */

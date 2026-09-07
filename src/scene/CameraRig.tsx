@@ -1,6 +1,6 @@
 import { useFrame, useThree } from '@react-three/fiber'
 import gsap from 'gsap'
-import { useEffect, useRef } from 'react'
+import { useEffect, useLayoutEffect, useRef } from 'react'
 import { PerspectiveCamera, Quaternion, Vector3 } from 'three'
 import { feedWheel, idleGesture } from '@/lib/gesture'
 import {
@@ -264,8 +264,11 @@ export function CameraRig({ stops, moon, pivots }: CameraRigProps) {
       }
       // La barre de menu possède ses flèches (focus glissant d'un item à
       // l'autre) — pendant clavier de la règle `.panel` de la molette : chaque
-      // surface qui a une navigation interne la garde pour elle.
-      if (e.target instanceof Element && e.target.closest('.menu')) return
+      // surface qui a une navigation interne la garde pour elle. Le HUD `?debug`
+      // est de celles-là depuis qu'il choisit l'arrêt dans une liste déroulante,
+      // où ↑↓ changent l'option : sans cette ligne, la même touche déplacerait
+      // AUSSI la caméra d'un arrêt.
+      if (e.target instanceof Element && e.target.closest('.menu, .hud')) return
       if (phase !== 'touring' && phase !== 'parked') return
       const forward = ['ArrowDown', 'ArrowRight', 'PageDown'].includes(e.key)
       const backward = ['ArrowUp', 'ArrowLeft', 'PageUp'].includes(e.key)
@@ -286,7 +289,13 @@ export function CameraRig({ stops, moon, pivots }: CameraRigProps) {
      * sous le curseur », et un clic qui ferait les deux choses ou aucune.
      */
     const onClick = (e: MouseEvent) => {
-      if (e.target instanceof Element && e.target.closest('.panel, .menu')) return
+      // Le HUD est exclu au même titre que le panneau et la barre : ses boutons
+      // vivent dans `.stage`, donc un clic dessus faisait AUSSI parler l'arrêt
+      // — et sur la dernière phrase d'un dialogue, « faire parler » veut dire
+      // passer à l'arrêt suivant. Mesuré : ouvrir la fiche projet depuis
+      // Bookshelf laissait la caméra sur Cat. Sa racine ne prend aucun
+      // événement, donc `closest` ne peut désigner que ses îles interactives.
+      if (e.target instanceof Element && e.target.closest('.panel, .menu, .hud')) return
       const { phase, telescopeHovered, folderHovered } = store()
       if (phase !== 'touring' && phase !== 'parked') return
       if (telescopeHovered || folderHovered) return
@@ -332,7 +341,15 @@ export function CameraRig({ stops, moon, pivots }: CameraRigProps) {
   // commencer la visite », restait invisible jusqu'au premier défilement…
   // qui quitte justement Accueil. Seul `?stop=` passait PARKED, ce qui rendait
   // le bug invisible à toutes les captures de la boucle de comparaison.
-  useEffect(() => {
+  //
+  // **Effet de MISE EN PAGE, et c'est la moitié d'une correction** (voir
+  // `ReadyGate`) : un effet passif s'exécute après la peinture de sa propre
+  // validation, si bien qu'une image pouvait être dessinée — et découverte par
+  // le fondu du préchargeur — avec la caméra par défaut de R3F, à l'origine,
+  // face au fond de la pièce. Ici le placement est synchrone, avant toute
+  // image de cette validation ; `ReadyGate` se charge de l'autre moitié, qui
+  // est de n'annoncer la découverte qu'une fois cette image DESSINÉE.
+  useLayoutEffect(() => {
     if (stops.length === 0) return
     const target = stopParamIndex()
     const clamped = Math.min(Math.max(target ?? 0, 0), stops.length - 1)

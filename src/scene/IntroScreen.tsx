@@ -3,13 +3,13 @@ import { useThree } from '@react-three/fiber'
 import { useMemo, type RefObject } from 'react'
 import { Matrix4, Quaternion, Vector3, type Object3D } from 'three'
 import {
-  INTRO_ACCENT,
   INTRO_FRAME,
   INTRO_SAFE_INSET_PX,
   INTRO_SCREEN_MARGIN,
   SCREEN_MATERIAL,
 } from '@/config/intro'
 import { screenLayout } from '@/lib/introLayout'
+import { useIntroAccent } from '@/state/introAccent'
 import { findScreenPlane } from '@/lib/screenPlane'
 import { IntroStage } from '@/scene/intro/IntroStage'
 import { poseVerticalFov, type StopTransform } from '@/lib/stops'
@@ -46,6 +46,9 @@ const FORWARD = new Vector3(0, 0, -1)
 
 export function IntroScreen({ scene, home, portal }: IntroScreenProps) {
   const size = useThree((s) => s.size)
+  // L'accent passe par le store et non par la constante : il se change sans
+  // recharger, c'est ce qui permet de l'arbitrer en le voyant projeté (#147).
+  const accent = useIntroAccent((s) => s.accent)
 
   const placement = useMemo(() => {
     const plane = findScreenPlane(scene, SCREEN_MATERIAL, home)
@@ -106,7 +109,7 @@ export function IntroScreen({ scene, home, portal }: IntroScreenProps) {
           className="intro-frame"
           style={{ width: layout.frame.width, height: layout.frame.height }}
         >
-          <IntroStage accent={INTRO_ACCENT} screen={layout.screen} />
+          <IntroStage accent={accent} screen={layout.screen} />
         </div>
       </div>
     </Html>

@@ -3,6 +3,7 @@ import {
   INTRO_CORE,
   INTRO_CREAM,
   INTRO_FRAME,
+  INTRO_GOLD,
   INTRO_NAME_FONT,
   INTRO_PARTICLES,
   INTRO_TITLE,
@@ -10,7 +11,7 @@ import {
 } from '@/config/intro'
 import { CV } from '@/content/cv'
 import { LAB_PLAN_ORDER, loadLabPlan, type LabPlan as LabPlanData } from '@/content/labPlan'
-import { introTime } from '@/lib/intro'
+import { introPhase, introTime } from '@/lib/intro'
 import { nameTargets, type NameTarget } from '@/lib/nameTargets'
 import { labPlanSvg, rasterDensity, rasterizeLabPlan } from '@/lib/labRaster'
 import {
@@ -46,6 +47,7 @@ import {
   type PhaseWordSpec,
   type StarGroup,
 } from '@/lib/introScene'
+import { viewMode } from '@/lib/viewMode'
 import { useInteraction } from '@/state/interaction'
 import { LabPlan } from '@/scene/intro/LabPlan'
 import { NeonTriangle } from '@/scene/intro/NeonTriangle'
@@ -74,32 +76,68 @@ interface IntroStageProps {
   screen: { width: number; height: number }
 }
 
+/**
+ * Où chaque mot se pose, en px du cadre. Les trois sont à 150 px de LEUR bord,
+ * et c'est le bord qui les ancre : la boîte se dimensionne maintenant sur son
+ * contenu (#147), donc un `left` sur les mots de droite les ferait dépasser du
+ * cadre à la première lettre ajoutée.
+ *
+ * Les positions sont celles du handoff, inchangées. Le placement d'INCUBATION
+ * et d'EMERGENCE reste à trancher : mesuré sur les 2 346 tracés du plan, ils
+ * tombent sur 20,7 et 14,6 unités d'encre pour 1000 px², là où le creux du
+ * plan — la bande basse, sous le nom et sous le titre gravé — en compte 0,3.
+ * GENESIS, lui, joue à 2,2 s : le plan n'existe pas encore derrière lui.
+ */
 const WORD_STYLE = {
-  genesis: { left: 150, top: 168, textAlign: 'left' } as const,
-  incubation: { left: INTRO_FRAME.width - 610, top: INTRO_FRAME.height - 186, textAlign: 'right' },
-  emergence: { left: INTRO_FRAME.width - 610, top: 152, textAlign: 'right' },
+  genesis: { left: 150, top: 168 },
+  // INCUBATION est le seul des trois à être ancré par son CENTRE, et le nombre
+  // est mesuré, pas choisi : à sa hauteur, le plan du lab est strictement vide
+  // entre les centres 1030 et 1120, et plein partout ailleurs. 1050 est le
+  // point le plus proche du centre du cadre (960) qui garde de la marge dans
+  // ce vide. Il tombait avant sur 14,3 unités d'encre pour 1000 px².
+  incubation: { left: 1050, top: INTRO_FRAME.height - 186, transform: 'translateX(-50%)' },
+  // EMERGENCE reste où le handoff l'a posé (arbitrage de l'auteur, 2026-09-07) :
+  // sa phase n'offre pas de meilleure place. Elle vaut 20,7 d'encre — c'est le
+  // doré, et non le placement, qui la fait tenir sur le plan.
+  emergence: { right: 150, top: 152 },
 } satisfies Record<string, CSSProperties>
 
 interface WordRefs {
   root: React.RefObject<HTMLDivElement | null>
   letters: (HTMLSpanElement | null)[]
+  /** Les deux tirets d'accent : celui d'avant le mot, celui d'après. */
+  rules: (HTMLSpanElement | null)[]
 }
 
-const wordRefs = (): WordRefs => ({ root: { current: null }, letters: [] })
+const wordRefs = (): WordRefs => ({ root: { current: null }, letters: [], rules: [] })
 
 function PhaseWord({ word, style, refs }: { word: string; style: CSSProperties; refs: WordRefs }) {
   return (
     <div ref={refs.root} className="intro-word" style={style}>
-      {word.split('').map((ch, i) => (
-        <span
-          key={i}
-          ref={(el) => {
-            refs.letters[i] = el
-          }}
-        >
-          {ch}
-        </span>
-      ))}
+      <span
+        className="intro-word__rule"
+        ref={(el) => {
+          refs.rules[0] = el
+        }}
+      />
+      <span className="intro-word__text">
+        {word.split('').map((ch, i) => (
+          <span
+            key={i}
+            ref={(el) => {
+              refs.letters[i] = el
+            }}
+          >
+            {ch}
+          </span>
+        ))}
+      </span>
+      <span
+        className="intro-word__rule"
+        ref={(el) => {
+          refs.rules[1] = el
+        }}
+      />
     </div>
   )
 }
@@ -422,10 +460,35 @@ export function IntroStage({ accent, screen }: IntroStageProps) {
       applyWord(emergence.current, T, PHASE_WORDS.emergence)
     }
 
+    // La sonde de fluidité (#147). Elle garde les instants des images de la
+    // DERNIÈRE SECONDE, et rien de plus : une moyenne depuis le départ noierait
+    // exactement ce qu'on cherche — la seconde où ça décroche, au tracé du plan
+    // ou au tourbillon. Le compte est celui de CETTE boucle, qui est la boucle
+    // de l'intro ; la scène 3D a la sienne, et `__rigDebug` la raconte.
+    //
+    // Elle n'existe que sous `?debug`, et pas sous `import.meta.env.DEV` comme
+    // `__rigDebug` : une mesure de fluidité sur un serveur de dev ne dit rien
+    // du site servi, et c'est justement `pnpm preview` qu'on veut sonder.
+    const stamps: number[] = []
+    const probe = (T: number, now: number) => {
+      stamps.push(now)
+      while (stamps.length > 0 && now - stamps[0] > 1000) stamps.shift()
+      const span = stamps.length > 1 ? stamps[stamps.length - 1] - stamps[0] : 0
+      ;(window as unknown as Record<string, unknown>).__introDebug = {
+        T: +T.toFixed(3),
+        phase: introPhase(T),
+        fps: stamps.length,
+        frameMs: span > 0 ? +(span / (stamps.length - 1)).toFixed(2) : null,
+      }
+    }
+
     let frame = 0
     const render = () => {
       const state = useInteraction.getState()
-      draw(introTime(state, performance.now()))
+      const now = performance.now()
+      const T = introTime(state, now)
+      draw(T)
+      if (viewMode === 'tour') probe(T, now)
       // La dernière image est dessinée : plus rien ne bouge, la boucle s'arrête.
       if (state.introDone) return
       if (state.introStartedAt !== null) frame = requestAnimationFrame(render)
@@ -446,9 +509,14 @@ export function IntroStage({ accent, screen }: IntroStageProps) {
     }
   }, [accent, screen, ox, oy, nameChars])
 
-  // Les deux encres de l'intro, pour ce que le CSS peint tout seul — le cœur
-  // blanc-cyan sert au canvas ET à l'étincelle du laser.
-  const vars = { '--intro-accent': accent, '--intro-core': INTRO_CORE } as CSSProperties
+  // Les encres de l'intro, pour ce que le CSS peint tout seul — le cœur
+  // blanc-cyan sert au canvas ET à l'étincelle du laser, le doré aux mots de
+  // phase et à leurs tirets.
+  const vars = {
+    '--intro-accent': accent,
+    '--intro-core': INTRO_CORE,
+    '--intro-gold': INTRO_GOLD,
+  } as CSSProperties
 
   return (
     <div ref={root} className="intro-stage" style={vars}>
@@ -652,11 +720,7 @@ function paintSwirl(
   }
 }
 
-function applyWord(
-  refs: { root: React.RefObject<HTMLDivElement | null>; letters: (HTMLSpanElement | null)[] },
-  T: number,
-  spec: PhaseWordSpec,
-) {
+function applyWord(refs: WordRefs, T: number, spec: PhaseWordSpec) {
   const el = refs.root.current
   if (!el) return
   const a = phaseWordAlpha(T, spec)
@@ -670,4 +734,12 @@ function applyWord(
     const span = refs.letters[i]
     if (span) span.style.opacity = String(alpha)
   })
+  // Le tiret de gauche arrive avec la première lettre, celui de droite avec la
+  // dernière : le mot se pose ENTRE eux au lieu d'apparaître dans un cadre déjà
+  // dressé. Portés par l'opacité du bloc, les deux seraient à plein pendant
+  // toute l'écriture — 0,63 s de deux traits encadrant du vide.
+  const first = refs.rules[0]
+  const last = refs.rules[1]
+  if (first) first.style.opacity = String(a.letters[0])
+  if (last) last.style.opacity = String(a.letters[a.letters.length - 1])
 }
