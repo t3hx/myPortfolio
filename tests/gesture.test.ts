@@ -129,6 +129,33 @@ describe('feedWheel', () => {
     expect(play(events).steps).toEqual([1])
   })
 
+  it('compte une deuxième chiquenaude LANCÉE DANS LA TRAÎNE de la première', () => {
+    // Le défaut rapporté le 2026-09-07 : « je défile pour passer l'écriture
+    // d'une bulle, l'écriture est bien passée, mais le défilement ne répond
+    // plus pour la suivante ». Un geste ne se rouvrait que sur 250 ms de
+    // SILENCE, et la traîne d'inertie du premier ne laisse jamais ce
+    // silence — elle émet à la cadence de l'image pendant près d'une seconde.
+    // La deuxième poussée tombait donc dans le même geste, déjà consommé.
+    const events = [
+      // la chiquenaude : elle monte, franchit le seuil, puis décroît
+      { delta: 18, at: 1000 },
+      { delta: 34, at: 1016 },
+      { delta: 52, at: 1032 },
+      { delta: 44, at: 1048 },
+      { delta: 30, at: 1064 },
+      { delta: 21, at: 1080 },
+      { delta: 14, at: 1096 },
+      { delta: 9, at: 1112 },
+      { delta: 7, at: 1128 },
+      // la traîne court encore quand le doigt repart : aucun silence
+      { delta: 12, at: 1144 },
+      { delta: 30, at: 1160 },
+      { delta: 60, at: 1176 },
+      { delta: 70, at: 1192 },
+    ]
+    expect(play(events).steps).toEqual([1, 1])
+  })
+
   it('un rebond de fin de course ne tire pas de pas en arrière', () => {
     // Certains trackpads terminent leur momentum par quelques deltas de signe
     // opposé. Ils réarment — un demi-tour est une intention neuve — mais

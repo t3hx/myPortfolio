@@ -538,7 +538,21 @@
   border-radius: var(--r-bar);
   opacity: .4; transition: opacity var(--t-bar) var(--ease-out);
 }
-.menu:hover, .menu:focus-within { opacity: .75; }
+/* ELLE ARRIVE, ELLE N'EST PAS LÀ (décision produit, 2026-09-07). Elle était
+   posée dès la première image, donc pendant toute l'intro : l'animation qui
+   joue sur l'écran est la première chose du site, et une barre de navigation à
+   côté disait déjà qu'il y avait autre chose à faire. C'est du mobilier — il
+   arrive quand la pièce a fini de parler, une fois la première bulle posée
+   (voir `Menu.tsx`, qui pose et retire cette classe).
+
+   C'est l'ATTENTE qui est le modificateur, et pas l'entrée : `design/screens/`
+   partage ce fichier et n'a pas d'app pour lui retirer une classe. Une barre
+   masquée par défaut y aurait disparu des quinze maquettes d'un coup.
+
+   Inerte au pointeur tant qu'elle attend : sinon elle ouvrirait un survol là
+   où l'on ne voit rien. */
+.menu--waiting { opacity: 0; pointer-events: none; }
+.menu:not(.menu--waiting):hover, .menu:not(.menu--waiting):focus-within { opacity: .75; }
 /* Statique : le menu est du mobilier, il ne respire pas. */
 .menu__logo { width: 12px; height: 12px; margin-bottom: 8px; filter: drop-shadow(0 0 10px rgba(var(--glow-rgb), .5)); }
 .menu__rule { width: 22px; height: 1px; background: rgba(var(--cream-rgb), .14); }

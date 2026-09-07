@@ -229,11 +229,33 @@ export function CameraRig({ stops, moon, pivots }: CameraRigProps) {
     const stage = glDom.closest('.stage') ?? glDom.parentElement ?? glDom
     const store = useInteraction.getState
 
+    /**
+     * **LE TOUR NE BOUGE PAS TANT QUE L'INTRO PARLE** (2026-09-07).
+     *
+     * Le geste de saut est consommé par `IntroClock`, en capture, avant
+     * d'arriver ici — mais un geste, ce n'est pas un événement, c'en est dix.
+     * Le premier coupait l'intro, et les neuf suivants, que l'intro ne
+     * reconnaissait plus comme un saut puisqu'elle était finie, nourrissaient
+     * le détecteur et faisaient un pas. Mesuré sur téléphone : un seul balayage
+     * coupait l'intro ET partait à Desk, si bien qu'en sautant l'intro on ne
+     * voyait jamais la phrase d'accueil — la première impression du site.
+     *
+     * Le repère est `introReleased`, celui-là même qui laisse la bulle parler :
+     * la molette et le doigt rendent la main au tour quand l'accueil a fini de
+     * dire ce qu'il avait à dire. Les flèches, elles, traversent toujours le
+     * tour — c'est la règle du geste de saut, et elle ne change pas.
+     */
+    const introSpeaking = () => !store().introReleased
+
     const onWheel = (e: WheelEvent) => {
       // Panels own their wheel natively — never intercept it.
       if (e.target instanceof Element && e.target.closest('.panel')) return
       const { phase } = store()
       if (phase !== 'touring' && phase !== 'parked') return
+      if (introSpeaking()) {
+        e.preventDefault()
+        return
+      }
       e.preventDefault()
 
       // `deltaMode === 1` compte en LIGNES, pas en pixels : une molette de
@@ -302,10 +324,62 @@ export function CameraRig({ stops, moon, pivots }: CameraRigProps) {
       advanceOrStep()
     }
 
+    /**
+     * **LE BALAYAGE TACTILE PASSE PAR LE MÊME DÉTECTEUR** (2026-09-07).
+     *
+     * Sur téléphone il n'y a pas de molette, et rien d'autre n'écoutait : le
+     * tour n'avançait pas d'un arrêt, ce qui rendait le site inutilisable. Le
+     * doigt n'apporte pourtant aucune règle nouvelle — un balayage est un
+     * geste, il vaut un pas, et il doit faire parler la bulle avant de changer
+     * d'arrêt exactement comme la molette. On lui donne donc des deltas et on
+     * laisse `feedWheel` décider.
+     *
+     * Le signe suit le déplacement du CONTENU, pas du doigt : remonter le doigt
+     * fait monter la page, donc avance dans le tour — c'est `dernier − courant`.
+     *
+     * Le doigt n'a pas d'inertie ici : le navigateur n'émet pas d'événements
+     * après le lever, donc le silence qui clôt le geste vient tout seul. Deux
+     * doigts sont laissés au navigateur, qui n'en fera rien puisque le canvas
+     * porte `touch-action: none` — mais les compter reviendrait à additionner
+     * deux courses en une.
+     *
+     * Aucun `preventDefault` : le canvas le dit déjà en CSS, et un
+     * `preventDefault` sur le tactile empêcherait le `click` de synthèse qui
+     * suit une TAPE — or la tape est ce qui fait avancer le dialogue au doigt.
+     */
+    let touchY: number | null = null
+    const onTouchStart = (e: TouchEvent) => {
+      if (e.target instanceof Element && e.target.closest('.panel, .menu, .hud')) return
+      touchY = e.touches.length === 1 ? e.touches[0].clientY : null
+    }
+    const onTouchMove = (e: TouchEvent) => {
+      if (touchY === null || e.touches.length !== 1) return
+      const { phase } = store()
+      if (phase !== 'touring' && phase !== 'parked') return
+      if (introSpeaking()) return
+      const y = e.touches[0].clientY
+      const out = feedWheel(gesture.current, touchY - y, performance.now())
+      touchY = y
+      gesture.current = out.state
+      if (out.step === 1) advanceOrStep()
+      else if (out.step === -1) stepBy(-1)
+    }
+    const onTouchEnd = () => {
+      touchY = null
+    }
+
     stage.addEventListener('click', onClick as EventListener)
     stage.addEventListener('wheel', onWheel as EventListener, { passive: false })
+    stage.addEventListener('touchstart', onTouchStart as EventListener, { passive: true })
+    stage.addEventListener('touchmove', onTouchMove as EventListener, { passive: true })
+    stage.addEventListener('touchend', onTouchEnd)
+    stage.addEventListener('touchcancel', onTouchEnd)
     window.addEventListener('keydown', onKeyDown)
     return () => {
+      stage.removeEventListener('touchstart', onTouchStart as EventListener)
+      stage.removeEventListener('touchmove', onTouchMove as EventListener)
+      stage.removeEventListener('touchend', onTouchEnd)
+      stage.removeEventListener('touchcancel', onTouchEnd)
       stage.removeEventListener('click', onClick as EventListener)
       stage.removeEventListener('wheel', onWheel as EventListener)
       window.removeEventListener('keydown', onKeyDown)

@@ -1,10 +1,11 @@
-import { Fragment, useCallback, useMemo, useRef } from 'react'
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { CAMERA_STOPS } from '@/config/cameraStops'
 import { MENU_SECTIONS, MENU_SOCIALS } from '@/content/menu'
 import { UI } from '@/content/ui'
 import { LOCALES, t } from '@/lib/locale'
 import { useLocale } from '@/state/locale'
 import { useInteraction } from '@/state/interaction'
+import { BUBBLE_IN_MS } from '@/scene/Bubble'
 import { Logo } from '@/ui/Logo'
 
 /**
@@ -30,6 +31,7 @@ import { Logo } from '@/ui/Logo'
 export function Menu() {
   const stopIndex = useInteraction((s) => s.stopIndex)
   const requestStop = useInteraction((s) => s.requestStop)
+  const released = useInteraction((s) => s.introReleased)
   const nav = useRef<HTMLElement>(null)
   const locale = useLocale((s) => s.locale)
   const setLocale = useLocale((s) => s.setLocale)
@@ -54,6 +56,27 @@ export function Menu() {
 
   const socials = useMemo(() => MENU_SOCIALS.filter((s) => s.href), [])
 
+  /**
+   * **Elle arrive APRÈS la première bulle**, jamais avec elle et jamais avant
+   * (décision produit, 2026-09-07). Elle était là dès la première image, donc
+   * pendant toute l'intro : l'animation qui joue sur l'écran est la première
+   * chose du site, et une barre de navigation posée à côté disait déjà qu'il y
+   * avait autre chose à faire. Elle est du MOBILIER — elle arrive quand la
+   * pièce a fini de parler.
+   *
+   * Le repère est `introReleased`, celui-là même qui laisse la bulle d'accueil
+   * s'ouvrir, plus la durée de son entrée : la barre apparaît une fois la
+   * phrase posée, pas pendant qu'elle se pose. Sur un lien direct ou sous
+   * mouvement réduit, l'intro s'ouvre sur sa dernière image et libère tout de
+   * suite — la barre suit donc à 480 ms, sans cas particulier.
+   */
+  const [furnished, setFurnished] = useState(false)
+  useEffect(() => {
+    if (!released) return setFurnished(false)
+    const timer = window.setTimeout(() => setFurnished(true), BUBBLE_IN_MS)
+    return () => window.clearTimeout(timer)
+  }, [released])
+
   // Focus glissant : ↑↓ parcourent les items focusables de la barre, dans
   // l'ordre du DOM. `stopPropagation` n'est pas suffisant seul — la garde
   // `.menu` du rig est ce qui l'empêche vraiment d'avancer d'un arrêt.
@@ -69,7 +92,12 @@ export function Menu() {
   }, [])
 
   return (
-    <nav className="menu" aria-label={t(UI.menu.region, locale)} ref={nav} onKeyDown={onKeyDown}>
+    <nav
+      className={`menu${furnished ? '' : ' menu--waiting'}`}
+      aria-label={t(UI.menu.region, locale)}
+      ref={nav}
+      onKeyDown={onKeyDown}
+    >
       <Logo className="menu__logo" />
       <div className="menu__rule menu__rule--head" />
 

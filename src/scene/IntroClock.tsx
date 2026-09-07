@@ -82,7 +82,7 @@ export function IntroClock() {
   // Le geste de saut, consommé avant le rig.
   useEffect(() => {
     if (startedAt === null || done) return
-    const onGesture = (e: WheelEvent | KeyboardEvent) => {
+    const onGesture = (e: WheelEvent | KeyboardEvent | TouchEvent) => {
       const s = useInteraction.getState()
       const atHome = s.phase === 'parked' && CAMERA_STOPS[s.stopIndex]?.label === INTRO_HOME_STOP
       const skip = isSkipGesture(
@@ -95,9 +95,15 @@ export function IntroClock() {
       s.finishIntro()
     }
     window.addEventListener('wheel', onGesture, { capture: true, passive: false })
+    // Le balayage, pour les écrans sans molette. En capture et NON passif comme
+    // la molette : le rig écoute en bouillonnement sur `.stage`, et sans
+    // `stopImmediatePropagation` le même geste couperait l'intro ET ferait un
+    // pas vers Desk.
+    window.addEventListener('touchmove', onGesture, { capture: true, passive: false })
     window.addEventListener('keydown', onGesture, { capture: true })
     return () => {
       window.removeEventListener('wheel', onGesture, { capture: true })
+      window.removeEventListener('touchmove', onGesture, { capture: true })
       window.removeEventListener('keydown', onGesture, { capture: true })
     }
   }, [startedAt, done])

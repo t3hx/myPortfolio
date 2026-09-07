@@ -34,6 +34,22 @@ export const GESTURE_RESET_MS = 250
  */
 export const MIN_COUNTED_DELTA = 6
 
+/**
+ * De combien la traîne doit être RETOMBÉE pour qu'on accepte d'y voir une
+ * poussée neuve, en fraction de son propre pic.
+ *
+ * C'est la moitié : au-dessous, on ne distingue pas une inertie qui meurt d'un
+ * défilement appuyé qui continue.
+ */
+export const TAIL_DECAY = 0.5
+
+/**
+ * De combien un delta doit REMONTER au-dessus du plancher de la traîne pour
+ * valoir une poussée neuve. Deux fois et demie : une inertie décroît d'une
+ * image à l'autre de quelques pour cent, elle ne peut pas produire ça.
+ */
+export const TAIL_RISE = 2.5
+
 export interface GestureState {
   /** Delta accumulé depuis le début du geste, ou depuis le dernier pas. */
   acc: number
@@ -43,10 +59,27 @@ export interface GestureState {
   prevSign: number
   /** Horodatage du dernier événement, en ms. */
   lastAt: number
+  /**
+   * Le plus FORT delta observé depuis le pas tiré, et le plus FAIBLE. Ces deux
+   * nombres sont la forme de la traîne, et c'est tout ce qu'il faut pour y
+   * reconnaître une poussée neuve sans regarder l'horloge.
+   */
+  tailPeak: number
+  tailFloor: number
+  /** La traîne a-t-elle vraiment RETOMBÉ, une fois au moins ? */
+  tailFell: boolean
 }
 
 export function idleGesture(): GestureState {
-  return { acc: 0, armed: true, prevSign: 0, lastAt: 0 }
+  return {
+    acc: 0,
+    armed: true,
+    prevSign: 0,
+    lastAt: 0,
+    tailPeak: 0,
+    tailFloor: Infinity,
+    tailFell: false,
+  }
 }
 
 /**
@@ -77,6 +110,8 @@ export function feedWheel(
     next.acc = 0
     next.armed = true
     next.prevSign = 0
+    next.tailPeak = 0
+    next.tailFloor = Infinity
   }
   // Mis à jour même pour un delta ignoré : un tremblement fait partie du
   // geste, il ne doit pas compter comme un silence.
@@ -98,6 +133,50 @@ export function feedWheel(
   }
   next.prevSign = sign
 
+  /**
+   * **LA TRAÎNE PEUT AUSSI CLORE UN GESTE, et c'est la deuxième façon.**
+   *
+   * Le silence était la seule, et il ne vient jamais assez tôt : l'inertie
+   * d'une chiquenaude émet à la cadence de l'image pendant près d'une seconde,
+   * si bien qu'une poussée lancée dedans tombait dans le geste déjà consommé.
+   * Rapporté le 2026-09-07 — « l'écriture est bien passée, mais le défilement
+   * ne répond plus pour la suivante ».
+   *
+   * La règle reste sans horloge : elle ne lit que la FORME. Une inertie décroît
+   * et ne remonte pas ; un doigt qui repart fait remonter le delta. On exige
+   * donc les deux, dans cet ordre — une retombée franche (le plancher passe
+   * sous la moitié du pic), puis un sursaut net (deux fois et demie le
+   * plancher). Un seul des deux ne suffirait pas :
+   *
+   * - sans la retombée, un défilement APPUYÉ se réarme, puisque ses deltas
+   *   croissent et dépassent forcément leur propre début — c'est mot pour mot
+   *   la régression de #116, qui faisait deux pas d'un geste ;
+   * - sans le sursaut, une inertie franchirait le seuil toute seule.
+   *
+   * Le plancher et le pic sont mis à jour AVANT la comparaison : un delta qui
+   * décroît devient le plancher, et il ne peut donc jamais être deux fois et
+   * demie plus grand que lui-même. Une décroissance ne réarme rien, par
+   * construction.
+   */
+  if (!next.armed) {
+    const size = Math.abs(delta)
+    next.tailPeak = Math.max(next.tailPeak, size)
+    // La retombée se CONSTATE au passage, sur le delta courant comparé au pic
+    // du moment, puis elle se retient. Comparer le minimum au maximum ne dirait
+    // pas la même chose : dans un défilement appuyé, dont les deltas croissent,
+    // le minimum est le premier et le maximum le dernier — le rapport tombe
+    // sous la moitié sans que rien n'ait jamais décru.
+    if (size <= TAIL_DECAY * next.tailPeak) next.tailFell = true
+    next.tailFloor = Math.min(next.tailFloor, size)
+    if (next.tailFell && size >= TAIL_RISE * next.tailFloor) {
+      next.armed = true
+      next.acc = 0
+      next.tailPeak = 0
+      next.tailFloor = Infinity
+      next.tailFell = false
+    }
+  }
+
   if (!next.armed) return { state: next, step: 0 }
 
   next.acc += delta
@@ -109,5 +188,8 @@ export function feedWheel(
   const step = Math.sign(next.acc) as -1 | 1
   next.acc = 0
   next.armed = false
+  next.tailPeak = 0
+  next.tailFloor = Infinity
+  next.tailFell = false
   return { state: next, step }
 }

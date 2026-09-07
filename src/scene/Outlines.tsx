@@ -76,7 +76,24 @@ export function Outlines() {
 
     scene.traverse((obj: Object3D) => {
       const mesh = obj as Mesh
-      if (!mesh.isMesh || mesh.name === EDGE_LAYER_NAME) return
+      // **`type` et non `isMesh`, et c'est une correction.** `LineSegments2`
+      // HÉRITE de `Mesh` : les cernes de survol (`lib/folderOutline.ts`, le
+      // télescope et les dossiers) répondaient donc `isMesh` et se faisaient
+      // encrer comme des surfaces. Leur géométrie n'en est pas une — c'est une
+      // `LineSegmentsGeometry`, dont l'attribut `position` est la boîte
+      // d'expansion du trait épais, pas un objet — alors `EdgesGeometry` en
+      // tirait n'importe quoi. Et comme l'encre est ENFANT de ce qu'elle
+      // cerne, elle héritait de sa visibilité : elle n'apparaissait qu'au
+      // survol. Mesuré à l'arrêt du télescope, mouvement réduit pour figer la
+      // caméra : survoler ajoutait 1 504 pixels d'encre en deux barres
+      // verticales traversant tout le cadre, de y = 0 à y = 944. Sans l'encre
+      // de la pièce (`?outline=off`), le même survol n'ajoute que du cyan et
+      // pas un pixel sombre — le cerne n'y était pour rien.
+      //
+      // Le test de type couvre aussi les lignes de CE composant, ce que le nom
+      // de calque faisait avant lui : une seule règle, et elle vaut pour tout
+      // objet-ligne qu'une fonctionnalité future ajouterait à la scène.
+      if (!mesh.isMesh || mesh.type !== 'Mesh') return
       const parents: string[] = []
       let p: Object3D | null = mesh.parent
       while (p) {
