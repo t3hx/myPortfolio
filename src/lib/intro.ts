@@ -36,10 +36,21 @@ export const INTRO_BEATS = {
   bang: 5.35,
   /** Le panoramique vers le second triangle. */
   pan: 6.65,
-  /** La plongée dans le triangle. */
-  plunge: 8.8,
-  /** Le plan se dessine, lot après lot. */
-  draw: 9.5,
+  /**
+   * La plongée dans le triangle. **8,3 et non 8,8** (#147) : le panoramique
+   * durait 2,15 s et se terminait à l'arrêt, la plongée repartait de zéro, et
+   * l'ouverture de la phase 2 était à la fois molle à sa jointure et longue.
+   * Le panoramique tient en 1,65 s et passe sa vitesse à la plongée — voir
+   * `cameraA` dans `introScene.ts`, où le relais est calculé et non écrit.
+   */
+  plunge: 8.3,
+  /**
+   * Le plan se dessine, lot après lot. Il suit la plongée à 0,7 s, comme
+   * avant : c'est le moment où le monde B prend l'écran, et ce n'est pas ce
+   * décalage-là qu'on raccourcit. Conséquence heureuse, le dernier trait se
+   * pose à 12,56 s — avant la phase 3, là où il débordait de 60 ms dessus.
+   */
+  draw: 9.0,
   /** « INCUBATION ». */
   incubation: 10.3,
   /** Le tourbillon des particules vers le nom. */
@@ -55,6 +66,20 @@ export const INTRO_BEATS = {
   /** « CREATIVE » commence à clignoter, pour toujours. */
   flicker: 18.75,
 } as const
+
+/** Le nom d'une phase, tel que la partition l'écrit. */
+export type IntroPhaseName = (typeof INTRO_PHASES)[number]['name']
+
+/**
+ * La phase qui joue à l'instant T. Avant le départ c'est la première, après la
+ * dernière image c'est la dernière : la partition n'a pas de hors-champ, et une
+ * sonde qui répondrait « aucune » ferait croire à un trou dans la chronologie.
+ */
+export function introPhase(T: number): IntroPhaseName {
+  let current: IntroPhaseName = INTRO_PHASES[0].name
+  for (const phase of INTRO_PHASES) if (T >= phase.start) current = phase.name
+  return current
+}
 
 /** Ce que l'horloge lit dans le store — et rien d'autre. */
 export interface IntroClockState {

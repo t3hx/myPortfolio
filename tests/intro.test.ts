@@ -1,14 +1,16 @@
 import { readFileSync } from 'node:fs'
-import { beforeEach, describe, expect, it } from 'vitest'
-import { INTRO_BUBBLE_DELAY_MS, INTRO_DELAY_MS } from '@/config/intro'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { INTRO_ACCENT, INTRO_BUBBLE_DELAY_MS, INTRO_DELAY_MS, INTRO_GOLD } from '@/config/intro'
 import {
   INTRO_BEATS,
   INTRO_DURATION_S,
   INTRO_PHASES,
   introOpening,
+  introPhase,
   introTime,
   isSkipGesture,
 } from '@/lib/intro'
+import { parseAccent } from '@/lib/viewMode'
 import { useInteraction } from '@/state/interaction'
 
 /**
@@ -168,5 +170,56 @@ describe('the store', () => {
     expect(store().introStartedAt).toBeNull()
     expect(store().introDone).toBe(false)
     expect(store().introReleased).toBe(false)
+  })
+})
+
+/**
+ * L'outillage d'arbitrage (#147). Il ne se voit pas dans le produit fini : la
+ * couleur retenue devient un token, et ces trois boutons disparaissent. Ce qui
+ * doit rester vrai, c'est qu'ils comparent bien ce qu'ils annoncent.
+ */
+describe('the arbitration tooling', () => {
+  it('names the phase playing at T, with no gap before or after', () => {
+    expect(introPhase(0)).toBe('idea')
+    expect(introPhase(INTRO_PHASES[1].start - 0.01)).toBe('idea')
+    expect(introPhase(INTRO_PHASES[1].start)).toBe('design')
+    expect(introPhase(INTRO_PHASES[2].start)).toBe('realisation')
+    // Avant le départ et après la dernière image, la partition répond quand
+    // même : une sonde muette se lit comme une horloge arrêtée.
+    expect(introPhase(-5)).toBe('idea')
+    expect(introPhase(INTRO_DURATION_S + 5)).toBe('realisation')
+  })
+
+  it('reads ?accent= without its hash, since a hash would open the URL fragment', () => {
+    expect(parseAccent('00C0E8')).toBe('#00C0E8')
+    expect(parseAccent('#00C0E8')).toBe('#00C0E8')
+    expect(parseAccent('bff7ff')).toBe('#bff7ff')
+    expect(parseAccent('fff')).toBe('#fff')
+  })
+
+  it('refuses what is not a colour, out loud', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    // Repris en silence, l'accent par défaut serait comparé à lui-même.
+    expect(parseAccent('rouge')).toBeNull()
+    expect(parseAccent('#12345')).toBeNull()
+    expect(parseAccent('')).toBeNull()
+    expect(parseAccent(null)).toBeNull()
+    expect(warn).toHaveBeenCalledTimes(2)
+    warn.mockRestore()
+  })
+
+  /**
+   * Les deux couleurs arbitrées sont écrites DEUX FOIS, et il n'y a pas de
+   * moyen d'y couper : le CSS peint le texte et les tirets, le canvas peint les
+   * particules et les ondes en JavaScript, et aucun des deux ne lit la
+   * déclaration de l'autre. Divergentes, elles donneraient une animation en
+   * deux teintes — sans erreur, et sans que rien ne le dise.
+   */
+  it('paints one accent and one gold, whatever paints them', () => {
+    const css = readFileSync('src/styles/tokens.css', 'utf8')
+    const hex = (name: string) => css.match(new RegExp(`--${name}:\\s*(#[0-9A-Fa-f]{6})`))![1]
+    expect(hex('intro-accent')).toBe(INTRO_ACCENT)
+    expect(hex('intro-gold')).toBe(INTRO_GOLD)
+    expect(parseAccent(INTRO_ACCENT)).toBe(INTRO_ACCENT)
   })
 })

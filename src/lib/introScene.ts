@@ -1,5 +1,5 @@
 import { INTRO_PHASES, INTRO_BEATS } from '@/lib/intro'
-import { easeInOutSine, easeOutBack, easeOutQuart, tween } from '@/lib/easing'
+import { easeInOutSine, easeInSine, easeOutBack, easeOutQuart, tween } from '@/lib/easing'
 
 /**
  * Le monde A de l'intro — l'espace — en fonctions pures de T (#144).
@@ -22,6 +22,9 @@ const draw = (from: number, to: number, start: number, end: number) =>
   tween(from, to, start, end, easeInOutSine)
 const pop = (from: number, to: number, start: number, end: number) =>
   tween(from, to, start, end, easeOutBack)
+/** `accelerate` = sine.in — la seule qui arrive à pleine vitesse (#147). */
+const accelerate = (from: number, to: number, start: number, end: number) =>
+  tween(from, to, start, end, easeInSine)
 const clamp = (v: number, lo: number, hi: number) => (v < lo ? lo : v > hi ? hi : v)
 const lerp = (a: number, b: number, u: number) => a + (b - a) * u
 
@@ -56,17 +59,61 @@ export function triangle2Centre(T: number): { x: number; y: number } {
   return { x: CX - 620 + 14 * Math.sin(T * 0.31), y: CY - 250 + 10 * Math.cos(T * 0.23) }
 }
 
+/** L'échelle atteinte au bord du triangle, quand la plongée commence. */
+const PAN_ZOOM = 2.2
+/** L'échelle au fond de la plongée, là où le monde A n'existe plus. */
+const PLUNGE_ZOOM = 16
+/** La durée de la plongée, en secondes. */
+const PLUNGE_S = 1.55
+/** De combien la plongée accélère après avoir pris le relais. */
+const PLUNGE_POWER = 2.8
+/** L'échelle acquise par le zoom lent de la phase 1, saturée avant le pano. */
+const PRE_ZOOM = 1.05
+
+/**
+ * LE RELAIS (#147) — la part linéaire de l'exposant de la plongée, c'est-à-dire
+ * la vitesse qu'elle prend à son premier instant.
+ *
+ * Il est CALCULÉ, jamais écrit : il vaut exactement la vitesse de zoom que le
+ * panoramique a au moment de lâcher, si bien qu'un panoramique raccourci ou
+ * une plongée rallongée restent raccordés sans que personne n'y pense. Écrit
+ * en dur, ce nombre serait faux au premier réglage de durée — et faux en
+ * silence, puisqu'un raccord manqué ne se voit qu'en regardant.
+ *
+ * La dérivée de `easeInSine` en 1 vaut π/2 ; le reste n'est que le passage en
+ * vitesse LOGARITHMIQUE, la seule qui se compare de part et d'autre : un zoom
+ * se perçoit en proportion par seconde, pas en unités par seconde.
+ */
+const PAN_EXIT_RATE = ((PAN_ZOOM - PRE_ZOOM) * (Math.PI / 2)) / (plunge - pan) / PAN_ZOOM
+const PLUNGE_HANDOVER = (PAN_EXIT_RATE * PLUNGE_S) / Math.log(PLUNGE_ZOOM / PAN_ZOOM)
+
 /**
  * La caméra de l'espace : un zoom lent sur toute la phase 1, un panoramique
  * vers le second triangle, puis la plongée exponentielle dedans (#145).
+ *
+ * **La visée et le zoom n'ont pas la même courbe, et c'est la correction de
+ * #147.** La visée DOIT arriver et se poser — on plonge dans le triangle, pas
+ * à côté — donc elle garde son `sine.inOut`. Le zoom, lui, ne doit jamais
+ * s'arrêter : il portait le même `sine.inOut`, arrivait à vitesse nulle, et la
+ * plongée repartait elle aussi de zéro (son exposant `u^2,2` est plat en 0).
+ * Deux immobilités bout à bout : mesuré, 0,007 de zoom par seconde à 8,8 s
+ * contre 0,55 au plus fort du panoramique — un tiers de seconde d'arrêt au
+ * milieu de ce que le spectateur lit comme un seul mouvement.
+ *
+ * Le zoom prend donc `sine.in` (il accélère jusqu'au bout) et l'exposant de la
+ * plongée gagne un terme linéaire dosé pour reprendre exactement cette
+ * vitesse-là. La pointe reste celle d'avant, ~2,7 de zoom par seconde : ce
+ * n'est pas la plongée qu'on accélère, c'est le trou qu'on enlève.
  */
 export function cameraA(T: number): CameraA {
   const c2 = triangle2Centre(T)
   const panU = draw(0, 1, pan, plunge)(T)
-  const plungeU = clamp((T - plunge) / 1.5, 0, 1)
+  const zoomU = accelerate(0, 1, pan, plunge)(T)
+  const plungeU = clamp((T - plunge) / PLUNGE_S, 0, 1)
   const preZoom = 1 + 0.05 * draw(0, 1, t0, t1)(T)
+  const dive = PLUNGE_HANDOVER * plungeU + (1 - PLUNGE_HANDOVER) * Math.pow(plungeU, PLUNGE_POWER)
   const scale =
-    T < plunge ? lerp(preZoom, 2.2, panU) : 2.2 * Math.pow(16 / 2.2, Math.pow(plungeU, 2.2))
+    T < plunge ? lerp(preZoom, PAN_ZOOM, zoomU) : PAN_ZOOM * Math.pow(PLUNGE_ZOOM / PAN_ZOOM, dive)
   return { scale, fx: lerp(CX, c2.x, panU), fy: lerp(CY, c2.y, panU) }
 }
 
@@ -126,7 +173,7 @@ export function triangle1(T: number): TriangleState & { coreR: number; coreOp: n
  * le lire comme le même objet revenu.
  *
  * Il s'allume 7,0 → 8,0 s, donc AVANT que le panoramique ne le rejoigne à
- * 8,8 s : une cible qui apparaîtrait à l'arrivée dirait que la caméra a bougé
+ * 8,3 s : une cible qui apparaîtrait à l'arrivée dirait que la caméra a bougé
  * pour rien.
  */
 export function triangle2(T: number): TriangleState {

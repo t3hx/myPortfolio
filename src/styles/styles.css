@@ -64,58 +64,6 @@ body,
   color: #d99bff;
 }
 
-/* --- Stop rail -------------------------------------------------------------------- */
-.rail {
-  position: absolute;
-  right: 14px;
-  top: 50%;
-  transform: translateY(-50%);
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  pointer-events: auto;
-}
-
-.rail button {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-direction: row-reverse;
-  background: none;
-  border: none;
-  padding: 3px;
-  cursor: pointer;
-  color: rgba(190, 215, 255, 0.55);
-  font: inherit;
-  font-size: 11px;
-}
-
-.rail .dot {
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  border: 1px solid rgba(120, 200, 255, 0.5);
-  background: transparent;
-  transition:
-    background 0.2s,
-    transform 0.2s;
-}
-
-.rail button.active .dot {
-  background: #6fd0ff;
-  transform: scale(1.25);
-}
-
-.rail .rail-label {
-  opacity: 0;
-  transition: opacity 0.15s;
-}
-
-.rail button:hover .rail-label,
-.rail button.active .rail-label {
-  opacity: 1;
-}
-
 /* --- Actions & hint --------------------------------------------------------------- */
 .actions {
   position: absolute;
@@ -127,7 +75,7 @@ body,
 }
 
 .actions button,
-.hud-panel header button {
+.actions select {
   padding: 6px 12px;
   border-radius: 8px;
   border: 1px solid rgba(120, 200, 255, 0.35);
@@ -140,6 +88,21 @@ body,
 
 .actions button:hover {
   border-color: #6fd0ff;
+}
+
+/* Une seconde rangée, au-dessus de celle des phases, pour ne pas déplacer des
+   boutons que le muscle connaît. Elle porte ce qui ne dépend pas de la phase :
+   le rejeu de l'intro et le choix de l'arrêt. */
+.actions--intro {
+  bottom: 82px;
+}
+
+.picker {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  letter-spacing: 0.04em;
 }
 
 .hint {
@@ -158,49 +121,12 @@ body,
    style, sinon tout panneau qui le réclame pour la molette hérite d'une
    géométrie qui n'est pas la sienne — mesuré : la fiche projet (#83) sortait à
    420 px de large, collée à droite, avec le fond bleu du HUD.
-   L'apparence du panneau de démonstration du HUD vit sous `.hud-panel`. */
-.hud-panel {
-  position: absolute;
-  top: 0;
-  right: 0;
-  height: 100%;
-  width: min(420px, 90vw);
-  display: flex;
-  flex-direction: column;
-  pointer-events: auto;
-  z-index: 300;
-  background: rgba(10, 14, 28, 0.92);
-  border-left: 3px solid #eaf4ff;
-  backdrop-filter: blur(8px);
-}
 
-.hud-panel header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 14px 16px;
-  border-bottom: 1px solid rgba(120, 200, 255, 0.25);
-}
-
-.hud-panel h2 {
-  margin: 0;
-  font-size: 14px;
-  letter-spacing: 0.05em;
-}
-
-.hud-panel-body {
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  padding: 14px 16px;
-  font-size: 12.5px;
-  line-height: 1.7;
-  color: rgba(210, 228, 255, 0.8);
-}
-
-.hud-panel-end {
-  text-align: center;
-  color: #6fd0ff;
-}
+   Il n'y a plus rien d'autre ici. `.hud-panel` habillait un panneau de
+   démonstration du spike — un tiroir bleu rempli de « Scrollable filler block »
+   — dont le seul travail était de prouver que la molette lui appartenait. La
+   fiche projet le prouve maintenant en produisant quelque chose, et le HUD
+   l'ouvre directement (voir `Hud.tsx`). */
 
 /* La couche de l'intro (#142) : du DOM posé dans la 3D sur l'écran principal,
    par un drei <Html transform>. Sous les bulles (100) : la bulle d'accueil se
@@ -459,16 +385,56 @@ body,
   background: radial-gradient(circle at 50% 50%, #fff 0%, var(--intro-accent) 22%, transparent 62%);
 }
 
-/* Un mot de phase : discret, lettre par lettre, dans l'accent. */
+/* Un mot de phase : lettre par lettre, entre deux tirets (#147).
+
+   IL PORTE LE DORÉ, ET PLUS L'ACCENT. Il l'a porté, et il se lisait alors comme
+   un élément du dessin plutôt que comme une légende de celui-ci : tout ce que
+   l'intro trace — le triangle, les ondes, les particules, le plan, le
+   tourbillon — est déjà dans l'accent. `--intro-gold` est dérivé du crème,
+   la seule couleur non cyan de la palette (voir `config/intro.ts`) : il se
+   démarque des trois candidates d'accent quelle que soit celle qu'on
+   retienne, et d'un cran de plus que le crème, qui est aussi la couleur du
+   nom.
+
+   Les tirets le portent AUSSI : ce sont la ponctuation du mot, pas un autre
+   élément. Et le halo est doré lui aussi, sinon la couleur qu'on vient de
+   donner au texte lui est reprise par son ombre.
+
+   Le bloc SE DIMENSIONNE SUR SON CONTENU, et ne porte plus la largeur fixe de
+   460 px qu'il avait : deux tirets symétriques ne veulent rien dire autour d'un
+   texte aligné dans une boîte plus large que lui. L'ancrage est donc celui du
+   côté dont chaque mot est proche, ou son centre pour celui qu'on a recentré —
+   voir `WORD_STYLE` dans `IntroStage.tsx`, où les trois positions sont écrites
+   avec leur raison. */
 .intro-word {
   position: absolute;
-  width: 460px;
-  font-size: 19px;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  font-size: 24px;
   font-weight: 500;
   letter-spacing: 0.62em;
-  color: var(--intro-accent);
-  text-shadow: 0 0 12px color-mix(in srgb, var(--intro-accent) 33%, transparent);
+  color: var(--intro-gold);
+  text-shadow: 0 0 14px color-mix(in srgb, var(--intro-gold) 40%, transparent);
   white-space: pre;
+}
+
+/* L'interlettrage s'ajoute APRÈS la dernière lettre : sans ce rattrapage le
+   mot est décalé d'un demi-cadratin dans son propre bloc, et les deux tirets
+   cessent d'être à la même distance de lui. Même correction que `.intro-title`. */
+.intro-word__text {
+  padding-left: 0.62em;
+}
+
+/* Les tirets suivent la PREMIÈRE et la DERNIÈRE lettre (voir `applyWord`), et
+   non l'opacité du bloc : posés à plein, ils flotteraient de part et d'autre
+   d'un mot pas encore écrit — 0,63 s pour GENESIS, ce qui se lit comme un
+   défaut d'affichage. */
+.intro-word__rule {
+  width: 34px;
+  height: 2px;
+  background: var(--intro-gold);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--intro-gold) 55%, transparent);
 }
 
 /* Stable portal layer for world-anchored bubbles — sits between the canvas (0)

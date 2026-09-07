@@ -65,13 +65,40 @@ export const INTRO_DELAY_MS = 800
 export const INTRO_BUBBLE_DELAY_MS = 1000
 
 /**
- * L'accent de l'intro. PROVISOIRE : `#00C0E8` est le choix du handoff, distinct
- * du `--glow` du design system (`#8FDBE4`), et il se tranchera en le voyant
- * projeté sur l'écran (#147, avec `?accent=` et les boutons du HUD).
+ * L'accent de l'intro. **Arbitré le 2026-09-07** (#147), en le voyant projeté
+ * sur l'écran dans la scène, contre `#8FDBE4` — le `--glow` du design system —
+ * et `#BFF7FF`. Il reste distinct du `--glow`, et c'est voulu : l'intro est ce
+ * que l'écran affiche, pas ce que la pièce éclaire.
+ *
+ * Il double `--intro-accent` de `tokens.css` : le CSS peint le texte et les
+ * tirets, le canvas peint les particules et les ondes en JavaScript, et aucun
+ * des deux ne peut lire la déclaration de l'autre. `tests/intro.test.ts` échoue
+ * si les deux divergent. `?accent=` reste, comme `?lw=`, pour en comparer une
+ * autre sans toucher au code.
  */
 export const INTRO_ACCENT = '#00C0E8'
 /** Le crème du texte, celui du design system. */
 export const INTRO_CREAM = '#EFE5D3'
+
+/**
+ * Le doré des mots de phase et de leurs tirets (#147).
+ *
+ * **Il est DÉRIVÉ du crème, pas choisi à côté.** La palette du site n'a qu'une
+ * seule couleur qui ne soit pas un cyan — `--cream`, `hsl(39, 47%, 88%)` — et
+ * les mots de phase doivent se démarquer de l'accent quel qu'il soit : les
+ * trois candidates sont à 186, 190 et 188 degrés de teinte. Ce doré garde la
+ * teinte du crème (39 → 41°), monte sa saturation (47 → 68 %) et baisse sa
+ * clarté (88 → 75 %). Il reste donc la même famille — la seule chaude de la
+ * palette — à 149 degrés de teinte de l'accent, et il se lit doré plutôt que
+ * blanc cassé.
+ *
+ * Il porte le texte ET les tirets : deux couleurs pour un même mot en feraient
+ * deux éléments, alors que les tirets sont sa ponctuation.
+ *
+ * Il double `--intro-gold` de `tokens.css`, pour la raison qui vaut pour
+ * l'accent — et `tests/intro.test.ts` verrouille les deux ensemble.
+ */
+export const INTRO_GOLD = '#EBCF94'
 /** Le cœur blanc-cyan des néons et des grosses particules. */
 export const INTRO_CORE = '#EAFBFF'
 /** Le nombre de particules de la nova et du tourbillon (réglage final du handoff). */

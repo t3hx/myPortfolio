@@ -59,6 +59,7 @@ describe('resolveExperience', () => {
       '?outline=hull',
       '?lw=2',
       '?capture',
+      '?accent=00C0E8',
     ]) {
       // même un choix classique mémorisé ne bloque pas l'outillage : la boucle
       // de comparaison doit rester déterministe sur n'importe quel navigateur

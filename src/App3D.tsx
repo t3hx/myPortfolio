@@ -53,12 +53,13 @@ export default function App3D() {
       </Canvas>
       <div ref={introLayer} className="intro-layer" />
       <div ref={bubbleLayer} className="bubble-layer" />
-      {/* Le HUD est l'outillage du spike : bandeau de phase, rail de stops,
-          boutons de test des phases. `?debug` le déclarait déjà (viewMode.ts)
-          mais rien ne branchait le fil, alors il s'affichait toujours — et son
-          rail se superposait pixel pour pixel à la barre de menu, les deux à
-          z-index 200. L'issue #26 le disait : le rail est un prototype de
-          diagnostic, pas la navigation. */}
+      {/* Le HUD est l'outillage de diagnostic : bandeau de phase, liste des
+          arrêts, rejeu de l'intro, raccourcis de panneau. `?debug` le déclarait
+          déjà (viewMode.ts) mais rien ne branchait le fil, alors il s'affichait
+          toujours — et son rail d'arrêts se superposait pixel pour pixel à la
+          barre de menu, les deux à z-index 200. Le rail a été remplacé par une
+          liste déroulante rangée avec les autres boutons (#147) : l'issue #26
+          le disait déjà, c'est un prototype de diagnostic, pas la navigation. */}
       {viewMode === 'tour' && <Hud />}
       {/* Le CV (#93) est monté AVANT la barre, et il vit à --z-bubble (100) :
           il n'est pas modal, la barre (200) reste au-dessus et « Résumé » reste

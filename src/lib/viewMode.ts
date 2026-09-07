@@ -96,3 +96,38 @@ export function stopParamIndex(): number | null {
   }
   return index
 }
+
+/**
+ * `?accent=<hex>` — l'accent de l'intro, forcé depuis l'URL (#147). Outillage
+ * de dev, comme `?lw=` : la couleur définitive est un token de `tokens.css`,
+ * et ce paramètre reste la façon de comparer une candidate SANS toucher au
+ * code, en la voyant projetée sur l'écran dans la scène.
+ *
+ * **Le croisillon s'écrit sans croisillon.** `?accent=#00C0E8` ne marche pas :
+ * le `#` ouvre le fragment de l'URL, et le paramètre reçu serait vide. On écrit
+ * donc `?accent=00C0E8`, et le `#` est remis ici — il reste accepté, pour le
+ * jour où la valeur arrive encodée (`%2300C0E8`).
+ *
+ * Une valeur qui n'est pas une couleur est REFUSÉE avec un mot, jamais reprise
+ * en silence : le navigateur ignore une couleur qu'il ne comprend pas, et
+ * l'arbitrage se ferait alors sur l'accent par défaut en croyant regarder la
+ * candidate. C'est le mode de panne d'un outil de comparaison qui compare la
+ * même chose deux fois.
+ *
+ * Pure, comme `resolveLocale` et `resolveExperience` : la lecture de l'URL est
+ * le travail de l'appelant, et `tests/intro.test.ts` la vérifie sans DOM.
+ */
+export function parseAccent(raw: string | null): string | null {
+  if (!raw) return null
+  const hex = raw.startsWith('#') ? raw : `#${raw}`
+  if (!/^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(hex)) {
+    console.warn(`[intro] "?accent=${raw}" n'est pas une couleur hexadécimale — accent par défaut.`)
+    return null
+  }
+  return hex
+}
+
+export function introAccentFromUrl(): string | null {
+  if (typeof window === 'undefined') return null
+  return parseAccent(new URLSearchParams(window.location.search).get('accent'))
+}

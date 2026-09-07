@@ -37,7 +37,7 @@ import {
  * ces tests verrouillent les temps forts et la forme du mouvement, pas chaque
  * valeur — le mouvement se juge en mouvement.
  */
-const { arrival, suck, bang, plunge } = INTRO_BEATS
+const { arrival, suck, bang, pan, plunge } = INTRO_BEATS
 
 describe('cameraA', () => {
   it('holds the centre and creeps in by 5 % across phase 1', () => {
@@ -45,6 +45,38 @@ describe('cameraA', () => {
     const end = cameraA(INTRO_PHASES[1].start)
     expect(end.scale).toBeCloseTo(1.05, 6)
     expect(end.fx).toBeCloseTo(CX, 6)
+  })
+
+  /**
+   * LA JOINTURE (#147). Le panoramique et la plongée sont deux séquences pour
+   * qui les écrit et UN SEUL mouvement pour qui les regarde. Elles arrivaient
+   * toutes deux à vitesse nulle — `sine.inOut` d'un côté, un exposant `u^2,2`
+   * plat en zéro de l'autre — et la caméra s'immobilisait entre les deux.
+   *
+   * Mesuré alors, en vitesse logarithmique (la seule qui se compare : un zoom
+   * se perçoit en proportion par seconde) : 0,007 par seconde à la jointure,
+   * contre 0,55 au plus fort du panoramique. Rien sur une image fixe, un temps
+   * mort à l'œil.
+   *
+   * Le seuil est le dixième de la vitesse du panoramique : au-dessous, ça ne
+   * s'enchaîne plus, ça reprend.
+   */
+  it('never stands still between the pan and the plunge', () => {
+    const dt = 0.01
+    const rate = (t: number) => (Math.log(cameraA(t + dt).scale) - Math.log(cameraA(t).scale)) / dt
+    let peak = 0
+    for (let t = pan; t < plunge; t += dt) peak = Math.max(peak, rate(t))
+    for (let t = pan + 0.4; t < plunge + 0.6; t += dt) {
+      expect(rate(t)).toBeGreaterThan(peak / 10)
+    }
+    // Et elle accélère de part et d'autre : le relais passe la vitesse, il ne
+    // la rend pas. La pointe de la plongée reste celle d'avant, ~2,7 par
+    // seconde — ce n'est pas la plongée qu'on a accélérée, c'est le trou
+    // qu'on a enlevé.
+    expect(rate(plunge - 0.02)).toBeGreaterThan(rate(pan + 0.4))
+    expect(rate(plunge + 0.02)).toBeGreaterThan(rate(plunge - 0.02) * 0.9)
+    expect(rate(plunge + 1.5)).toBeGreaterThan(2.4)
+    expect(rate(plunge + 1.5)).toBeLessThan(3)
   })
 
   it('reaches 2.2 at the plunge and never zooms out', () => {
@@ -275,12 +307,18 @@ describe('the lab plan drawing', () => {
   const order = LAB_PLAN_ORDER
   const last = order.length - 1
 
+  // Le dernier trait du dernier lot part à `draw + 10 × 0,26 + 4 × 0,06`.
+  // Écrit en absolu, ce repère mentait dès que la partition bougeait — il
+  // disait 12,33 quand le tracé commençait à 9,5, et le retiming de #147 l'a
+  // laissé sur place sans que son intention change d'un mot.
+  const lastStroke = INTRO_BEATS.draw + last * 0.26 + (LAB_SUBGROUPS - 1) * 0.06
+
   it('holds every stroke hidden until its batch is called', () => {
     expect(labDashOffset(0, 0, INTRO_BEATS.draw - 0.01)).toBe(1)
-    expect(labDashOffset(last, LAB_SUBGROUPS - 1, 12.33)).toBe(1)
+    expect(labDashOffset(last, LAB_SUBGROUPS - 1, lastStroke - 0.01)).toBe(1)
   })
 
-  it('starts batch k at 9.5 + k · 0.26, and its five waves 0.06 s apart', () => {
+  it('starts batch k at `draw` + k · 0.26, and its five waves 0.06 s apart', () => {
     const started = (b: number, s: number, T: number) => labDashOffset(b, s, T) < 1
     for (let b = 0; b < order.length; b++) {
       const start = INTRO_BEATS.draw + b * 0.26
@@ -301,12 +339,17 @@ describe('the lab plan drawing', () => {
     }
   })
 
-  it('has the whole plan drawn when the last phase opens', () => {
+  it('has the whole plan drawn BEFORE the last phase opens', () => {
+    const t2 = INTRO_PHASES[2].start
     for (let b = 0; b < order.length; b++)
-      for (let s = 0; s < LAB_SUBGROUPS; s++) expect(labDashOffset(b, s, 13.1)).toBe(0)
-    // Le dernier trait se pose à 13,06 : le handoff écrit « 9,5 → 13 », et sa
-    // propre arithmétique déborde de 60 ms sur la phase 3. Le nombre gagne.
-    expect(labDashOffset(last, LAB_SUBGROUPS - 1, 13.05)).toBeGreaterThan(0)
+      for (let s = 0; s < LAB_SUBGROUPS; s++) expect(labDashOffset(b, s, t2)).toBe(0)
+    // Le dernier trait se posait à 13,06 : le handoff écrivait « 9,5 → 13 » et
+    // sa propre arithmétique débordait de 60 ms sur la phase 3, où le
+    // tourbillon part à 13,05. En avançant le tracé à 9,0 (#147) il se pose à
+    // 12,56, et la phase 3 s'ouvre sur un plan fini — pas sur un plan qui
+    // finit. La marge est vérifiée, pas seulement l'ordre.
+    expect(labDashOffset(last, LAB_SUBGROUPS - 1, lastStroke + 0.72)).toBe(0)
+    expect(lastStroke + 0.72).toBeLessThan(t2)
   })
 
   it('is five waves per batch, 55 in all — the whole plan and nothing twice', () => {
