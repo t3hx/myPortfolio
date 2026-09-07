@@ -71,7 +71,8 @@ export function IntroScreen({ scene, home, portal }: IntroScreenProps) {
       .clone()
       .sub(home.position)
       .dot(FORWARD.clone().applyQuaternion(home.quaternion))
-    const visibleHeight = 2 * depth * Math.tan((poseVerticalFov(home, aspect) * RAD) / 2)
+    const visibleHeight =
+      2 * depth * Math.tan((poseVerticalFov(home, aspect, size.width) * RAD) / 2)
     return screenLayout({
       screen: plane,
       frame: INTRO_FRAME,

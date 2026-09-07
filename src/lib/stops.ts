@@ -44,10 +44,63 @@ export interface StopTransform {
    * rien du tout : la borne n'est jamais atteinte.
    */
   contain: number
+  /**
+   * De 0 à 1 — combien la règle de la COLONNE LISIBLE s'applique (2026-09-07).
+   *
+   * Le CV est du DOM posé sur la projection de l'écran vertical, et sa colonne
+   * vaut 44,8 % de la fenêtre. Sur une fenêtre étroite, 44,8 % ne font plus
+   * assez de pixels : mesuré sur un téléphone en portrait (390 × 844),
+   * 175 px de large et 444 px de contenu en trop — illisible. Le cadrage se
+   * rapproche donc jusqu'à ce que la colonne retrouve la largeur pour laquelle
+   * elle est écrite, ou toute la fenêtre si celle-ci est plus étroite.
+   *
+   * Un poids et non un booléen, pour la raison de `contain` : il s'interpole,
+   * et quitter le CV relâche le zoom pendant le vol au lieu de sauter à la
+   * première image.
+   */
+  column: number
 }
 
 const DEG = 180 / Math.PI
 const RAD = Math.PI / 180
+
+/**
+ * La colonne du CV, telle que le design l'a écrite : sa largeur en fraction du
+ * cadre, la largeur en pixels sous laquelle elle cesse d'être lisible, et la
+ * marge qu'on lui laisse de chaque côté quand la fenêtre est plus étroite que
+ * ça.
+ *
+ * **Ces trois nombres sont écrits deux fois**, ici et dans `tokens.css`, parce
+ * que le cadrage 3D et la boîte DOM sont deux moteurs différents qui doivent
+ * répondre la même chose. `tests/stops.test.ts` échoue si les deux divergent.
+ */
+export const CV_COLUMN_FRACTION = 0.448
+export const CV_COLUMN_PX = 573
+export const CV_COLUMN_MARGIN_PX = 24
+
+/**
+ * La largeur que la colonne DOIT atteindre, en pixels, sur une fenêtre de
+ * `widthPx` : celle du design, ou toute la fenêtre moins ses marges si elle est
+ * plus étroite.
+ */
+export function cvColumnTarget(widthPx: number): number {
+  return Math.min(CV_COLUMN_PX, Math.max(0, widthPx - 2 * CV_COLUMN_MARGIN_PX))
+}
+
+/**
+ * Le champ horizontal, en degrés, qui donne à la colonne sa largeur lisible.
+ *
+ * Il ne fait que RESSERRER : `min(1, …)` interdit de reculer. Une fenêtre au
+ * moins aussi large que le cadrage composé garde donc exactement le cadrage de
+ * Blender — 1 280 px le laisse intact au pixel près, 1 920 aussi, et les dix
+ * références de rendu avec.
+ */
+export function columnHfov(hfov: number, widthPx: number): number {
+  const target = cvColumnTarget(widthPx)
+  if (target <= 0 || widthPx <= 0) return hfov
+  const shrink = Math.min(1, (CV_COLUMN_FRACTION * widthPx) / target)
+  return 2 * Math.atan(Math.tan((hfov * RAD) / 2) * shrink) * DEG
+}
 
 /**
  * Vertical fov (degrees) that renders `hfov` horizontally on a viewport of
@@ -115,7 +168,7 @@ export function readStopTransform(scene: Object3D, cameraName: string): StopTran
   // `contain` à 0 par défaut : c'est `extractStops` qui le pose, depuis
   // `CAMERA_STOPS`. La lune passe aussi par ici (#113) et n'est pas un arrêt du
   // tour — elle n'a donc pas de ligne où déclarer quoi que ce soit.
-  return { position, quaternion, hfov, yfov: cam.fov, contain: 0 }
+  return { position, quaternion, hfov, yfov: cam.fov, contain: 0, column: 0 }
 }
 
 /**
@@ -135,6 +188,7 @@ export function extractStops(scene: Object3D): Map<string, StopTransform> {
     const transform = readStopTransform(scene, stop.camera)
     if (transform) {
       transform.contain = stop.fit === 'contain' ? 1 : 0
+      transform.column = stop.fit === 'column' ? 1 : 0
       stops.set(stop.camera, transform)
     }
   }
@@ -179,6 +233,9 @@ export function blendPose(
   // La borne verticale se relâche pendant le vol au lieu de sauter à la
   // première image — c'est toute la raison d'en faire un poids.
   out.contain = from.contain + (to.contain - from.contain) * t
+  // Idem pour la colonne : quitter le CV relâche son resserrement pendant le
+  // vol, au lieu de rendre le champ d'un coup à la première image.
+  out.column = from.column + (to.column - from.column) * t
   return out
 }
 
@@ -191,10 +248,10 @@ export function blendPose(
  * pose du tour dans une caméra jetable laissée à son rapport par défaut, et
  * revenait donc zoomé.
  */
-export function applyPose(cam: PerspectiveCamera, pose: StopTransform): void {
+export function applyPose(cam: PerspectiveCamera, pose: StopTransform, widthPx: number): void {
   cam.position.copy(pose.position)
   cam.quaternion.copy(pose.quaternion)
-  cam.fov = poseVerticalFov(pose, cam.aspect)
+  cam.fov = poseVerticalFov(pose, cam.aspect, widthPx)
   cam.updateProjectionMatrix()
 }
 
@@ -211,14 +268,24 @@ export function applyPose(cam: PerspectiveCamera, pose: StopTransform): void {
  * Exposé à part parce que l'intro (#142) doit savoir ce que la caméra Home
  * montre de l'écran, et le calculer autrement ici et là finirait par diverger.
  */
-export function poseVerticalFov(pose: StopTransform, aspect: number): number {
-  const free = verticalFov(pose.hfov, aspect)
+export function poseVerticalFov(pose: StopTransform, aspect: number, widthPx: number): number {
+  // Le resserrement de la colonne joue sur le champ HORIZONTAL, donc avant
+  // tout le reste : c'est lui qui décide de ce que le vertical vaudra.
+  const hfov = pose.hfov + (columnHfov(pose.hfov, widthPx) - pose.hfov) * pose.column
+  const free = verticalFov(hfov, aspect)
   return free + (Math.min(free, pose.yfov) - free) * pose.contain
 }
 
 /** Une pose neutre, à remplir. */
 export function emptyPose(): StopTransform {
-  return { position: new Vector3(), quaternion: new Quaternion(), hfov: 60, yfov: 40, contain: 0 }
+  return {
+    position: new Vector3(),
+    quaternion: new Quaternion(),
+    hfov: 60,
+    yfov: 40,
+    contain: 0,
+    column: 0,
+  }
 }
 
 /** Copie `from` dans `out`, sans allouer. */
@@ -228,6 +295,7 @@ export function copyPose(out: StopTransform, from: StopTransform): StopTransform
   out.hfov = from.hfov
   out.yfov = from.yfov
   out.contain = from.contain
+  out.column = from.column
   return out
 }
 

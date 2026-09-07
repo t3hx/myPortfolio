@@ -118,16 +118,21 @@ export interface SkipContext {
 }
 
 /**
- * Le geste de saut : la molette, dans les deux sens, ou la touche Échap,
- * pendant que l'intro joue à Home. Il coupe à la dernière image et ne fait
- * rien d'autre — la caméra ne bouge pas. Les flèches n'en sont pas : elles
- * traversent toujours le tour.
+ * Le geste de saut : la molette dans les deux sens, un balayage du doigt, ou la
+ * touche Échap, pendant que l'intro joue à Home. Il coupe à la dernière image
+ * et ne fait rien d'autre — la caméra ne bouge pas. Les flèches n'en sont pas :
+ * elles traversent toujours le tour.
+ *
+ * **Le doigt en est un depuis le 2026-09-07.** Il n'y a pas de molette sur un
+ * téléphone : l'intro y était incoupable, vingt secondes obligatoires avant de
+ * pouvoir faire quoi que ce soit. Le balayage est ce qui remplace la molette
+ * partout ailleurs dans le tour ; il devait la remplacer ici aussi.
  */
 export function isSkipGesture(
   event: { type: string; key?: string; deltaY?: number },
   ctx: SkipContext,
 ): boolean {
   if (!ctx.running || !ctx.atHome) return false
-  if (event.type === 'wheel') return true
+  if (event.type === 'wheel' || event.type === 'touchmove') return true
   return event.type === 'keydown' && event.key === 'Escape'
 }

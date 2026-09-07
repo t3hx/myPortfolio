@@ -41,6 +41,7 @@ function stopAt(position: Vector3, yawDeg: number, hfov: number): StopTransform 
     // champ horizontal : la politique de cadrage (#135) ne l'atteint pas.
     yfov: 30,
     contain: 0,
+    column: 0,
   }
 }
 

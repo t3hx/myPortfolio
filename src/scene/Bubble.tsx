@@ -39,6 +39,15 @@ import { BubbleCard } from '@/ui/BubbleCard'
  */
 
 /** Doit suivre --t-bubble-out (tokens.css) — synchro verrouillée par tests/bubble.test.ts. */
+/**
+ * L'entrée de la bulle, en ms. Doit égaler `--t-bubble-in` de tokens.css, et
+ * `tests/bubble.test.ts` est la seule chose qui relie les deux.
+ *
+ * Elle est exportée pour la barre de menu (#26), qui n'apparaît qu'une fois la
+ * PREMIÈRE bulle posée : le mobilier arrive après la parole, pas avec elle.
+ */
+export const BUBBLE_IN_MS = 480
+
 export const BUBBLE_OUT_MS = 200
 
 /** Scratch : la projection tourne à chaque frame, pour chaque bulle montée. */

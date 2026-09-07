@@ -21,7 +21,7 @@ const HOME = { ...emptyPose(), hfov: 53.13, yfov: 31.42, contain: 1 }
 /** Ce que Home montre de l'écran pour une fenêtre donnée, comme le composant. */
 function inputFor(viewport: { width: number; height: number }): LayoutInput {
   const aspect = viewport.width / viewport.height
-  const height = 2 * DEPTH * Math.tan((poseVerticalFov(HOME, aspect) * Math.PI) / 360)
+  const height = 2 * DEPTH * Math.tan((poseVerticalFov(HOME, aspect, 1920) * Math.PI) / 360)
   return {
     screen: SCREEN,
     frame: INTRO_FRAME,

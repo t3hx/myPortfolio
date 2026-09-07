@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { reducedMotionBlocks } from './support/css'
-import { BUBBLE_OUT_MS } from '@/scene/Bubble'
+import { BUBBLE_IN_MS, BUBBLE_OUT_MS } from '@/scene/Bubble'
 
 /**
  * Le démontage différé de la bulle (Bubble.tsx) et le fondu CSS (.bubble--out,
@@ -49,5 +49,31 @@ describe("l'aura d'arrivée", () => {
 
   it('est coupée sous mouvement réduit', () => {
     expect(reducedMotionBlocks(tokens)).toContain('.bubble__aura')
+  })
+})
+
+/**
+ * L'entrée de la bulle est un budget partagé depuis que la barre de menu
+ * l'attend (#26, décision du 2026-09-07) : elle n'apparaît qu'une fois la
+ * PREMIÈRE bulle posée, et c'est cette durée-là qu'elle laisse passer. Un
+ * `--t-bubble-in` raccourci sans toucher à la constante ferait arriver le
+ * mobilier par-dessus une phrase encore en train de s'écrire.
+ */
+describe('bubble entry budget', () => {
+  it('BUBBLE_IN_MS matches --t-bubble-in in tokens.css', () => {
+    const css = readFileSync('src/styles/tokens.css', 'utf8')
+    const m = css.match(/--t-bubble-in:\s*(\d+)ms/)
+    expect(m).not.toBeNull()
+    expect(Number(m![1])).toBe(BUBBLE_IN_MS)
+  })
+
+  it('hides the bar while it waits, never the other way round', () => {
+    const css = readFileSync('src/styles/tokens.css', 'utf8')
+    const menu = readFileSync('src/ui/Menu.tsx', 'utf8')
+    // `design/screens/` partage tokens.css sans app pour retirer une classe :
+    // une barre masquée par DÉFAUT y disparaîtrait des quinze maquettes.
+    expect(css).toMatch(/\.menu \{[^}]*opacity: \.4/)
+    expect(css).toContain('.menu--waiting { opacity: 0; pointer-events: none; }')
+    expect(menu).toContain('menu--waiting')
   })
 })

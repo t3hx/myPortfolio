@@ -34,7 +34,7 @@ export interface CameraStop {
    * dont le sujet a des bords — là, montrer plus, c'est montrer ce qu'il ne
    * faut pas voir.
    */
-  fit?: 'contain'
+  fit?: 'contain' | 'column'
 }
 
 export const CAMERA_STOPS: CameraStop[] = [
@@ -73,7 +73,16 @@ export const CAMERA_STOPS: CameraStop[] = [
   // viewport — les deux se décollent, ce qui est exactement le défaut contre
   // lequel cet écran est écrit. Une bulle, elle, est ancrée dans le monde et
   // suit sans qu'on ait rien à faire.
-  { camera: 'CameraStop_MonitorVertical', label: 'CV', lookAround: false },
+  // `fit: 'column'` (2026-09-07) — la règle jumelle de celle de l'accueil, et
+  // dans l'autre sens. Le CV est écrit sur l'écran VERTICAL, et son texte est
+  // du DOM posé sur la projection de cet écran : sa colonne vaut 44,8 % de la
+  // fenêtre, ce qui fait 677 px sur un portable et 175 px sur un téléphone en
+  // portrait — illisible, avec 444 px de contenu en trop. Le cadrage se
+  // rapproche donc jusqu'à ce que la colonne retrouve la largeur pour laquelle
+  // elle est écrite, ou toute la fenêtre moins ses marges si celle-ci est plus
+  // étroite. Il ne fait que RESSERRER : à 1 280 px comme à 1 920, le cadrage
+  // composé dans Blender est intact, et les dix références de rendu avec.
+  { camera: 'CameraStop_MonitorVertical', label: 'CV', lookAround: false, fit: 'column' },
   { camera: 'CameraStop_Cabinet', label: 'Cabinet' },
   { camera: 'CameraStop_BookshelfPlant', label: 'Bookshelf' },
   { camera: 'CameraStop_Cat', label: 'Cat' },

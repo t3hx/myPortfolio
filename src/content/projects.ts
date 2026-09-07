@@ -51,84 +51,21 @@ export interface Project {
   cover?: string
 }
 
+/**
+ * **L'ORDRE EST CELUI DU TIROIR** (décision de l'auteur, 2026-09-07) :
+ * Portfolio, Owlog, Solarsys, Anima, Odysong. Le tableau EST la rangée de
+ * dossiers — `buildFolders` place le dossier n° i à `folderZ(i, n)` et ne lit
+ * rien d'autre —, exactement comme `CAMERA_STOPS` EST le parcours. Réordonner
+ * ici réordonne la commode, sans qu'aucune position ne soit écrite nulle part.
+ *
+ * « Celestial Walker » s'appelle Solarsys et « TXPF » s'appelle Anima depuis
+ * la même date. Le `slug` a suivi le nom, et il pouvait : les dossiers du
+ * `.glb` n'en portent aucun — il n'y a qu'un exemplaire, cloné par projet, dont
+ * les pièces reçoivent le slug en suffixe au montage. Les liens, eux, gardent
+ * leurs adresses : ce sont de vrais dépôts, et un dépôt ne se renomme pas
+ * depuis un portfolio.
+ */
 export const PROJECTS: Project[] = [
-  {
-    slug: 'owlog',
-    name: 'Owlog',
-    tabLabel: 'Owlog',
-    tagline: {
-      fr: "Le visionnage est l'unité d'enregistrement, pas le film.",
-      en: 'A viewing is the unit of record, not the film.',
-    },
-    year: '2026',
-    role: { fr: 'Conception et développement', en: 'Design and development' },
-    stack: ['TypeScript', 'PWA', 'Nuxt'],
-    highlights: {
-      fr: [
-        'Un même film revu trois fois compte trois entrées, pas une ligne modifiée.',
-        'Fonctionne hors ligne : le suivi se fait souvent loin du réseau.',
-      ],
-      en: [
-        'The same film watched three times is three entries, not one edited row.',
-        'Works offline: logging often happens far from a network.',
-      ],
-    },
-  },
-  {
-    slug: 'odysong',
-    name: 'Odysong',
-    tabLabel: 'Odysong',
-    tagline: {
-      fr: 'Un voyage en 3D fabriqué à partir de vos goûts musicaux Spotify.',
-      en: 'A 3D journey built from your Spotify listening.',
-    },
-    year: '2026',
-    role: { fr: 'Conception et développement', en: 'Design and development' },
-    stack: ['TypeScript', 'WebGL', 'API Spotify'],
-    highlights: {
-      fr: ["Le paysage traversé est dérivé de l'écoute réelle, pas d'un décor générique."],
-      en: ['The landscape is derived from real listening, not from a generic backdrop.'],
-    },
-  },
-  {
-    slug: 'celestial-walker',
-    name: 'Celestial Walker',
-    tabLabel: 'Celestial',
-    tagline: {
-      fr: "Une visite du système solaire, à l'échelle, dans le navigateur.",
-      en: 'A tour of the solar system, to scale, in the browser.',
-    },
-    year: '2026',
-    role: { fr: 'Développement', en: 'Development' },
-    stack: ['Nuxt', 'TypeScript', 'Three.js'],
-    highlights: {
-      fr: ['Architecture documentée en composables, factories et stores.'],
-      en: ['Architecture documented as composables, factories and stores.'],
-    },
-    links: [
-      { label: { fr: 'Code', en: 'Code' }, href: 'https://github.com/t3hx/celestial-walker-nuxt' },
-    ],
-  },
-  {
-    slug: 'txpf',
-    name: 'TXPF',
-    tabLabel: 'TXPF',
-    tagline: {
-      fr: 'Le portfolio précédent : une vitrine Vue adossée à une API Nest.',
-      en: 'The previous portfolio: a Vue showcase backed by a Nest API.',
-    },
-    year: '2025 — 2026',
-    role: { fr: 'Conception et développement', en: 'Design and development' },
-    stack: ['Vue 3', 'TailwindCSS', 'NestJS'],
-    highlights: {
-      fr: ['Démos de projets protégées derrière le back-office.'],
-      en: ['Project demos gated behind the back-office.'],
-    },
-    links: [
-      { label: { fr: 'Front', en: 'Front' }, href: 'https://github.com/t3hx/txpf-frontend-vue' },
-      { label: { fr: 'API', en: 'API' }, href: 'https://github.com/t3hx/txpf-backend-nest' },
-    ],
-  },
   {
     slug: 'portfolio',
     name: 'Ce portfolio',
@@ -154,6 +91,83 @@ export const PROJECTS: Project[] = [
       ],
     },
     links: [{ label: { fr: 'Code', en: 'Code' }, href: 'https://github.com/t3hx/myPortfolio' }],
+  },
+  {
+    slug: 'owlog',
+    name: 'Owlog',
+    tabLabel: 'Owlog',
+    tagline: {
+      fr: "Le visionnage est l'unité d'enregistrement, pas le film.",
+      en: 'A viewing is the unit of record, not the film.',
+    },
+    year: '2026',
+    role: { fr: 'Conception et développement', en: 'Design and development' },
+    stack: ['TypeScript', 'PWA', 'Nuxt'],
+    highlights: {
+      fr: [
+        'Un même film revu trois fois compte trois entrées, pas une ligne modifiée.',
+        'Fonctionne hors ligne : le suivi se fait souvent loin du réseau.',
+      ],
+      en: [
+        'The same film watched three times is three entries, not one edited row.',
+        'Works offline: logging often happens far from a network.',
+      ],
+    },
+  },
+  {
+    slug: 'solarsys',
+    name: 'Solarsys',
+    tabLabel: 'Solarsys',
+    tagline: {
+      fr: "Une visite du système solaire, à l'échelle, dans le navigateur.",
+      en: 'A tour of the solar system, to scale, in the browser.',
+    },
+    year: '2026',
+    role: { fr: 'Développement', en: 'Development' },
+    stack: ['Nuxt', 'TypeScript', 'Three.js'],
+    highlights: {
+      fr: ['Architecture documentée en composables, factories et stores.'],
+      en: ['Architecture documented as composables, factories and stores.'],
+    },
+    links: [
+      { label: { fr: 'Code', en: 'Code' }, href: 'https://github.com/t3hx/celestial-walker-nuxt' },
+    ],
+  },
+  {
+    slug: 'anima',
+    name: 'Anima',
+    tabLabel: 'Anima',
+    tagline: {
+      fr: 'Le portfolio précédent : une vitrine Vue adossée à une API Nest.',
+      en: 'The previous portfolio: a Vue showcase backed by a Nest API.',
+    },
+    year: '2025 — 2026',
+    role: { fr: 'Conception et développement', en: 'Design and development' },
+    stack: ['Vue 3', 'TailwindCSS', 'NestJS'],
+    highlights: {
+      fr: ['Démos de projets protégées derrière le back-office.'],
+      en: ['Project demos gated behind the back-office.'],
+    },
+    links: [
+      { label: { fr: 'Front', en: 'Front' }, href: 'https://github.com/t3hx/txpf-frontend-vue' },
+      { label: { fr: 'API', en: 'API' }, href: 'https://github.com/t3hx/txpf-backend-nest' },
+    ],
+  },
+  {
+    slug: 'odysong',
+    name: 'Odysong',
+    tabLabel: 'Odysong',
+    tagline: {
+      fr: 'Un voyage en 3D fabriqué à partir de vos goûts musicaux Spotify.',
+      en: 'A 3D journey built from your Spotify listening.',
+    },
+    year: '2026',
+    role: { fr: 'Conception et développement', en: 'Design and development' },
+    stack: ['TypeScript', 'WebGL', 'API Spotify'],
+    highlights: {
+      fr: ["Le paysage traversé est dérivé de l'écoute réelle, pas d'un décor générique."],
+      en: ['The landscape is derived from real listening, not from a generic backdrop.'],
+    },
   },
 ]
 

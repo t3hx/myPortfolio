@@ -1,10 +1,16 @@
+import { readFileSync } from 'node:fs'
 import { Object3D, PerspectiveCamera, Vector3 } from 'three'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
+  CV_COLUMN_FRACTION,
+  CV_COLUMN_MARGIN_PX,
+  CV_COLUMN_PX,
   MOVE_MAX_S,
   MOVE_MIN_S,
   applyPose,
   blendPose,
+  columnHfov,
+  cvColumnTarget,
   emptyPose,
   extractStops,
   moveDuration,
@@ -216,7 +222,7 @@ describe('blendPose et applyPose', () => {
     const cam = new PerspectiveCamera(50, 16 / 9)
 
     const [a, b] = stops
-    applyPose(cam, blendPose(emptyPose(), a, b, 0.5))
+    applyPose(cam, blendPose(emptyPose(), a, b, 0.5), 1920)
 
     expect(cam.fov).toBeCloseTo(verticalFov(60, 16 / 9), 5)
   })
@@ -226,7 +232,7 @@ describe('blendPose et applyPose', () => {
     const cam = new PerspectiveCamera(50, 16 / 9)
 
     const [a, b] = stops
-    applyPose(cam, blendPose(emptyPose(), a, b, 1))
+    applyPose(cam, blendPose(emptyPose(), a, b, 1), 1920)
 
     expect(cam.fov).toBeCloseTo(verticalFov(80, 16 / 9), 5)
     expect(cam.position.x).toBeCloseTo(10, 5)
@@ -240,8 +246,8 @@ describe('blendPose et applyPose', () => {
     const carre = new PerspectiveCamera(50, 1)
 
     const [a] = stops
-    applyPose(large, a)
-    applyPose(carre, a)
+    applyPose(large, a, 1920)
+    applyPose(carre, a, 1920)
 
     const hLarge = 2 * Math.atan(Math.tan((large.fov * RAD) / 2) * large.aspect) * DEG
     const hCarre = 2 * Math.atan(Math.tan((carre.fov * RAD) / 2) * carre.aspect) * DEG
@@ -337,18 +343,70 @@ describe('moveDuration', () => {
   })
 })
 
+/**
+ * LA COLONNE LISIBLE DU CV (2026-09-07). Le cadrage 3D et la boîte DOM sont
+ * deux moteurs qui doivent répondre la même largeur : le texte est posé sur la
+ * projection de l'écran vertical, et s'ils divergent, la colonne s'écrit à côté
+ * de l'écran qui est censé l'afficher. Rien dans le rendu ne le dirait.
+ */
+describe('la colonne lisible du CV', () => {
+  const css = readFileSync('src/styles/tokens.css', 'utf8')
+
+  it('écrit les mêmes trois nombres dans le CSS et dans le code', () => {
+    const rule = css.match(/--cv-column:\s*max\(([\d.]+)vw,\s*min\((\d+)px,\s*100vw - (\d+)px\)\)/)
+    expect(rule, '--cv-column introuvable dans tokens.css').not.toBeNull()
+    expect(Number(rule![1])).toBeCloseTo(CV_COLUMN_FRACTION * 100, 6)
+    expect(Number(rule![2])).toBe(CV_COLUMN_PX)
+    expect(Number(rule![3])).toBe(2 * CV_COLUMN_MARGIN_PX)
+  })
+
+  it('ne resserre RIEN sur une fenêtre au moins aussi large que le design', () => {
+    // 1 280 est le cadre du design, 1 920 celui des références de rendu : le
+    // cadrage composé dans Blender doit y être intact au degré près.
+    for (const width of [1280, 1512, 1920, 2560]) {
+      expect(columnHfov(26.99, width)).toBeCloseTo(26.99, 6)
+    }
+  })
+
+  it('resserre juste ce qu’il faut sur une fenêtre étroite', () => {
+    // La largeur obtenue est `fraction × largeur × tan(H0/2) / tan(H/2)`.
+    const column = (width: number) =>
+      (CV_COLUMN_FRACTION * width * Math.tan((26.99 * Math.PI) / 360)) /
+      Math.tan((columnHfov(26.99, width) * Math.PI) / 360)
+    expect(column(1024)).toBeCloseTo(CV_COLUMN_PX, 3)
+    expect(column(390)).toBeCloseTo(cvColumnTarget(390), 3)
+    expect(cvColumnTarget(390)).toBe(342)
+  })
+
+  it('ne s’applique QU’À l’arrêt qui le demande, et s’interpole en le quittant', () => {
+    const cv = { ...emptyPose(), hfov: 26.99, yfov: 15.4, column: 1 }
+    const libre = { ...emptyPose(), hfov: 26.99, yfov: 15.4, column: 0 }
+    // Sur une fenêtre étroite, l'arrêt libre garde son champ, le CV le resserre.
+    expect(poseVerticalFov(libre, 0.46, 390)).toBeGreaterThan(poseVerticalFov(cv, 0.46, 390))
+    // Et le poids se relâche pendant le vol au lieu de sauter.
+    const moitie = blendPose(emptyPose(), cv, libre, 0.5)
+    expect(moitie.column).toBeCloseTo(0.5, 6)
+  })
+})
+
 describe('poseVerticalFov', () => {
   const pose = { ...emptyPose(), hfov: 53.13, yfov: 31.42 }
 
   it('keeps the horizontal fit on a free stop, whatever the window', () => {
     // Fenêtre plus haute que 16:9 : le champ vertical GRANDIT, rien ne le borne.
-    expect(poseVerticalFov({ ...pose, contain: 0 }, 1.6)).toBeCloseTo(verticalFov(53.13, 1.6), 6)
-    expect(poseVerticalFov({ ...pose, contain: 0 }, 1.6)).toBeGreaterThan(31.42)
+    expect(poseVerticalFov({ ...pose, contain: 0 }, 1.6, 1920)).toBeCloseTo(
+      verticalFov(53.13, 1.6),
+      6,
+    )
+    expect(poseVerticalFov({ ...pose, contain: 0 }, 1.6, 1920)).toBeGreaterThan(31.42)
   })
 
   it('caps a contained stop at its authored vertical field on a taller window', () => {
-    expect(poseVerticalFov({ ...pose, contain: 1 }, 1.6)).toBeCloseTo(31.42, 6)
+    expect(poseVerticalFov({ ...pose, contain: 1 }, 1.6, 1920)).toBeCloseTo(31.42, 6)
     // Et ne change rien sur une fenêtre au moins aussi large que composée.
-    expect(poseVerticalFov({ ...pose, contain: 1 }, 2.37)).toBeCloseTo(verticalFov(53.13, 2.37), 6)
+    expect(poseVerticalFov({ ...pose, contain: 1 }, 2.37, 1920)).toBeCloseTo(
+      verticalFov(53.13, 2.37),
+      6,
+    )
   })
 })

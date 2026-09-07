@@ -21,6 +21,19 @@ body,
   inset: 0;
 }
 
+/* LE TACTILE APPARTIENT AU TOUR, et il faut le dire au navigateur.
+   Sans cette ligne le geste de balayage est intercepté par le défilement natif
+   et le pincement de zoom, et la scène ne reçoit qu'un `touchmove` sur deux :
+   sur téléphone, l'app n'avançait pas d'un arrêt (rapporté le 2026-09-07).
+
+   Elle est posée sur le CANVAS et non sur `.stage` : `touch-action` se compose
+   avec celui des ancêtres, si bien qu'un `none` sur l'étage interdirait aussi
+   de faire défiler la fiche projet et le CV, qui vivent dedans et qui, eux,
+   ont bel et bien quelque chose à faire défiler. */
+.stage canvas {
+  touch-action: none;
+}
+
 /* --- HUD -------------------------------------------------------------------------- */
 /* Root swallows no events; interactive islands re-enable them. Wheel anywhere else
    falls through to drei's hidden scroller (risk point #2, "suspenders" half). */

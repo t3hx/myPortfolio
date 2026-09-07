@@ -178,6 +178,30 @@ describe('the store', () => {
  * couleur retenue devient un token, et ces trois boutons disparaissent. Ce qui
  * doit rester vrai, c'est qu'ils comparent bien ce qu'ils annoncent.
  */
+/**
+ * Le geste de saut au doigt (2026-09-07). Sans lui, l'intro était incoupable
+ * sur téléphone : vingt secondes obligatoires avant de pouvoir faire quoi que
+ * ce soit, sur le seul appareil qui n'a pas de molette.
+ */
+describe('the skip gesture on a touch screen', () => {
+  const running = { running: true, atHome: true }
+
+  it('takes a swipe, exactly like the wheel', () => {
+    expect(isSkipGesture({ type: 'touchmove' }, running)).toBe(true)
+    expect(isSkipGesture({ type: 'wheel' }, running)).toBe(true)
+  })
+
+  it('still refuses it away from home, or once the intro is over', () => {
+    expect(isSkipGesture({ type: 'touchmove' }, { running: true, atHome: false })).toBe(false)
+    expect(isSkipGesture({ type: 'touchmove' }, { running: false, atHome: true })).toBe(false)
+  })
+
+  it('is not a mere touch: only a move skips', () => {
+    expect(isSkipGesture({ type: 'touchstart' }, running)).toBe(false)
+    expect(isSkipGesture({ type: 'touchend' }, running)).toBe(false)
+  })
+})
+
 describe('the arbitration tooling', () => {
   it('names the phase playing at T, with no gap before or after', () => {
     expect(introPhase(0)).toBe('idea')
