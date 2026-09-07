@@ -147,3 +147,34 @@ describe('the intro layer in the stacking order', () => {
     expect(INTRO_SAFE_INSET_PX).toBe(right + width)
   })
 })
+
+/**
+ * Ce que la phase 3 confie au CSS (#146) : une boucle qui doit survivre à
+ * l'arrêt de l'horloge, et un mouvement auto-déclenché qui doit se couper.
+ */
+describe('the flicker that outlives the clock', () => {
+  const styles = readFileSync('src/styles/styles.css', 'utf8')
+
+  it('loops in CSS, in hard steps, forever', () => {
+    expect(styles).toMatch(/@keyframes intro-flicker/)
+    const rule = styles.match(/\n\.intro-flicker\s*{([^}]*)}/)![1]
+    expect(rule).toMatch(/animation:\s*intro-flicker 2\.7s steps\(1, end\) infinite/)
+  })
+
+  it('is mostly out, with brief returns to full — a failing neon', () => {
+    const frames = readFileSync('src/styles/styles.css', 'utf8')
+      .match(/@keyframes intro-flicker\s*{([\s\S]*?)\n}/)![1]
+      .matchAll(/opacity:\s*([\d.]+)/g)
+    const values = [...frames].map((m) => Number(m[1]))
+    expect(values.length).toBeGreaterThan(8)
+    expect(values.filter((v) => v >= 0.85).length).toBeGreaterThanOrEqual(4)
+    expect(values.filter((v) => v <= 0.22).length).toBeGreaterThan(values.length / 2)
+  })
+
+  it('is cut under reduced motion, like everything that starts by itself', () => {
+    const guarded = styles.match(
+      /@media \(prefers-reduced-motion: reduce\) {\s*\.intro-flicker\s*{\s*animation:\s*none;/,
+    )
+    expect(guarded).not.toBeNull()
+  })
+})
