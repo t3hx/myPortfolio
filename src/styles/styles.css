@@ -297,6 +297,162 @@ body,
   stroke-dashoffset: 1;
 }
 
+/* Le canvas du tourbillon (#146) est posé sur l'ÉCRAN et non sur le cadre :
+   ses particules partent jusqu'à 1 220 px de leur cible. Sa taille et son
+   décalage sont écrits en ligne, donc il ne peut pas hériter du `inset: 0`. */
+.intro-canvas--loose {
+  inset: auto;
+}
+
+/* L'IDENTITÉ (#146) — le nom et le titre, en HTML pour la netteté du texte et
+   son ombre portée. Elle vit dans le CADRE, à l'échelle du monde B : c'est le
+   seul transform CSS de l'intro, et il ne porte que du texte — les 2 346
+   tracés du plan restent, eux, sous un transform SVG vectoriel. */
+.intro-identity {
+  position: absolute;
+  inset: 0;
+  transform-origin: 0 0;
+  will-change: transform;
+}
+
+/* Le nom. La taille, la police et l'interlettrage sont écrits en ligne depuis
+   INTRO_NAME_FONT : le canvas hors écran échantillonne EXACTEMENT ces
+   valeurs-là pour donner une cible à chaque particule, et deux déclarations
+   séparées finiraient par diverger sans rien dire. */
+.intro-name {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  height: 116px;
+  line-height: 116px;
+  text-align: center;
+  color: var(--cream);
+  white-space: pre;
+}
+
+.intro-name span {
+  display: inline-block;
+  opacity: 0;
+  text-shadow:
+    0 0 26px color-mix(in srgb, var(--intro-accent) 35%, transparent),
+    0 0 7px color-mix(in srgb, var(--intro-accent) 65%, transparent);
+}
+
+/* Le titre gravé au laser. Son gris froid est celui du handoff, plus sourd que
+   le crème du nom : le titre accompagne, il n'annonce pas. */
+.intro-title {
+  position: absolute;
+  height: 40px;
+}
+
+.intro-title__text {
+  width: 100%;
+  text-align: center;
+  font-size: 24px;
+  font-weight: 500;
+  letter-spacing: 0.52em;
+  color: #c9d4d8;
+  text-shadow: 0 0 14px color-mix(in srgb, var(--intro-accent) 25%, transparent);
+  /* L'interlettrage s'ajoute APRÈS la dernière lettre : sans ce rattrapage le
+     texte centré penche d'un demi-cadratin vers la gauche. */
+  padding-left: 0.52em;
+}
+
+/* L'étincelle qui suit le bord de la gravure. Sa position et son scintillement
+   sont écrits par la boucle ; le halo est un `box-shadow`, pas un `filter`,
+   qui coûterait une rastérisation à chaque image. */
+.intro-spark {
+  position: absolute;
+  top: -4px;
+  width: 6px;
+  height: 38px;
+  border-radius: 3px;
+  background: var(--intro-core);
+  box-shadow:
+    0 0 18px 6px var(--intro-accent),
+    0 0 46px 18px color-mix(in srgb, var(--intro-accent) 40%, transparent);
+}
+
+/* « CREATIVE » clignote pour toujours, comme un néon qui fonctionne plus mal
+   que bien : majoritairement éteint, avec de brefs retours pleins.
+
+   La boucle est en CSS et pas dans la boucle d'images, parce que l'horloge de
+   l'intro s'arrête à la dernière image — un clignotement piloté par T se
+   figerait avec elle, sur une valeur quelconque. `steps(1, end)` est ce qui
+   fait un néon plutôt qu'une respiration : chaque palier tient jusqu'au
+   suivant, rien n'est interpolé. */
+@keyframes intro-flicker {
+  0% {
+    opacity: 1;
+  }
+  4% {
+    opacity: 0.1;
+  }
+  7% {
+    opacity: 1;
+  }
+  9% {
+    opacity: 0.14;
+  }
+  13% {
+    opacity: 0.85;
+  }
+  15% {
+    opacity: 0.08;
+  }
+  36% {
+    opacity: 0.18;
+  }
+  38% {
+    opacity: 1;
+  }
+  40% {
+    opacity: 0.1;
+  }
+  44% {
+    opacity: 0.9;
+  }
+  47% {
+    opacity: 0.12;
+  }
+  62% {
+    opacity: 0.2;
+  }
+  64% {
+    opacity: 1;
+  }
+  66% {
+    opacity: 0.09;
+  }
+  70% {
+    opacity: 0.16;
+  }
+  88% {
+    opacity: 0.12;
+  }
+  91% {
+    opacity: 1;
+  }
+  94% {
+    opacity: 0.1;
+  }
+  100% {
+    opacity: 0.18;
+  }
+}
+
+.intro-flicker {
+  animation: intro-flicker 2.7s steps(1, end) infinite;
+}
+
+/* Mouvement réduit : le mot reste écrit, plein, et ne clignote pas. Même règle
+   que partout ailleurs — ce qui démarre tout seul est coupé. */
+@media (prefers-reduced-motion: reduce) {
+  .intro-flicker {
+    animation: none;
+  }
+}
+
 /* Le flash du big-bang, sur tout l'écran : blanc au centre, accent, puis rien. */
 .intro-flash {
   position: absolute;

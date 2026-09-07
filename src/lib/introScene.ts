@@ -359,3 +359,130 @@ export const PHASE_WORDS = {
   incubation: { start: INTRO_BEATS.incubation, end: t2 - 0.35, letters: 10 },
   emergence: { start: INTRO_BEATS.emergence, end: t2 + 5.1, letters: 9 },
 } as const
+
+// ---------------------------------------------------------------- phase 3
+const { swirl, name: nameBeat, arc, etch, flicker } = INTRO_BEATS
+
+/**
+ * La ligne du nom dans le cadre. Le tourbillon y converge et le HTML s'y pose :
+ * les particules sont dans un canvas, les lettres dans le DOM, et les deux ne
+ * se rejoignent que parce qu'ils partagent CE repère et CE nombre.
+ */
+export const NAME_Y = CY - 60
+
+/** De combien une lettre monte en se posant, en px du cadre. */
+const NAME_RISE = 12
+
+/**
+ * Le tourbillon : il s'allume avec la phase et s'éteint pendant que les vraies
+ * lettres s'écrivent (15,5 → 16,3 s). Le relais est le point — les particules
+ * ne disparaissent pas, elles *deviennent* le nom.
+ */
+export function swirlOpacity(T: number): number {
+  return enter(0, 0.95, swirl, swirl + 0.5)(T) * (1 - draw(0, 1, t2 + 2.5, t2 + 3.3)(T))
+}
+
+export function swirlActive(T: number): boolean {
+  return T >= swirl - 0.02 && swirlOpacity(T) > 0.004
+}
+
+/**
+ * La position d'une particule du tourbillon, écrite dans `out` : une spirale
+ * qui se referme sur `(tx, ty)`, le pixel du nom qui lui a été attribué.
+ *
+ * Chaque particule a son retard et sa durée, ce qui fait que le nom se remplit
+ * par plaques et non d'un bloc ; l'enroulement de 4,3 rad est ce qui distingue
+ * un tourbillon d'une implosion. Le 0,9 sur l'ordonnée aplatit la spirale dans
+ * le sens du nom, qui est large et bas.
+ */
+export function swirlPoint(
+  p: Particle,
+  tx: number,
+  ty: number,
+  T: number,
+  out: { x: number; y: number },
+): void {
+  const u = clamp((T - swirl - p.delay) / p.dur, 0, 1)
+  const e = 0.5 - 0.5 * Math.cos(Math.PI * u)
+  const r = p.rad * (1 - e)
+  const ang = p.ang + 4.3 * e
+  out.x = tx + Math.cos(ang) * r
+  out.y = ty + Math.sin(ang) * r * 0.9
+}
+
+/** Une lettre du nom : son opacité, et de combien elle est encore en dessous. */
+export function nameLetter(i: number, T: number): { opacity: number; shift: number } {
+  const opacity = draw(0, 1, nameBeat + i * 0.045, nameBeat + 0.55 + i * 0.045)(T)
+  return { opacity, shift: (1 - opacity) * NAME_RISE }
+}
+
+/**
+ * Le plan du lab passe à 32 % pendant que le nom s'écrit : il reste le décor
+ * du lieu, il cesse d'être le sujet. Il ne remonte jamais — c'est cet état-là
+ * que la dernière image garde pour toute la visite.
+ */
+export function labOpacity(T: number): number {
+  return 1 - 0.68 * draw(0, 1, t2 + 1.6, t2 + 3.1)(T)
+}
+
+/**
+ * Le troisième triangle : il arrive par un ARC de cercle, pas par une ligne —
+ * le rayon se referme de 760 à 0 pendant que l'angle balaie −215° → −90°, donc
+ * il entre par la gauche, passe par le haut et se pose derrière le nom. Puis
+ * il s'assombrit, parce que la vedette revient au texte.
+ *
+ * Il porte ses trois côtés en néon là où le premier n'en portait qu'un et le
+ * second deux : c'est la même forme, arrivée au bout de son histoire.
+ */
+export function triangle3(T: number): TriangleState {
+  const u = draw(0, 1, arc, arc + 2.3)(T)
+  const theta = (lerp(-215, -90, u) * Math.PI) / 180
+  const radius = enter(760, 0, arc, arc + 2.3)(T)
+  const dim = draw(0, 1, arc + 2.3, arc + 3.4)(T)
+  return {
+    x: CX + Math.cos(theta) * radius,
+    y: NAME_Y + 14 + Math.sin(theta) * radius,
+    size: lerp(240, 470, u),
+    rot: lerp(-80, 0, u),
+    glow: lerp(2.2, 1.15, dim),
+    opacity: draw(0, 0.92, arc, arc + 0.8)(T) * (1 - 0.48 * dim),
+    lit: [0, 1, 2],
+    weight: 1.8,
+  }
+}
+
+export interface EtchState {
+  /** La part du titre déjà gravée, de 0 (rien) à 1 (tout). */
+  progress: number
+  /** L'étincelle n'existe que pendant la course du faisceau. */
+  sparkVisible: boolean
+  /** Son scintillement, jamais éteint : une gravure qui grésille. */
+  sparkOpacity: number
+}
+
+/**
+ * La gravure laser du titre : le texte est découvert de la gauche vers la
+ * droite en 1,7 s, et une étincelle suit le bord.
+ *
+ * Le scintillement est en `sin(T · 42)` — plus rapide qu'une image à 60 Hz ne
+ * peut le montrer proprement, et c'est exactement l'effet voulu : un grésillement,
+ * pas une pulsation. Il ne descend jamais sous 0,5 : une étincelle qui
+ * s'éteint cesse d'être une étincelle.
+ */
+export function etchTitle(T: number): EtchState {
+  const progress = draw(0, 1, etch, etch + 1.7)(T)
+  return {
+    progress,
+    sparkVisible: progress > 0.001 && progress < 0.999,
+    sparkOpacity: 0.75 + 0.25 * Math.sin(T * 42),
+  }
+}
+
+/**
+ * « CREATIVE » clignote une fois la gravure finie, et pour toujours. La boucle
+ * elle-même est en CSS : l'horloge de l'intro s'arrête à la dernière image, et
+ * un néon défaillant qui s'arrêterait avec elle ne serait qu'un mot pâle.
+ */
+export function flickerOn(T: number): boolean {
+  return T > flicker
+}

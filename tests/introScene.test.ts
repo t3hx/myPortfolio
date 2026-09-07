@@ -1,23 +1,32 @@
 import { describe, expect, it } from 'vitest'
 import { INTRO_PARTICLES } from '@/config/intro'
 import { LAB_PLAN_ORDER } from '@/content/labPlan'
-import { INTRO_BEATS, INTRO_PHASES } from '@/lib/intro'
+import { INTRO_BEATS, INTRO_DURATION_S, INTRO_PHASES } from '@/lib/intro'
 import {
   CX,
   CY,
   LAB_SUBGROUPS,
+  NAME_Y,
   cameraA,
+  etchTitle,
   flashOpacity,
+  flickerOn,
   labDashOffset,
+  labOpacity,
   makeParticles,
   makeStars,
+  nameLetter,
   novaPoint,
   novaOpacity,
   phaseWordAlpha,
   rings,
   starAlpha,
+  swirlActive,
+  swirlOpacity,
+  swirlPoint,
   triangle1,
   triangle2,
+  triangle3,
   worldA,
   worldB,
 } from '@/lib/introScene'
@@ -302,5 +311,161 @@ describe('the lab plan drawing', () => {
 
   it('is five waves per batch, 55 in all — the whole plan and nothing twice', () => {
     expect(order.length * LAB_SUBGROUPS).toBe(55)
+  })
+})
+
+/**
+ * La phase 3, « La réalisation » (#146). Le tourbillon, le nom, le triangle en
+ * arc, la gravure et le clignotement — encore une fois en fonctions pures de
+ * T, avec les nombres de la partition.
+ */
+const { swirl, name: nameBeat, arc, etch, flicker } = INTRO_BEATS
+
+describe('the swirl', () => {
+  const parts = makeParticles(INTRO_PARTICLES)
+
+  it('opens with the last phase and is out before the arc lands', () => {
+    expect(swirlOpacity(swirl - 0.05)).toBe(0)
+    expect(swirlOpacity(swirl + 0.5)).toBeCloseTo(0.95, 6)
+    // Éteint 15,5 → 16,3, pendant que les vraies lettres s'écrivent.
+    expect(swirlOpacity(15.9)).toBeGreaterThan(0)
+    expect(swirlOpacity(15.9)).toBeLessThan(0.95)
+    expect(swirlOpacity(16.3)).toBe(0)
+    expect(swirlActive(16.4)).toBe(false)
+  })
+
+  it('spirals each particle onto its pixel of the name', () => {
+    const out = { x: 0, y: 0 }
+    const target = { x: CX + 120, y: NAME_Y - 8 }
+    for (const p of [parts[0], parts[123], parts[899]]) {
+      // Au départ, à son rayon, quelque part sur le cercle.
+      swirlPoint(p, target.x, target.y, swirl + p.delay, out)
+      expect(Math.hypot(out.x - target.x, (out.y - target.y) / 0.9)).toBeCloseTo(p.rad, 6)
+      // À l'arrivée, exactement sur le pixel visé.
+      swirlPoint(p, target.x, target.y, swirl + p.delay + p.dur, out)
+      expect(out.x).toBeCloseTo(target.x, 9)
+      expect(out.y).toBeCloseTo(target.y, 9)
+    }
+  })
+
+  it('winds by 4.3 rad and never unwinds', () => {
+    const p = parts[42]
+    const out = { x: 0, y: 0 }
+    let previous = Infinity
+    for (let T = swirl; T <= swirl + p.delay + p.dur + 0.5; T += 0.02) {
+      swirlPoint(p, CX, NAME_Y, T, out)
+      const r = Math.hypot(out.x - CX, (out.y - NAME_Y) / 0.9)
+      expect(r).toBeLessThanOrEqual(previous + 1e-9)
+      previous = r
+    }
+    // L'enroulement complet : l'angle a gagné 4,3 rad quand le rayon est nul.
+    const half = swirl + p.delay + p.dur / 2
+    swirlPoint(p, CX, NAME_Y, half, out)
+    const angle = Math.atan2((out.y - NAME_Y) / 0.9, out.x - CX)
+    expect(Math.abs(Math.sin(angle - (p.ang + 4.3 * 0.5)))).toBeLessThan(1e-6)
+  })
+
+  it('holds every particle still until its own delay', () => {
+    const out = { x: 0, y: 0 }
+    const late = parts.reduce((a, b) => (a.delay > b.delay ? a : b))
+    swirlPoint(late, CX, NAME_Y, swirl + late.delay - 0.01, out)
+    expect(Math.hypot(out.x - CX, (out.y - NAME_Y) / 0.9)).toBeCloseTo(late.rad, 6)
+  })
+})
+
+describe('the name', () => {
+  it('writes letter by letter, 45 ms apart, rising into place', () => {
+    expect(nameLetter(0, nameBeat - 0.01)).toEqual({ opacity: 0, shift: 12 })
+    expect(nameLetter(0, nameBeat + 0.55).opacity).toBeCloseTo(1, 6)
+    expect(nameLetter(0, nameBeat + 0.55).shift).toBeCloseTo(0, 6)
+    // La quatorzième part 0,045 s × 14 plus tard.
+    expect(nameLetter(14, nameBeat + 0.6)).toEqual(nameLetter(0, nameBeat + 0.6 - 14 * 0.045))
+    const mid = nameLetter(3, nameBeat + 3 * 0.045 + 0.275)
+    expect(mid.shift).toBeCloseTo((1 - mid.opacity) * 12, 9)
+  })
+
+  it('is whole and still by the time the title is etched', () => {
+    for (let i = 0; i < 20; i++) expect(nameLetter(i, etch)).toEqual({ opacity: 1, shift: 0 })
+  })
+})
+
+describe('the plan behind the name', () => {
+  it('drops to 32 % while the real letters appear', () => {
+    expect(labOpacity(14.6)).toBeCloseTo(1, 6)
+    expect(labOpacity(16.1)).toBeCloseTo(0.32, 6)
+    expect(labOpacity(15.35)).toBeLessThan(1)
+    expect(labOpacity(15.35)).toBeGreaterThan(0.32)
+    // Il ne s'éclaircit plus jamais : la dernière image le montre à 32 %.
+    expect(labOpacity(INTRO_DURATION_S)).toBeCloseTo(0.32, 6)
+  })
+})
+
+describe('triangle3', () => {
+  it('flies an arc from the left and lands behind the name', () => {
+    const start = triangle3(arc + 0.001)
+    expect(Math.hypot(start.x - CX, start.y - (NAME_Y + 14))).toBeGreaterThan(700)
+    const landed = triangle3(arc + 2.3)
+    expect(landed.x).toBeCloseTo(CX, 6)
+    expect(landed.y).toBeCloseTo(NAME_Y + 14, 6)
+    expect(landed.size).toBeCloseTo(470, 6)
+    expect(landed.rot).toBeCloseTo(0, 6)
+  })
+
+  it('comes in on a circle, never in a straight line', () => {
+    // Le rayon décroît de 760 à 0 pendant que l'angle balaie −215° → −90° :
+    // le point ne passe donc jamais par la corde entre départ et arrivée.
+    const mid = triangle3(arc + 1.15)
+    const theta = Math.atan2(mid.y - (NAME_Y + 14), mid.x - CX)
+    expect(theta).toBeGreaterThan((-215 * Math.PI) / 180)
+    expect(theta).toBeLessThan((-90 * Math.PI) / 180)
+  })
+
+  it('lights all three sides, thick, where the others lit one or two', () => {
+    expect(triangle3(arc + 1).lit).toEqual([0, 1, 2])
+    expect(triangle3(arc + 1).weight).toBe(1.8)
+  })
+
+  it('dims once it is posed, to leave the text the stage', () => {
+    const posed = triangle3(arc + 2.3)
+    const dimmed = triangle3(arc + 3.4)
+    expect(dimmed.opacity).toBeCloseTo(posed.opacity * 0.52, 6)
+    expect(dimmed.glow).toBeCloseTo(1.15, 6)
+    expect(posed.glow).toBeCloseTo(2.2, 6)
+    // 18,2 → 19,3 : l'assombrissement est fini avant la dernière image.
+    expect(triangle3(INTRO_DURATION_S)).toEqual(dimmed)
+  })
+})
+
+describe('the laser etching', () => {
+  it('uncovers the title from the left in 1.7 s', () => {
+    expect(etchTitle(etch - 0.01).progress).toBe(0)
+    expect(etchTitle(etch + 1.7).progress).toBeCloseTo(1, 6)
+    expect(etchTitle(etch + 0.85).progress).toBeCloseTo(0.5, 6)
+  })
+
+  it('shows a spark only while the beam travels', () => {
+    expect(etchTitle(etch).sparkVisible).toBe(false)
+    expect(etchTitle(etch + 0.85).sparkVisible).toBe(true)
+    expect(etchTitle(etch + 1.7).sparkVisible).toBe(false)
+    expect(etchTitle(INTRO_DURATION_S).sparkVisible).toBe(false)
+  })
+
+  it('makes the spark shimmer, always visible, never steady', () => {
+    for (const T of [17, 17.5, 18]) {
+      const s = etchTitle(T).sparkOpacity
+      expect(s).toBeGreaterThanOrEqual(0.5)
+      expect(s).toBeLessThanOrEqual(1)
+    }
+    expect(etchTitle(17).sparkOpacity).not.toBeCloseTo(etchTitle(17.04).sparkOpacity, 3)
+  })
+})
+
+describe('the flicker', () => {
+  it('starts once the etching is done and never stops', () => {
+    expect(flickerOn(etch)).toBe(false)
+    expect(flickerOn(flicker - 0.01)).toBe(false)
+    expect(flickerOn(flicker + 0.01)).toBe(true)
+    // La dernière image le laisse allumé : la boucle CSS survit à l'horloge.
+    expect(flickerOn(INTRO_DURATION_S)).toBe(true)
   })
 })

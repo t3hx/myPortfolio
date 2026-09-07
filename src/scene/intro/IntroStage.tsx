@@ -1,26 +1,45 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
-import { INTRO_CORE, INTRO_CREAM, INTRO_FRAME, INTRO_PARTICLES } from '@/config/intro'
+import {
+  INTRO_CORE,
+  INTRO_CREAM,
+  INTRO_FRAME,
+  INTRO_NAME_FONT,
+  INTRO_PARTICLES,
+  INTRO_TITLE,
+  INTRO_TITLE_WIDTH,
+} from '@/config/intro'
+import { CV } from '@/content/cv'
 import { LAB_PLAN_ORDER, loadLabPlan, type LabPlan as LabPlanData } from '@/content/labPlan'
 import { introTime } from '@/lib/intro'
+import { nameTargets, type NameTarget } from '@/lib/nameTargets'
 import { labPlanSvg, rasterDensity, rasterizeLabPlan } from '@/lib/labRaster'
 import {
   CX,
   CY,
   LAB_SUBGROUPS,
+  NAME_Y,
   PHASE_WORDS,
   cameraA,
+  etchTitle,
   flashOpacity,
+  flickerOn,
   labDashOffset,
+  labOpacity,
   makeParticles,
   makeStars,
+  nameLetter,
   novaActive,
   novaOpacity,
   novaPoint,
   phaseWordAlpha,
   rings,
   starAlpha,
+  swirlActive,
+  swirlOpacity,
+  swirlPoint,
   triangle1,
   triangle2,
+  triangle3,
   worldA,
   worldB,
   type Particle,
@@ -58,6 +77,7 @@ interface IntroStageProps {
 const WORD_STYLE = {
   genesis: { left: 150, top: 168, textAlign: 'left' } as const,
   incubation: { left: INTRO_FRAME.width - 610, top: INTRO_FRAME.height - 186, textAlign: 'right' },
+  emergence: { left: INTRO_FRAME.width - 610, top: 152, textAlign: 'right' },
 } satisfies Record<string, CSSProperties>
 
 interface WordRefs {
@@ -100,8 +120,42 @@ export function IntroStage({ accent, screen }: IntroStageProps) {
   const worldBRoot = useRef<HTMLDivElement>(null)
   const worldBCam = useRef<SVGGElement>(null)
   const tri2 = useRef<SVGGElement>(null)
+  const canvasB = useRef<HTMLCanvasElement>(null)
+  const labWrap = useRef<SVGGElement>(null)
+  const tri3 = useRef<SVGGElement>(null)
+  const identity = useRef<HTMLDivElement>(null)
+  const nameLetters = useRef<(HTMLSpanElement | null)[]>([])
+  const titleText = useRef<HTMLDivElement>(null)
+  const spark = useRef<HTMLDivElement>(null)
+  const creative = useRef<HTMLSpanElement>(null)
   const genesis = useRef<WordRefs>(wordRefs())
   const incubation = useRef<WordRefs>(wordRefs())
+  const emergence = useRef<WordRefs>(wordRefs())
+
+  // Le nom vient du CV, pas d'une chaîne recopiée ici : c'est la même personne,
+  // et deux orthographes d'un nom propre sur le même site ne se remarqueraient
+  // qu'une fois en ligne. L'intro l'écrit en capitales, le CV comme il est.
+  const nameChars = useMemo(() => [...CV.identity.name.toUpperCase()], [])
+
+  // Les cibles du tourbillon : les pixels du nom, relevés UNE fois, à T = 0,
+  // et jamais à 13 s — la fonte doit être chargée, et l'attendre au moment de
+  // s'en servir ferait démarrer le tourbillon en retard ou à côté.
+  const targets = useRef<NameTarget[]>([])
+  useEffect(() => {
+    let alive = true
+    nameTargets(nameChars.join('')).then(
+      (found) => {
+        if (alive) targets.current = found
+      },
+      (error: unknown) => {
+        // Sans cibles il n'y a pas de tourbillon ; le nom s'écrit quand même.
+        console.warn("[intro] le nom ne s'échantillonne pas, pas de tourbillon", error)
+      },
+    )
+    return () => {
+      alive = false
+    }
+  }, [nameChars])
 
   // Le plan est demandé à T = 0 et dessiné à 9,5 s : 94 Ko de chemins n'ont
   // rien à faire dans le chunk d'App3D (#141). Un chargement en retard ne
@@ -186,7 +240,9 @@ export function IntroStage({ accent, screen }: IntroStageProps) {
     const rootEl = root.current
     const canvasEl = canvas.current
     const ctx = canvasEl?.getContext('2d')
-    if (!rootEl || !canvasEl || !ctx) return
+    const canvasBEl = canvasB.current
+    const ctxB = canvasBEl?.getContext('2d')
+    if (!rootEl || !canvasEl || !ctx || !canvasBEl || !ctxB) return
 
     const stars = makeStars()
     const parts = makeParticles(INTRO_PARTICLES)
@@ -199,8 +255,10 @@ export function IntroStage({ accent, screen }: IntroStageProps) {
       const rect = rootEl.getBoundingClientRect()
       density = Math.min(2, (window.devicePixelRatio || 1) * (rect.width / INTRO_FRAME.width))
       if (density <= 0 || !Number.isFinite(density)) density = 1
-      canvasEl.width = Math.round(screen.width * density)
-      canvasEl.height = Math.round(screen.height * density)
+      for (const c of [canvasEl, canvasBEl]) {
+        c.width = Math.round(screen.width * density)
+        c.height = Math.round(screen.height * density)
+      }
     }
     resize()
     const observer = new ResizeObserver(resize)
@@ -246,6 +304,10 @@ export function IntroStage({ accent, screen }: IntroStageProps) {
       if (!el) return
       const wb = worldB(T)
       el.style.opacity = String(wb.opacity)
+      // L'opacité est portée par le GROUPE, pas par le plan : à la dernière
+      // image le vectoriel cède la place à un bitmap, et le 32 % doit survivre
+      // à l'échange sans que personne n'ait à le réécrire.
+      labWrap.current?.setAttribute('opacity', labOpacity(T).toFixed(4))
       worldBCam.current?.setAttribute(
         'transform',
         `translate(${CX - CX * wb.scale} ${CY - CY * wb.scale}) scale(${wb.scale})`,
@@ -268,6 +330,77 @@ export function IntroStage({ accent, screen }: IntroStageProps) {
 
     drawLabRef.current = drawLab
 
+    // Le tourbillon vit dans le monde B, donc sur son propre canvas : celui du
+    // monde A part avec l'espace à 10,4 s, deux secondes avant que la première
+    // particule ne reparte vers le nom. Il couvre l'ÉCRAN et non le cadre —
+    // les particules démarrent jusqu'à 1 220 px de leur cible, très au-delà du
+    // cadre, et un canvas qui s'arrêterait à son bord les ferait surgir d'un
+    // rectangle.
+    let swirlPainted = false
+    const drawSwirl = (T: number) => {
+      const pts = targets.current
+      const on = swirlActive(T) && pts.length > 0
+      // Hors de sa fenêtre, le canvas n'est ni effacé ni peint : le tourbillon
+      // ne dure que trois secondes sur vingt.
+      if (!on && !swirlPainted) return
+      ctxB.setTransform(1, 0, 0, 1, 0, 0)
+      ctxB.clearRect(0, 0, canvasBEl.width, canvasBEl.height)
+      swirlPainted = on
+      if (!on) return
+      const wb = worldB(T)
+      const s = density * wb.scale
+      ctxB.setTransform(
+        s,
+        0,
+        0,
+        s,
+        density * (ox + CX - CX * wb.scale),
+        density * (oy + CY - CY * wb.scale),
+      )
+      paintSwirl(ctxB, parts, pts, T, accent)
+      ctxB.globalAlpha = 1
+    }
+
+    // L'identité — le nom et le titre — est du HTML posé sur le cadre, à
+    // l'échelle du monde B. `letterInk` retient ce qui a été écrit dans chaque
+    // lettre : quinze spans réécrits soixante fois par seconde pendant vingt
+    // secondes pour une valeur qui ne bouge que sur une demi-seconde.
+    const letterInk = new Float64Array(nameChars.length).fill(NaN)
+    let etched = NaN
+    const applyIdentity = (T: number) => {
+      const layer = identity.current
+      if (!layer) return
+      const wb = worldB(T)
+      layer.style.transform = `translate(${(CX - CX * wb.scale).toFixed(2)}px, ${(
+        CY -
+        CY * wb.scale
+      ).toFixed(2)}px) scale(${wb.scale.toFixed(5)})`
+      for (let i = 0; i < nameChars.length; i++) {
+        const el = nameLetters.current[i]
+        const { opacity, shift } = nameLetter(i, T)
+        if (!el || opacity === letterInk[i]) continue
+        letterInk[i] = opacity
+        el.style.opacity = opacity.toFixed(4)
+        el.style.transform = `translateY(${shift.toFixed(2)}px)`
+      }
+      const e = etchTitle(T)
+      if (titleText.current && e.progress !== etched) {
+        etched = e.progress
+        titleText.current.style.clipPath = `inset(-10px ${((1 - e.progress) * 100).toFixed(3)}% -10px 0)`
+      }
+      if (spark.current) {
+        spark.current.style.display = e.sparkVisible ? '' : 'none'
+        if (e.sparkVisible) {
+          spark.current.style.left = `${(e.progress * INTRO_TITLE_WIDTH - 3).toFixed(2)}px`
+          spark.current.style.opacity = e.sparkOpacity.toFixed(3)
+        }
+      }
+      // La classe pose une boucle CSS : elle survit à l'arrêt de l'horloge,
+      // et c'est tout l'intérêt — le néon continue de mal fonctionner pendant
+      // que le visiteur parcourt la pièce.
+      creative.current?.classList.toggle('intro-flicker', flickerOn(T))
+    }
+
     const draw = (T: number) => {
       const wa = worldA(T)
       if (world.current) {
@@ -281,8 +414,12 @@ export function IntroStage({ accent, screen }: IntroStageProps) {
         flash.current.style.opacity = String(f)
       }
       drawLab(T)
+      if (tri3.current) applyTriangle(tri3.current, triangle3(T))
+      drawSwirl(T)
+      applyIdentity(T)
       applyWord(genesis.current, T, PHASE_WORDS.genesis)
       applyWord(incubation.current, T, PHASE_WORDS.incubation)
+      applyWord(emergence.current, T, PHASE_WORDS.emergence)
     }
 
     let frame = 0
@@ -307,9 +444,11 @@ export function IntroStage({ accent, screen }: IntroStageProps) {
       observer.disconnect()
       drawLabRef.current = null
     }
-  }, [accent, screen, ox, oy])
+  }, [accent, screen, ox, oy, nameChars])
 
-  const vars = { '--intro-accent': accent } as CSSProperties
+  // Les deux encres de l'intro, pour ce que le CSS peint tout seul — le cœur
+  // blanc-cyan sert au canvas ET à l'étincelle du laser.
+  const vars = { '--intro-accent': accent, '--intro-core': INTRO_CORE } as CSSProperties
 
   return (
     <div ref={root} className="intro-stage" style={vars}>
@@ -342,20 +481,72 @@ export function IntroStage({ accent, screen }: IntroStageProps) {
           <g ref={worldBCam}>
             <path className="intro-dust" d={dust} />
             {/* On ne retire le vectoriel qu'une fois l'image PRÊTE : les
-                échanger sur un `introDone` ferait clignoter le plan. */}
-            {flattened ? (
-              <image
-                href={flattened}
-                x="0"
-                y="0"
-                width={INTRO_FRAME.width}
-                height={INTRO_FRAME.height}
-              />
-            ) : (
-              plan && <LabPlan plan={plan} />
-            )}
+                échanger sur un `introDone` ferait clignoter le plan. Le groupe
+                qui les enveloppe porte l'opacité du plan (100 % pendant qu'il
+                s'écrit, 32 % dès que le nom prend la vedette) : c'est le seul
+                élément qui traverse l'échange. */}
+            <g ref={labWrap}>
+              {flattened ? (
+                <image
+                  href={flattened}
+                  x="0"
+                  y="0"
+                  width={INTRO_FRAME.width}
+                  height={INTRO_FRAME.height}
+                />
+              ) : (
+                plan && <LabPlan plan={plan} />
+              )}
+            </g>
+            {/* Le troisième triangle : devant le plan, derrière le nom. */}
+            <NeonTriangle ref={tri3} accent={accent} core={INTRO_CORE} />
           </g>
         </svg>
+
+        {/* Le tourbillon, au-dessus du plan et sous les lettres qu'il compose. */}
+        <canvas ref={canvasB} className="intro-canvas intro-canvas--loose" style={cover} />
+
+        {/* L'IDENTITÉ — en HTML, pour la netteté du texte et son ombre portée.
+            Elle partage le repère du cadre et la ligne NAME_Y avec le canvas :
+            c'est ce qui fait que le tourbillon converge SUR les lettres. */}
+        <div ref={identity} className="intro-identity">
+          <div
+            className="intro-name"
+            style={{
+              top: NAME_Y - 58,
+              fontFamily: `${INTRO_NAME_FONT.family}, sans-serif`,
+              fontSize: INTRO_NAME_FONT.size,
+              letterSpacing: INTRO_NAME_FONT.letterSpacing,
+            }}
+          >
+            {nameChars.map((ch, i) => (
+              <span
+                key={i}
+                ref={(el) => {
+                  nameLetters.current[i] = el
+                }}
+              >
+                {ch}
+              </span>
+            ))}
+          </div>
+          <div
+            className="intro-title"
+            style={{ left: CX - INTRO_TITLE_WIDTH / 2, top: NAME_Y + 72, width: INTRO_TITLE_WIDTH }}
+          >
+            {/* Le `clip-path` de départ découvre RIEN : sans lui le titre
+                serait déjà écrit avant que le laser ne le grave. */}
+            <div
+              ref={titleText}
+              className="intro-title__text"
+              style={{ clipPath: 'inset(-10px 100% -10px 0)' }}
+            >
+              <span ref={creative}>{INTRO_TITLE.flicker}</span>
+              {INTRO_TITLE.rest}
+            </div>
+            <div ref={spark} className="intro-spark" style={{ display: 'none' }} />
+          </div>
+        </div>
       </div>
 
       {/* FX écran : le flash du big-bang, sur tout l'écran. Pas de vignette :
@@ -365,6 +556,7 @@ export function IntroStage({ accent, screen }: IntroStageProps) {
 
       <PhaseWord word="GENESIS" style={WORD_STYLE.genesis} refs={genesis.current} />
       <PhaseWord word="INCUBATION" style={WORD_STYLE.incubation} refs={incubation.current} />
+      <PhaseWord word="EMERGENCE" style={WORD_STYLE.emergence} refs={emergence.current} />
     </div>
   )
 }
@@ -418,6 +610,41 @@ function drawNova(ctx: CanvasRenderingContext2D, parts: Particle[], T: number, a
     for (const p of parts) {
       if (p.cls !== cls) continue
       novaPoint(p, T, point)
+      ctx.moveTo(point.x + r, point.y)
+      ctx.arc(point.x, point.y, r, 0, Math.PI * 2)
+    }
+    ctx.fill()
+  }
+}
+
+/**
+ * Le tourbillon : les mêmes 900 particules que la nova, chacune ramenée sur un
+ * pixel du nom. Les cibles sont réparties par le RANG de la particule, pas au
+ * hasard : deux particules voisines dans la liste visent deux pixels voisins,
+ * et c'est ce qui fait que le nom se remplit en plaques plutôt qu'en grésil.
+ */
+const SWIRL_RADIUS = [1.5, 2.2, 3.2] as const
+const SWIRL_ALPHA = [1, 0.9, 0.95] as const
+
+function paintSwirl(
+  ctx: CanvasRenderingContext2D,
+  parts: Particle[],
+  targets: NameTarget[],
+  T: number,
+  accent: string,
+) {
+  const alpha = swirlOpacity(T)
+  const point = { x: 0, y: 0 }
+  for (let cls = 0; cls < 3; cls++) {
+    ctx.fillStyle = cls === 2 ? INTRO_CORE : accent
+    ctx.globalAlpha = alpha * SWIRL_ALPHA[cls]
+    ctx.beginPath()
+    const r = SWIRL_RADIUS[cls]
+    for (let i = 0; i < parts.length; i++) {
+      const p = parts[i]
+      if (p.cls !== cls) continue
+      const target = targets[Math.floor((i * targets.length) / parts.length)]
+      swirlPoint(p, target[0], target[1], T, point)
       ctx.moveTo(point.x + r, point.y)
       ctx.arc(point.x, point.y, r, 0, Math.PI * 2)
     }

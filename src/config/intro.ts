@@ -76,3 +76,38 @@ export const INTRO_CREAM = '#EFE5D3'
 export const INTRO_CORE = '#EAFBFF'
 /** Le nombre de particules de la nova et du tourbillon (réglage final du handoff). */
 export const INTRO_PARTICLES = 900
+
+/**
+ * La police du nom, la seule chose que le tourbillon vise (#146).
+ *
+ * Elle est déclarée ICI parce qu'elle est écrite deux fois : par le CSS, qui
+ * pose les vraies lettres, et par le canvas hors écran, qui les échantillonne
+ * pour donner une cible à chaque particule. Deux tailles divergentes feraient
+ * converger le tourbillon sur un nom que personne n'affiche — sans erreur, et
+ * sans que rien ne le dise. `tests/intro.test.ts` verrouille le CSS dessus.
+ *
+ * `css` est la forme abrégée que `document.fonts.load()` et `ctx.font`
+ * attendent, et elle doit rester cohérente avec les deux nombres.
+ */
+export const INTRO_NAME_FONT = {
+  family: 'Michroma',
+  size: 96,
+  letterSpacing: 6,
+  css: '96px Michroma',
+} as const
+
+/**
+ * Le titre gravé au laser, en deux morceaux : celui qui clignote ensuite pour
+ * toujours, et le reste. **En anglais dans les deux langues** (décision
+ * produit, comme les mots de phase) : c'est un titre de métier, et sa largeur
+ * calibre la gravure.
+ */
+export const INTRO_TITLE = { flicker: 'CREATIVE', rest: ' DEVELOPER' } as const
+
+/**
+ * La largeur du bloc du titre, en px du cadre. Ce n'est pas une mise en page :
+ * c'est la course du faisceau. L'étincelle suit `progression × cette largeur`,
+ * et le `clip-path` découvre exactement ce bloc — changer l'un sans l'autre
+ * laisse l'étincelle à côté du bord qu'elle est censée graver.
+ */
+export const INTRO_TITLE_WIDTH = 580
