@@ -1,11 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import { INTRO_PARTICLES } from '@/config/intro'
+import { LAB_PLAN_ORDER } from '@/content/labPlan'
 import { INTRO_BEATS, INTRO_PHASES } from '@/lib/intro'
 import {
   CX,
   CY,
+  LAB_SUBGROUPS,
   cameraA,
   flashOpacity,
+  labDashOffset,
   makeParticles,
   makeStars,
   novaPoint,
@@ -14,7 +17,9 @@ import {
   rings,
   starAlpha,
   triangle1,
+  triangle2,
   worldA,
+  worldB,
 } from '@/lib/introScene'
 
 /**
@@ -202,5 +207,100 @@ describe('phaseWordAlpha', () => {
     const mid = phaseWordAlpha(genesis.end + 0.3, genesis)!
     expect(mid.opacity).toBeGreaterThan(0)
     expect(mid.opacity).toBeLessThan(1)
+  })
+})
+
+/**
+ * La phase 2, « La conception » (#145). Le panoramique, la plongée et la
+ * dérive des particules sont déjà verrouillés plus haut : ils appartiennent à
+ * la caméra A et à la nova, écrites avec la phase 1. Restent la cible de la
+ * plongée, le monde qui surgit dedans, et le plan qui se dessine.
+ */
+describe('triangle2', () => {
+  it('drifts slowly around the point the camera pans to', () => {
+    for (const T of [0, 3, 6.65, 8.8, 11]) {
+      const t = triangle2(T)
+      expect(t.x).toBeGreaterThan(CX - 620 - 15)
+      expect(t.x).toBeLessThan(CX - 620 + 15)
+      expect(t.y).toBeGreaterThan(CY - 250 - 11)
+      expect(t.y).toBeLessThan(CY - 250 + 11)
+    }
+    expect(triangle2(0).x).not.toBeCloseTo(triangle2(6).x, 3)
+  })
+
+  it('is the camera target: it must be whole before the pan arrives', () => {
+    // Il s'allume 7,0 → 8,0, pendant le panoramique (6,65 → 8,8) et non à son
+    // terme : une cible qui apparaîtrait à l'arrivée dirait que la caméra a
+    // bougé pour rien.
+    expect(triangle2(INTRO_PHASES[1].start).opacity).toBe(0)
+    expect(triangle2(INTRO_BEATS.pan + 0.5).opacity).toBeGreaterThan(0)
+    expect(triangle2(INTRO_BEATS.plunge).opacity).toBeCloseTo(1, 6)
+  })
+
+  it('lights two sides, where the first triangle lit only its top', () => {
+    expect(triangle2(9).lit).toEqual([0, 1])
+    expect(triangle1(3).lit).toEqual([0])
+  })
+})
+
+describe('worldB', () => {
+  it('is a seed until the plunge is under way, then fills the frame', () => {
+    expect(worldB(0).scale).toBeCloseTo(0.07, 6)
+    expect(worldB(plunge + 0.55).scale).toBeCloseTo(0.07, 6)
+    expect(worldB(plunge + 1.85).scale).toBeCloseTo(1, 6)
+    expect(worldB(plunge + 1.2).scale).toBeGreaterThan(0.07)
+    expect(worldB(plunge + 1.2).scale).toBeLessThan(1)
+  })
+
+  it('only appears once world A has started to go', () => {
+    // Le monde A s'efface 9,85 → 10,35 ; le monde B apparaît 9,5 → 10,15.
+    // Les deux fondus se croisent : rien ne montre un écran vide.
+    expect(worldB(plunge + 0.69).opacity).toBe(0)
+    expect(worldB(plunge + 1.35).opacity).toBeCloseTo(1, 6)
+    expect(worldA(plunge + 1.35).opacity).toBeLessThan(1)
+    expect(worldA(plunge + 1.35).opacity).toBeGreaterThan(0)
+  })
+})
+
+describe('the lab plan drawing', () => {
+  const order = LAB_PLAN_ORDER
+  const last = order.length - 1
+
+  it('holds every stroke hidden until its batch is called', () => {
+    expect(labDashOffset(0, 0, INTRO_BEATS.draw - 0.01)).toBe(1)
+    expect(labDashOffset(last, LAB_SUBGROUPS - 1, 12.33)).toBe(1)
+  })
+
+  it('starts batch k at 9.5 + k · 0.26, and its five waves 0.06 s apart', () => {
+    const started = (b: number, s: number, T: number) => labDashOffset(b, s, T) < 1
+    for (let b = 0; b < order.length; b++) {
+      const start = INTRO_BEATS.draw + b * 0.26
+      expect(started(b, 0, start - 0.001)).toBe(false)
+      expect(started(b, 0, start + 0.001)).toBe(true)
+      expect(started(b, 4, start + 0.239)).toBe(false)
+      expect(started(b, 4, start + 0.241)).toBe(true)
+    }
+  })
+
+  it('draws each wave in 0.72 s, and never un-draws it', () => {
+    expect(labDashOffset(0, 0, INTRO_BEATS.draw + 0.72)).toBe(0)
+    let previous = 1
+    for (let T = 9; T <= 13.2; T += 0.02) {
+      const v = labDashOffset(3, 2, T)
+      expect(v).toBeLessThanOrEqual(previous + 1e-9)
+      previous = v
+    }
+  })
+
+  it('has the whole plan drawn when the last phase opens', () => {
+    for (let b = 0; b < order.length; b++)
+      for (let s = 0; s < LAB_SUBGROUPS; s++) expect(labDashOffset(b, s, 13.1)).toBe(0)
+    // Le dernier trait se pose à 13,06 : le handoff écrit « 9,5 → 13 », et sa
+    // propre arithmétique déborde de 60 ms sur la phase 3. Le nombre gagne.
+    expect(labDashOffset(last, LAB_SUBGROUPS - 1, 13.05)).toBeGreaterThan(0)
+  })
+
+  it('is five waves per batch, 55 in all — the whole plan and nothing twice', () => {
+    expect(order.length * LAB_SUBGROUPS).toBe(55)
   })
 })
