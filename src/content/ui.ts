@@ -142,6 +142,14 @@ export const UI = {
      */
     exit: { fr: 'pour revenir', en: 'to go back' } as Localized,
     cover: { fr: 'illustration', en: 'illustration' } as Localized,
+    /** `aria-label` de la pellicule. Elle n'a pas de titre visible : les
+     *  vignettes se voient, et un intertitre au-dessus d'elles serait du
+     *  bruit pour tout le monde sauf pour un lecteur d'écran. */
+    media: { fr: 'Médias du projet', en: 'Project media' } as Localized,
+    /** Ce que la vignette de la vidéo annonce. Le glyphe ▶ est décoratif, donc
+     *  masqué aux lecteurs d'écran : sans ce mot, rien ne distinguerait la
+     *  vidéo des captures dans la liste des vignettes. */
+    video: { fr: 'Vidéo', en: 'Video' } as Localized,
   },
   cv: {
     /** `aria-label` de la section. */

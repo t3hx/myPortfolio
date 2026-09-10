@@ -679,21 +679,116 @@
 }
 .sheet--out { animation: sheet-out var(--t-sheet-out) linear both; }
 
+/* Deux colonnes, LA DÉMONSTRATION D'ABORD (#126). La composition s'est
+   inversée : la couverture portrait de 300 px cédait la largeur au texte, alors
+   qu'un projet se juge sur ce qu'il fait — une vidéo qu'on lit, des captures
+   qu'on regarde. Les médias prennent donc la colonne fluide, le texte une
+   colonne fixe de 420 px, et rien de ce que la fiche disait n'a disparu : c'est
+   le même contenu, dans une colonne plus étroite et plus haute.
+
+   `max-height` + `overflow` sur la colonne de texte, jamais sur la fiche : la
+   scène et sa pellicule doivent rester en vue pendant qu'on lit la stack. */
 .sheet__inner {
-  position: relative; width: min(1040px, 84%);
-  display: grid; grid-template-columns: 300px 1fr; gap: var(--s-7); align-items: stretch;
+  position: relative; width: min(1240px, 88%);
+  max-height: calc(100% - 128px);
+  display: grid; grid-template-columns: minmax(0, 1fr) 420px; gap: var(--s-7); align-items: stretch;
 }
 
-/* Couverture — PORTRAIT et pleine hauteur : c'est une page dans un dossier, pas
-   une vignette. Alignée sur la colonne de texte, elle tient la composition par
-   la gauche au lieu de flotter en haut. */
+/* ----- La colonne des médias : une scène, une légende, une pellicule ----- */
+
+.sheet__media { display: flex; flex-direction: column; gap: 12px; min-width: 0; min-height: 0; }
+
+/* La scène ne montre QU'UN média à la fois — c'est ce qui la distingue d'une
+   grille de vignettes : on regarde une chose, la pellicule dit ce qu'il y a
+   d'autre. Le 16/9 est celui d'une capture d'écran d'application.
+
+   Le `min()` sur la largeur borne la scène PAR LA HAUTEUR de la fenêtre sans
+   casser son ratio : sur un écran large et court, une scène calculée sur la
+   seule largeur de colonne aurait poussé la pellicule hors du cadre. Un
+   `max-height` ne l'aurait pas fait — il aplatit le ratio au lieu de réduire
+   les deux dimensions. */
+.sheet__stage {
+  position: relative; overflow: hidden; margin-inline: auto;
+  width: min(100%, calc((100vh - 240px) * 16 / 9));
+  aspect-ratio: 16 / 9;
+  border-radius: var(--r-bubble); border: 1px solid rgba(var(--cream-rgb), .12);
+  background: rgba(0, 0, 0, .28);
+  display: flex; align-items: center; justify-content: center;
+}
+/* `contain`, jamais `cover` : une capture d'interface qu'on rogne est une
+   capture qui ment sur ce qu'elle montre. Les vignettes, elles, peuvent rogner
+   — elles indexent, elles ne démontrent pas. */
+.sheet__player, .sheet__shot {
+  display: block; width: 100%; height: 100%; object-fit: contain;
+}
+
+/* Le repli hachuré — l'illustration générique quand la fiche n'a ni vidéo, ni
+   capture, ni couverture. Même facture que la photo du CV : la donnée décide,
+   et un `<img>` pointé sur un fichier absent afficherait une icône cassée, ce
+   qui est pire qu'un vide assumé. Il remplit désormais la scène, en paysage. */
 .sheet__cover {
-  min-height: 380px; border: 1px dashed rgba(var(--cream-rgb), .3); border-radius: var(--r-bubble);
+  width: 100%; height: 100%;
+  border: 1px dashed rgba(var(--cream-rgb), .3); border-radius: var(--r-bubble);
   background: repeating-linear-gradient(45deg, rgba(var(--cream-rgb), .05) 0 8px, transparent 8px 16px);
   display: flex; align-items: center; justify-content: center;
   font-family: ui-monospace, monospace; font-size: 11px; color: rgba(var(--cream-rgb), .5);
   object-fit: cover;
 }
+
+/* La légende dit ce que le média montre. Elle porte le même texte que l'`alt` :
+   une seule phrase écrite une seule fois, lue par l'œil comme par le lecteur
+   d'écran. Type de méta — elle accompagne l'image, elle ne la commente pas. */
+.sheet__caption {
+  margin: 0; text-align: center;
+  font-family: var(--font-ui); font-size: var(--fs-meta); letter-spacing: .04em;
+  color: rgba(var(--cream-rgb), .55);
+}
+
+/* La pellicule. Elle ne paraît qu'à partir de DEUX médias : à une vignette,
+   elle répète la scène en plus petit et donne à cliquer sur ce qu'on regarde
+   déjà. Elle passe à la ligne plutôt que de défiler — une rangée qui déborde
+   cache des captures sans le dire. */
+.sheet__strip {
+  display: flex; flex-wrap: wrap; justify-content: center; gap: 10px;
+  margin: 0; padding: 0; list-style: none;
+}
+.sheet__thumb {
+  appearance: none; display: block; position: relative; padding: 0; cursor: pointer;
+  width: 96px; aspect-ratio: 16 / 9; overflow: hidden;
+  border-radius: 8px; border: 1px solid rgba(var(--cream-rgb), .14);
+  background: rgba(var(--cream-rgb), .05);
+  transition: border-color var(--t-item), box-shadow var(--t-halo);
+}
+.sheet__thumb img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.sheet__thumb:hover, .sheet__thumb:focus-visible {
+  border-color: rgba(var(--glow-deep-rgb), .6); outline: none;
+  box-shadow: 0 0 0 1.5px rgba(var(--glow-deep-rgb), .35), 0 0 30px 4px rgba(var(--glow-deep-rgb), .32);
+}
+/* La vignette courante porte l'accent PLEIN, le survol le halo : l'une dit où
+   on est, l'autre où l'on irait. Deux états qui se ressembleraient ne diraient
+   plus lequel des deux on regarde. */
+.sheet__thumb[aria-current='true'] {
+  border-color: rgba(var(--glow-rgb), .85);
+  box-shadow: 0 0 0 1.5px rgba(var(--glow-rgb), .45);
+}
+/* Sans affiche, la vignette d'une vidéo n'a aucune image : elle montre son
+   rang plutôt qu'un carré noir, qui se lirait comme un échec de chargement. */
+.sheet__thumb-index {
+  display: flex; align-items: center; justify-content: center; height: 100%;
+  font-family: ui-monospace, monospace; font-size: 11px; color: rgba(var(--cream-rgb), .5);
+}
+.sheet__thumb-play {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  font-size: 13px; color: var(--cream);
+  background: radial-gradient(closest-side, rgba(0, 0, 0, .55), transparent);
+}
+
+/* ----- La colonne de texte ----- */
+
+/* Elle défile pour elle seule quand elle déborde. La fiche porte `panel`, donc
+   `CameraRig` ignore déjà toute molette qui la vise : ce conteneur n'a rien à
+   câbler, contrairement au CV qui, lui, arbitre cran par cran. */
+.sheet__body { min-height: 0; overflow-y: auto; padding-right: 6px; }
 
 .sheet__kicker { display: flex; align-items: center; gap: 9px; margin-bottom: 14px; }
 .sheet__dot {
@@ -1333,6 +1428,12 @@
   /* fiche : le relais ne se déclenche plus au milieu du vol, puisque le vol est
      coupé côté app — elle paraît d'un bloc, sans délai. */
   .sheet { animation: sheet-in var(--t-sheet-out) linear both !important; }
+  /* La VIDÉO de la fiche (#126) reste lisible, et c'est le critère ci-dessus
+     appliqué tel quel : elle ne part que sur un clic, ne se répète pas et ne
+     charge pas un octet avant qu'on le lui demande — il n'y a donc rien
+     d'autonome à couper. La retirer priverait de la démonstration les seules
+     personnes qui avaient demandé moins de mouvement, exactement comme couper
+     la main du télescope les aurait privées de l'affordance. */
   /* pastille : l'anneau tourne en boucle tout seul, il part. Le POINT reste —
      l'indication n'est pas du mouvement, et la retirer priverait d'affordance
      précisément les personnes qui ont demandé moins d'animation. */

@@ -1,6 +1,9 @@
+import { existsSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { DRAWER_CAPACITY, TAB_LABEL_MAX_CHARS } from '@/config/cabinet'
-import { GENERIC_COVER_SRC, PROJECTS, PROJECTS_EMPTY } from '@/content/projects'
+import type { Project } from '@/content/projects'
+import { GENERIC_COVER_SRC, PROJECTS, PROJECTS_EMPTY, SHOTS_MAX } from '@/content/projects'
+import { projectMedia, showsStrip, thumbSrc } from '@/lib/projectMedia'
 import { LOCALES, t } from '@/lib/locale'
 
 /**
@@ -72,10 +75,16 @@ describe('PROJECTS', () => {
   })
 
   it('ne prétend pas avoir une couverture qui n’existe pas', () => {
-    // L'illustration générique est un livrable de la session design (#78) :
-    // aucune fiche ne doit pointer un fichier en attendant.
+    // L'illustration générique est toujours un livrable en attente (#78) :
+    // personne ne doit la déclarer avant que le fichier existe.
+    //
+    // La règle a CHANGÉ de forme avec #126, et c'est la bonne : elle exigeait
+    // `cover === undefined` partout, ce qui interdisait aussi la première vraie
+    // couverture dessinée. Ce qui compte n'est pas qu'aucune fiche n'ait
+    // d'image, c'est qu'aucune n'en promette une qui manque — vérifié pour
+    // toutes les images de la fiche par « ne pointe aucun fichier local absent ».
     for (const p of PROJECTS) {
-      expect(p.cover, p.slug).toBeUndefined()
+      expect(p.cover, p.slug).not.toBe(GENERIC_COVER_SRC)
     }
   })
 })
@@ -119,5 +128,126 @@ describe("l'ordre de la commode", () => {
     const links = PROJECTS.flatMap((p) => p.links ?? []).map((l) => l.href)
     expect(links.every((href) => href.startsWith('https://github.com/'))).toBe(true)
     expect(links).toContain('https://github.com/t3hx/celestial-walker-nuxt')
+  })
+})
+
+/**
+ * Les médias d'une fiche (#126). Trois disciplines, dont deux ne se voient pas
+ * en relisant la donnée :
+ *
+ *   - **l'ordre est celui de la pellicule** : la vidéo d'abord, les captures
+ *     ensuite. Il est dit une seule fois, dans `projectMedia`, et le composant
+ *     ne le redécide pas ;
+ *   - **l'absence d'un média est le repli, jamais une erreur de chargement.**
+ *     Aucun `onError` n'est câblé — donc un chemin déclaré doit exister, sinon
+ *     le visiteur reçoit une icône cassée que rien ne rattrape ;
+ *   - **les vidéos sont servies par le VPS** (décision de l'auteur, 2026-09-08),
+ *     pas empaquetées par l'app : une vidéo par projet, c'est un ordre de
+ *     grandeur au-dessus du `.glb`, et l'image Docker n'a pas à la porter.
+ */
+describe('les médias d’une fiche', () => {
+  const bare: Project = {
+    slug: 'demo',
+    name: 'Démo',
+    tabLabel: 'Démo',
+    tagline: { fr: 'Une phrase.', en: 'One sentence.' },
+    year: '2026',
+    role: { fr: 'Développement', en: 'Development' },
+    stack: ['TypeScript'],
+    highlights: { fr: ['Un fait.'], en: ['One fact.'] },
+  }
+  const shot = (n: number) => ({
+    src: `/media/demo-${n}.webp`,
+    alt: { fr: `Vue ${n}`, en: `View ${n}` },
+  })
+  const video = {
+    src: 'https://media.example.com/demo.mp4',
+    poster: '/media/demo-poster.webp',
+    alt: { fr: 'La démo en trente secondes.', en: 'The demo in thirty seconds.' },
+  }
+
+  it('ne montre rien quand il n’y a rien à montrer', () => {
+    // Zéro média est un état normal : la scène retombe sur `cover`, puis sur le
+    // placeholder. Rien ne charge, rien n'échoue, rien ne s'excuse.
+    expect(projectMedia(bare)).toEqual([])
+    expect(showsStrip(projectMedia(bare))).toBe(false)
+  })
+
+  it('range la vidéo en tête et les captures ensuite', () => {
+    const media = projectMedia({ ...bare, video, shots: [shot(1), shot(2)] })
+    expect(media.map((m) => m.kind)).toEqual(['video', 'shot', 'shot'])
+    expect(media[0].src).toBe(video.src)
+  })
+
+  it('sait n’avoir que des captures, ou que la vidéo', () => {
+    expect(projectMedia({ ...bare, shots: [shot(1), shot(2)] }).map((m) => m.kind)).toEqual([
+      'shot',
+      'shot',
+    ])
+    expect(projectMedia({ ...bare, video }).map((m) => m.kind)).toEqual(['video'])
+  })
+
+  it('n’ouvre la pellicule qu’à partir de deux médias', () => {
+    // Une pellicule d'une vignette répète la scène en plus petit et donne à
+    // cliquer sur ce qu'on regarde déjà.
+    expect(showsStrip(projectMedia({ ...bare, video }))).toBe(false)
+    expect(showsStrip(projectMedia({ ...bare, video, shots: [shot(1)] }))).toBe(true)
+  })
+
+  it('donne à la vignette d’une vidéo son affiche, à celle d’une capture l’image même', () => {
+    const media = projectMedia({ ...bare, video, shots: [shot(1)] })
+    expect(thumbSrc(media[0])).toBe(video.poster)
+    expect(thumbSrc(media[1])).toBe(shot(1).src)
+    // Sans affiche, la vignette n'a AUCUNE image : la vidéo ne se charge qu'au
+    // geste, donc il n'existe pas encore une seule frame à en extraire.
+    expect(
+      thumbSrc(projectMedia({ ...bare, video: { ...video, poster: undefined } })[0]),
+    ).toBeUndefined()
+  })
+
+  it('dit ce que chaque média montre, dans les deux langues', () => {
+    // La légende sous la scène EST le nom accessible du média : une capture
+    // muette, c'est une image dont personne ne peut dire ce qu'elle prouve.
+    for (const p of PROJECTS) {
+      for (const item of projectMedia(p)) {
+        for (const locale of LOCALES) {
+          expect(t(item.alt, locale), `${p.slug} · ${item.src} (${locale})`).not.toBe('')
+        }
+      }
+    }
+  })
+
+  it('tient dans la pellicule', () => {
+    // Au-delà de SHOTS_MAX, la rangée passe à la ligne dans le cadre de 1280 —
+    // et une pellicule sur deux lignes n'est plus une pellicule.
+    for (const p of PROJECTS) {
+      if (p.shots === undefined) continue
+      expect(p.shots.length, p.slug).toBeGreaterThan(0)
+      expect(p.shots.length, p.slug).toBeLessThanOrEqual(SHOTS_MAX)
+    }
+  })
+
+  it('ne sert un média que par le VPS ou depuis `public/`', () => {
+    // Deux formes admises, et rien d'autre : une URL absolue en https (le VPS,
+    // qui garde la main sur le fichier), ou un chemin absolu servi par l'app.
+    // Du http en clair ferait tomber la page en contenu mixte, sans un mot.
+    for (const p of PROJECTS) {
+      for (const src of [p.cover, ...projectMedia(p).flatMap((m) => [m.src, m.poster])]) {
+        if (src === undefined) continue
+        expect(src.startsWith('https://') || src.startsWith('/'), `${p.slug} · ${src}`).toBe(true)
+      }
+    }
+  })
+
+  it('ne pointe aucun fichier local absent', () => {
+    // L'absence d'un média est le repli ; un fichier manquant, lui, est une
+    // icône cassée que rien ne rattrape — aucun `onError` n'est câblé nulle
+    // part, c'est la donnée qui décide. Un chemin déclaré doit donc exister.
+    for (const p of PROJECTS) {
+      for (const src of [p.cover, ...projectMedia(p).flatMap((m) => [m.src, m.poster])]) {
+        if (src === undefined || !src.startsWith('/')) continue
+        expect(existsSync(`public${src}`), `${p.slug} · ${src}`).toBe(true)
+      }
+    }
   })
 })
