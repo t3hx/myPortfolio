@@ -133,9 +133,17 @@ Sa durée est plus courte que la frappe de la phrase (1,2 à 2 s) **exprès** : 
 
 Maquettes : `screens/03b-project.html` (fiche) et `screens/03c-project-empty.html` (tiroir vide).
 
-**La fiche est une bulle à l'échelle de l'écran.** Même anatomie en trois temps —
-kicker à point accent · titre · une seule phrase en Newsreader italique — même
-matériau, même accent. Ce qui change est l'échelle, et la raison en est
+**Réagencée le 2026-09-08 (#126) autour d'une vidéo et de plusieurs captures.**
+L'anatomie précédente — datée du 2026-08-10, session design d'origine — posait
+une couverture portrait de 300 px à gauche et donnait la colonne fluide au
+texte. Elle avait été dessinée **avant** qu'on sache ce qu'un projet aurait
+vraiment à montrer : une illustration, un titre, une accroche et deux faits.
+Elle disait ce qu'un projet _est_ ; elle ne montrait pas ce qu'il _fait_. Rien
+de ce qu'elle contenait n'a disparu — tout a changé de colonne.
+
+**La fiche reste une bulle à l'échelle de l'écran** : même anatomie en trois
+temps — kicker à point accent · titre · une seule phrase en Newsreader italique
+— même matériau, même accent. Ce qui change est l'échelle, et la raison en est
 mécanique : la scène a disparu du cadre, le dossier la remplit entièrement.
 
 - **Le verre reste du verre**, à la densité haute de la plage : `rgba(24,17,12, .74)` +
@@ -144,10 +152,72 @@ mécanique : la scène a disparu du cadre, le dossier la remplit entièrement.
   le `backdrop-filter` le laisse transparaître, ce qui est exactement ce pour quoi
   la direction l'a retenu. Un dégradé radial crème à .07 empêche le verre de lire
   comme un aplat mort.
-- **Composition en deux colonnes**, `min(1040px, 84%)` centrée : couverture 300 px
-  à gauche, texte à droite, gouttière 48. La couverture est **portrait et pleine
-  hauteur** — c'est une page dans un dossier, pas une vignette ; alignée sur la
-  colonne de texte elle tient la composition par la gauche au lieu de flotter.
+- **Composition en deux colonnes, la démonstration d'abord** : `min(1240px, 88%)`
+  centrée, **médias en colonne fluide** à gauche, **texte en 420 px fixes** à
+  droite, gouttière 48. L'inversion est le cœur du réagencement : un projet se
+  juge sur ce qu'il fait, et la colonne large appartient donc à ce qu'on regarde.
+
+### La colonne des médias
+
+- **Une scène, une légende, une pellicule.** La scène ne montre **qu'un média à
+  la fois** — c'est ce qui la distingue d'une grille de vignettes : on regarde
+  une chose, la pellicule dit ce qu'il y a d'autre. Ratio **16/9**, celui d'une
+  capture d'écran d'application ; bord crème .12, rayon 10, fond noir .28.
+- **Les images sont en `contain`, jamais en `cover`.** Une capture d'interface
+  qu'on rogne est une capture qui ment sur ce qu'elle montre. Les vignettes, à
+  l'inverse, rognent : elles indexent, elles ne démontrent pas.
+- **La scène est bornée par la HAUTEUR de la fenêtre**, via
+  `width: min(100%, calc((100vh - 240px) * 16 / 9))`. Sur un écran large et
+  court, une scène calculée sur la seule largeur de colonne pousserait la
+  pellicule hors du cadre ; un `max-height` ne réglerait rien, il aplatirait le
+  ratio au lieu de réduire les deux dimensions. Mesuré : inerte à 1280 × 720
+  comme à 1920 × 1080, elle ne mord qu'en dessous.
+- **Légende** : le texte de l'`alt` du média, en type de méta centré sous la
+  scène. Une seule phrase, écrite une seule fois, lue par l'œil comme par le
+  lecteur d'écran. Une capture dont personne ne peut dire ce qu'elle prouve ne
+  prouve rien.
+- **Pellicule** : vignettes 96 px en 16/9, gouttière 10, centrées, qui passent à
+  la ligne plutôt que de défiler — une rangée qui déborde cache des captures
+  sans le dire. **Elle ne paraît qu'à partir de DEUX médias** : à une vignette,
+  elle répète la scène en plus petit et donne à cliquer sur ce qu'on regarde
+  déjà. Six médias tiennent sur une ligne dans le cadre de 1280, d'où
+  `SHOTS_MAX = 5` — la limite est une largeur, pas un goût.
+- **La vignette courante porte l'accent plein, le survol le halo.** L'une dit où
+  l'on est, l'autre où l'on irait ; deux états qui se ressembleraient ne diraient
+  plus lequel des deux on regarde.
+- **La vidéo ne part jamais toute seule.** Pas de lecture automatique, pas de
+  répétition, `preload="none"` — aucun octet ne part avant le clic. Sur cinq
+  fiches, la simple ouverture du tiroir coûterait sinon plusieurs mégaoctets que
+  personne n'a demandés. Les contrôles sont ceux du navigateur : ils affichent
+  déjà un grand bouton de lecture sur l'affiche, ils savent le plein écran, la
+  progression et le son.
+- **Sous `prefers-reduced-motion`, la vidéo reste lisible**, et c'est le critère
+  du système appliqué tel quel : ce qui part tout seul est neutralisé, ce qu'un
+  geste déclenche est conservé. Rien ici n'est autonome, il n'y a donc rien à
+  couper — et la retirer priverait de la démonstration les seules personnes qui
+  avaient demandé moins de mouvement, comme couper la main du télescope les
+  aurait privées de son affordance.
+- **Le repli descend trois marches, et aucune n'est une erreur** : le média
+  choisi, sinon l'illustration fixe de la fiche (`cover`), sinon le placeholder
+  hachuré. Aucun `onError` n'est câblé nulle part — même règle que les icônes du
+  CV, **c'est la donnée qui décide**. `cover` a changé de rôle sans changer de
+  nom : elle était LA couverture, elle est le dernier recours de la scène.
+- **Une vidéo sans affiche n'a aucune image à montrer** avant d'être chargée,
+  puisqu'elle ne se charge qu'au geste : sa vignette affiche alors son rang, et
+  non un carré noir qui se lirait comme un échec.
+- **L'hébergement est une donnée, pas du code.** Le `src` est une adresse et
+  rien d'autre : une URL absolue en https servie par le **VPS** (décision de
+  l'auteur, 2026-09-08 — le `.glb` pèse déjà 3 Mo, l'image Docker n'a pas à
+  porter une vidéo par projet) ou un chemin absolu servi depuis `public/`. Le
+  composant ne sait pas laquelle des deux il tient. À savoir : **une vidéo
+  affichée sur une page publique n'est jamais privée** — « non répertorié » veut
+  dire « qui a le lien la regarde », et le lien est dans le DOM. Servir depuis le
+  VPS ne rend pas la vidéo secrète, ça rend son adresse révocable.
+
+### La colonne de texte
+
+Inchangée dans son anatomie, plus étroite et plus haute :
+
 - **Titre** : Space Grotesk 500, `--fs-display` 44/1,05, `-.015em`. Le nom d'un
   projet relève de ce qui s'opère, pas de ce que la pièce dit — la voix italique
   est réservée à la phrase, une seule, comme dans une bulle. **`--fs-display` est
@@ -162,14 +232,18 @@ mécanique : la scène a disparu du cadre, le dossier la remplit entièrement.
   `.bubble--interactive`). Une fiche sans lien n'affiche **rien** : trois des cinq
   dépôts sont privés, et la règle de `MENU_SOCIALS` vaut ici — jamais de porte
   fermée à clé.
-- **Couverture manquante** : illustration générique (`GENERIC_COVER_SRC`), jamais
-  un trou.
+- **Elle défile pour elle seule** quand elle déborde. La fiche porte `.panel`,
+  donc `CameraRig` ignore déjà toute molette qui la vise : ce conteneur n'a rien
+  à câbler, contrairement au CV qui, lui, arbitre cran par cran parce qu'il ne
+  porte pas la classe.
 
 **La fiche couvre la barre de menu** — l'empilement `panneaux 300 > barre 200` est
 une contrainte de code, pas un choix pris ici. Elle est donc **modale par
 construction**, et sa sortie doit être la chose la plus évidente après le titre :
-deux sorties toujours, `Échap` affiché en pastille mono et un bouton rond en haut
-à droite. Jamais une seule des deux.
+deux sorties toujours, `Échap` affiché en pastille mono avec ce qu'il fait (#136)
+et un bouton rond en haut à droite. Jamais une seule des deux. Rien dans la fiche
+n'écoute le clavier, et c'est ce qui garantit qu'aucune visionneuse n'avalera la
+seule issue.
 
 ### Le tiroir vide n'ouvre aucune fiche
 

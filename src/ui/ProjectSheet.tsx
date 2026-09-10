@@ -2,23 +2,33 @@ import { type CSSProperties, useEffect, useState } from 'react'
 import { PROJECTS } from '@/content/projects'
 import { UI } from '@/content/ui'
 import { t } from '@/lib/locale'
+import { projectMedia, showsStrip, thumbSrc } from '@/lib/projectMedia'
 import { useLocale } from '@/state/locale'
 import { useInteraction } from '@/state/interaction'
 
 /**
- * La fiche projet plein écran (issue #83) — le deuxième clic, enfin fermé.
+ * La fiche projet plein écran (issue #83, réagencée par #126).
  *
  * Elle recrée `design/screens/03b-project.html`, dont l'anatomie vit dans
  * `src/styles/tokens.css` avec celle de la bulle et de la barre : l'app et la
  * maquette partagent une seule définition, et rien ne peut diverger en silence.
  *
+ * **Elle montre d'abord CE QUE LE PROJET FAIT** — une vidéo qu'on lit, des
+ * captures qu'on regarde — et dit ensuite ce qu'il est. La composition de la
+ * session design du 2026-08-10 donnait la colonne fluide au texte et 300 px à
+ * une illustration ; elle avait été dessinée avant qu'on sache ce qu'un projet
+ * aurait vraiment à montrer. Rien de ce qu'elle disait n'a disparu.
+ *
  * **La classe `panel` est load-bearing.** `CameraRig` ignore toute molette dont
  * la cible est dans `.panel` — sans elle, le tour continuerait de tourner sous
- * la fiche. Le nom compte, ce n'est pas de la décoration.
+ * la fiche. Le nom compte, ce n'est pas de la décoration ; c'est aussi ce qui
+ * fait défiler la colonne de texte sans une ligne de câblage.
  *
  * La fiche couvre la barre de menu : l'empilement `panneaux 300 > barre 200`
  * fait d'elle un modal par construction, d'où deux sorties toujours offertes,
- * `Échap` (câblé dans `CameraRig`) et le bouton de fermeture.
+ * `Échap` (câblé dans `CameraRig`, sur `window`) et le bouton de fermeture.
+ * Aucun gestionnaire de clavier ici : ce serait le seul moyen d'avaler la
+ * touche, et la visionneuse n'a pas le droit de fermer la seule issue.
  */
 
 /** Doit égaler `--t-sheet-out` de tokens.css — `tests/projectSheet.test.ts`
@@ -46,6 +56,13 @@ export function ProjectSheet() {
     return () => window.clearTimeout(timer)
   }, [visible])
 
+  // Le média regardé. Il repart à zéro quand la fiche change de projet : la
+  // troisième capture d'Owlog n'a rien à voir avec la troisième de Solarsys, et
+  // rouvrir une fiche sur la vue qu'on regardait dans une AUTRE serait un état
+  // que personne n'a demandé.
+  const [active, setActive] = useState(0)
+  useEffect(() => setActive(0), [selected])
+
   // La fiche reste lisible pendant tout son fondu de sortie sans qu'on ait à la
   // mettre en cache : `Échap` rend la phase à PARKED tout de suite, alors que
   // `selectedProject` n'est vidé qu'à l'atterrissage du dossier, 850 ms plus
@@ -54,6 +71,13 @@ export function ProjectSheet() {
   const project = PROJECTS.find((p) => p.slug === selected) ?? null
 
   if (!mounted || !project) return null
+
+  const media = projectMedia(project)
+  // Borné EN PLUS de la remise à zéro : un effet ne s'exécute qu'après le
+  // rendu, donc `active` survit une image au changement de projet. Sans cette
+  // borne, une fiche ouverte sur sa quatrième capture en montrerait une vide
+  // le temps d'une image en passant à un projet qui n'en a que deux.
+  const shown = media[Math.min(active, media.length - 1)]
 
   return (
     <section
@@ -91,17 +115,86 @@ export function ProjectSheet() {
       </div>
 
       <div className="sheet__inner">
-        {/* Sans couverture dessinée, le placeholder hachuré EST l'illustration
-            générique — même facture que la photo du CV. Une image pointée sur un
-            fichier absent afficherait une icône cassée, ce qui est pire qu'un
-            vide assumé. */}
-        {project.cover ? (
-          <img className="sheet__cover" src={project.cover} alt="" />
-        ) : (
-          <div className="sheet__cover">{t(UI.sheet.cover, locale)}</div>
-        )}
+        <div className="sheet__media">
+          {/* La scène ne montre QU'UN média à la fois, et son repli descend
+              trois marches : le média choisi, sinon l'illustration fixe de la
+              fiche, sinon le placeholder hachuré. Aucune n'est un état
+              d'erreur — même règle que les icônes du CV, aucun `onError` n'est
+              câblé, c'est la donnée qui décide. */}
+          <div className="sheet__stage">
+            {shown?.kind === 'video' ? (
+              // `preload="none"` : aucun octet ne part avant le clic. C'est ce
+              // qui rend la vidéo gratuite pour qui ne la regarde pas — sur
+              // cinq fiches, la simple ouverture du tiroir coûterait sinon
+              // plusieurs mégaoctets que personne n'a demandés.
+              //
+              // Les contrôles sont ceux du navigateur, et c'est délibéré : ils
+              // affichent déjà un grand bouton de lecture sur l'affiche, ils
+              // savent le plein écran, la barre de progression et le son. Un
+              // lecteur maison redessinerait tout ça moins bien.
+              //
+              // La clé force le remontage au changement de média : passer à une
+              // capture arrête la lecture, plutôt que de laisser un son
+              // continuer derrière une image fixe.
+              <video
+                key={shown.src}
+                className="sheet__player"
+                src={shown.src}
+                poster={shown.poster}
+                preload="none"
+                controls
+                playsInline
+                aria-label={t(shown.alt, locale)}
+              />
+            ) : shown ? (
+              <img className="sheet__shot" src={shown.src} alt={t(shown.alt, locale)} />
+            ) : project.cover ? (
+              <img className="sheet__shot" src={project.cover} alt="" />
+            ) : (
+              <div className="sheet__cover">{t(UI.sheet.cover, locale)}</div>
+            )}
+          </div>
 
-        <div>
+          {/* La légende porte le texte de l'`alt` : une seule phrase, écrite une
+              seule fois, lue par l'œil comme par le lecteur d'écran. */}
+          {shown && <p className="sheet__caption">{t(shown.alt, locale)}</p>}
+
+          {showsStrip(media) && (
+            <ul className="sheet__strip" aria-label={t(UI.sheet.media, locale)}>
+              {media.map((item, i) => {
+                const thumb = thumbSrc(item)
+                return (
+                  <li key={item.src}>
+                    <button
+                      className="sheet__thumb"
+                      type="button"
+                      aria-current={i === Math.min(active, media.length - 1)}
+                      aria-label={
+                        item.kind === 'video'
+                          ? `${t(UI.sheet.video, locale)} — ${t(item.alt, locale)}`
+                          : t(item.alt, locale)
+                      }
+                      onClick={() => setActive(i)}
+                    >
+                      {thumb ? (
+                        <img src={thumb} alt="" />
+                      ) : (
+                        <span className="sheet__thumb-index">{i + 1}</span>
+                      )}
+                      {item.kind === 'video' && (
+                        <span className="sheet__thumb-play" aria-hidden="true">
+                          ▶
+                        </span>
+                      )}
+                    </button>
+                  </li>
+                )
+              })}
+            </ul>
+          )}
+        </div>
+
+        <div className="sheet__body">
           <header className="sheet__kicker">
             <span className="sheet__dot" />
             <span className="sheet__label">{t(UI.sheet.kicker, locale)}</span>

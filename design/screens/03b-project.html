@@ -16,19 +16,66 @@
 </style>
 </head>
 <body>
-<!-- Fond : la capture réelle de fin de vol (design/renders/spikes/), pas un rendu
-     de référence — c'est littéralement ce que le panneau recouvre. -->
+<!-- Réagencée le 2026-09-08 (#126) : la fiche montre CE QUE LE PROJET FAIT.
+     Une vidéo qu'on lit, plusieurs captures qu'on regarde, et tout le texte
+     d'avant — kicker, titre, phrase, année, rôle, stack, faits saillants,
+     liens — dans la colonne de droite.
+
+     Fond : la capture réelle de fin de vol (design/renders/spikes/), pas un
+     rendu de référence — c'est littéralement ce que le panneau recouvre.
+     Les médias de cette page sont les rendus de référence du dépôt : la
+     maquette a besoin d'images vraies, et celles-là sont déjà versionnées. -->
 <main class="stage" style="background-image:url(../renders/spikes/cabinet-folder-flight.png)">
   <section class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title">
     <div class="sheet__close">
-      <span class="sheet__key">Échap</span>
+      <span class="sheet__key sheet__key--cue"><span class="cue">Échap</span></span>
+      <span class="sheet__exit cue">pour revenir</span>
       <button class="sheet__close-btn" type="button" aria-label="Fermer la fiche">&times;</button>
     </div>
 
     <div class="sheet__inner">
-      <div class="sheet__cover">illustration</div>
+      <!-- La scène : UN média à la fois, la pellicule dit ce qu'il y a d'autre.
+           `preload="none"` — aucun octet de vidéo ne part avant un clic, et
+           rien ne démarre sans geste. L'adresse est celle du VPS ; l'app ne
+           l'empaquette jamais. -->
+      <div class="sheet__media">
+        <div class="sheet__stage">
+          <video class="sheet__player" preload="none"
+                 poster="../renders/refs/desk.png"
+                 src="https://media.exemple.tld/portfolio.mp4"
+                 controls playsinline></video>
+        </div>
 
-      <div>
+        <p class="sheet__caption">La visite du bureau, du premier écran à la commode.</p>
+
+        <ul class="sheet__strip" aria-label="Médias du projet">
+          <li>
+            <button class="sheet__thumb" type="button" aria-current="true" aria-label="Vidéo — La visite du bureau, du premier écran à la commode.">
+              <img src="../renders/refs/desk.png" alt="">
+              <span class="sheet__thumb-play" aria-hidden="true">&#9654;</span>
+            </button>
+          </li>
+          <li>
+            <button class="sheet__thumb" type="button" aria-label="Le tiroir des projets, ouvert.">
+              <img src="../renders/refs/cabinet.png" alt="">
+            </button>
+          </li>
+          <li>
+            <button class="sheet__thumb" type="button" aria-label="La bibliothèque et sa bulle.">
+              <img src="../renders/refs/bookshelf.png" alt="">
+            </button>
+          </li>
+          <li>
+            <button class="sheet__thumb" type="button" aria-label="Le télescope, avant la visée.">
+              <img src="../renders/refs/telescope.png" alt="">
+            </button>
+          </li>
+        </ul>
+      </div>
+
+      <!-- Tout ce que la fiche disait déjà, à la même échelle, dans une colonne
+           plus étroite : rien n'a disparu du réagencement. -->
+      <div class="sheet__body">
         <header class="sheet__kicker">
           <span class="sheet__dot"></span>
           <span class="sheet__label">Projet</span>
@@ -57,7 +104,7 @@
 
         <ul class="sheet__points">
           <li>Rendu entièrement pré-cuit : aucune lumière au runtime, tout est dans les textures.</li>
-          <li>La caméra suit onze cadrages composés dans Blender, jamais réécrits en code.</li>
+          <li>La caméra suit dix cadrages composés dans Blender, jamais réécrits en code.</li>
         </ul>
 
         <div class="sheet__links">

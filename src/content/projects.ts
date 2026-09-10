@@ -23,6 +23,50 @@ export interface ProjectLink {
   href: string
 }
 
+/**
+ * Une capture d'écran du projet.
+ *
+ * **Le `src` est une adresse, et rien d'autre** : une URL absolue en https
+ * servie par le VPS, ou un chemin absolu servi par l'app depuis `public/`. Le
+ * composant ne sait pas laquelle des deux il tient, et c'est ce qui rend
+ * l'hébergement décidable projet par projet sans toucher une ligne de code.
+ */
+export interface ProjectShot {
+  src: string
+  /** Ce que la capture montre. C'est à la fois son `alt` et sa légende — une
+   *  image dont on ne peut pas dire ce qu'elle prouve ne prouve rien. */
+  alt: Localized
+}
+
+/**
+ * La vidéo de présentation du projet.
+ *
+ * **Elle est SERVIE PAR LE VPS, jamais empaquetée par l'app** (décision de
+ * l'auteur, 2026-09-08). Le `.glb` pèse déjà 3 Mo et la VRAM texture 162 Mo
+ * (#39) ; une vidéo par projet est un ordre de grandeur au-dessus, et l'image
+ * Docker n'a pas à la porter. Le VPS garde en outre la main sur le fichier —
+ * le remplacer, le retirer, restreindre son origine.
+ *
+ * **Une vidéo affichée sur une page publique n'est pas privée**, et aucun
+ * hébergeur n'y change quoi que ce soit : « non répertorié » chez YouTube veut
+ * dire « qui a le lien la regarde », et le lien est dans le DOM de la page. La
+ * vraie option privée de YouTube, elle, exige d'être connecté à un compte
+ * autorisé — donc elle ne se lit pas dans un portfolio. Servir depuis le VPS ne
+ * rend pas la vidéo secrète : ça rend son adresse révocable.
+ */
+export interface ProjectVideo {
+  src: string
+  /**
+   * L'image d'attente.
+   *
+   * Elle n'est pas décorative : la vidéo est en `preload="none"`, donc tant que
+   * personne n'a cliqué il n'existe pas une seule image à en extraire. Sans
+   * affiche, la scène montre un cadre vide et la vignette montre son rang.
+   */
+  poster?: string
+  alt: Localized
+}
+
 export interface Project {
   /** Clé stable et unique. Destinée à devenir la clé d'un lien profond. */
   slug: string
@@ -47,9 +91,41 @@ export interface Project {
    * rendue : un portfolio n'a pas le droit de proposer une porte fermée à clé.
    */
   links?: ProjectLink[]
-  /** Chemin d'illustration. Absent = `GENERIC_COVER_SRC`. */
+  /**
+   * La vidéo de présentation. Absente = la fiche montre les captures seules.
+   *
+   * **Son absence est le repli, jamais une erreur de chargement** — même règle
+   * que les icônes du CV : aucun `onError` n'est câblé nulle part, c'est la
+   * donnée qui décide. Tous les projets n'ont pas de quoi tourner une vidéo, et
+   * une fiche sans vidéo ne doit pas avoir l'air en panne.
+   */
+  video?: ProjectVideo
+  /**
+   * Les captures d'écran, dans l'ordre où on veut les voir. Cinq au plus —
+   * voir `SHOTS_MAX`.
+   */
+  shots?: ProjectShot[]
+  /**
+   * Chemin d'illustration — l'image FIXE qui tient lieu de projet quand il n'y
+   * a ni vidéo ni capture. Absent = le placeholder hachuré.
+   *
+   * Elle a changé de rôle avec #126 sans changer de nom : elle était LA
+   * couverture, en portrait, à gauche du texte ; elle est maintenant le
+   * dernier recours de la scène, une fois `video` et `shots` épuisés.
+   */
   cover?: string
 }
+
+/**
+ * Combien de captures la pellicule accepte.
+ *
+ * Ce n'est pas un goût, c'est une largeur : à 96 px de vignette et 10 px de
+ * gouttière, six médias (la vidéo plus cinq captures) mesurent 626 px, et la
+ * colonne des médias en fait 658 dans le cadre de 1280 sur lequel la maquette
+ * est composée. La septième passe à la ligne — et une pellicule sur deux
+ * lignes n'indexe plus rien, elle recompose.
+ */
+export const SHOTS_MAX = 5
 
 /**
  * **L'ORDRE EST CELUI DU TIROIR** (décision de l'auteur, 2026-09-07) :
