@@ -495,11 +495,33 @@
   font-size: 11px; font-weight: 500; letter-spacing: .1em;
   transition: color var(--t-halo) var(--ease-out);
 }
+/* LE DRAPEAU D'UNE LANGUE (#164), et la règle vaut pour les DEUX bascules —
+   celle-ci, partagée par la pré-sélection et le site classique, et la réglette
+   verticale de la scène plus bas. La décision est une, seules les tailles
+   diffèrent.
+
+   **Un seul fichier par langue** : le gris de l'inactive est un `filter`, pas
+   un second fichier. Deux fichiers par langue seraient deux choses à garder
+   synchrones pour un effet que le navigateur calcule.
+
+   **Les drapeaux sont la seule famille d'icônes en COULEUR du projet, et ils
+   ne peuvent pas être autrement** : ce sont des pastilles tricolores, qu'un
+   masque réduirait à un disque plein. Les marques des technologies et des
+   liens, elles, sont monochromes et passent par un masque (`src/config/icons.ts`).
+
+   Le signal a changé de nature : les deux lettres se distinguaient par leur
+   teinte, accent contre crème ; les drapeaux se distinguent par la saturation.
+   C'est le même rôle — dire dans quelle langue on se trouve — joué autrement. */
+.lang button img, .menu__lang button img { display: block; border-radius: 50%; }
+.lang button img { width: 17px; height: 17px; }
+.lang__off img, .menu__lang-off img { filter: grayscale(1); opacity: .7; }
+.lang__off:hover img, .lang__off:focus-visible img,
+.menu__lang-off:hover img, .menu__lang-off:focus-visible img { opacity: 1; }
 /* Cliquable quand même : le désactiver ferait disparaître l'indicateur, or
    c'est lui qui dit dans quelle langue on se trouve. */
-.lang__on  { color: var(--glow); cursor: default; }
-.lang__off { color: rgba(var(--cream-rgb), .45); cursor: pointer; }
-.lang__off:hover, .lang__off:focus-visible { color: var(--cream); outline: none; }
+.lang__on  { cursor: default; }
+.lang__off { cursor: pointer; }
+.lang__off:hover, .lang__off:focus-visible { outline: none; }
 .lang__rule { width: 1px; height: 10px; background: rgba(var(--cream-rgb), .25); }
 
 /* ===== Logo =====
@@ -607,8 +629,12 @@
      langue active. Les deux règles ci-dessous posent chacune la leur, ce qui
      neutralise le `buttontext` du navigateur sans rien masquer. */
 }
-.menu__lang-on  { color: var(--glow); }
-.menu__lang-off { color: rgba(var(--cream-rgb), .45); cursor: pointer; }
+/* La réglette de la scène porte le même drapeau, un cran plus petit : sa
+   colonne fait 36 px de large contre une bascule horizontale qui respire.
+   La recette, elle, est commune — voir `.lang button img` plus haut. */
+.menu__lang button img { width: 15px; height: 15px; }
+.menu__lang-on  { cursor: default; }
+.menu__lang-off { cursor: pointer; }
 /* `:not([aria-disabled])` : tant que le bilingue n'existe pas (#33), EN est
    rendu inerte — il ne doit pas s'allumer au survol comme s'il attendait un clic. */
 .menu__lang-off:hover, .menu__lang-off:focus-visible { color: var(--cream); outline: none; }

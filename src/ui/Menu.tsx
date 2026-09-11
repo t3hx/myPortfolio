@@ -1,6 +1,7 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { CAMERA_STOPS } from '@/config/cameraStops'
 import { MENU_SECTIONS, MENU_SOCIALS } from '@/content/menu'
+import { FLAGS } from '@/config/icons'
 import { UI } from '@/content/ui'
 import { LOCALES, t } from '@/lib/locale'
 import { useLocale } from '@/state/locale'
@@ -157,13 +158,17 @@ export function Menu() {
               type="button"
               className={code === locale ? 'menu__lang-on' : 'menu__lang-off'}
               aria-current={code === locale ? 'true' : undefined}
+              // Le nom accessible est du TEXTE et nomme la langue, jamais un
+              // pays : un drapeau n'est pas une langue, et une image
+              // décorative laisserait un bouton sans nom (#166).
+              aria-label={t(UI.menu.switchTo, code)}
               title={t(UI.menu.switchTo, code)}
               onClick={(e) => {
                 setLocale(code)
                 if (e.detail > 0) e.currentTarget.blur()
               }}
             >
-              {code.toUpperCase()}
+              <img src={FLAGS[code]} alt="" />
             </button>
           </Fragment>
         ))}
