@@ -7,6 +7,7 @@ import { useLocale } from '@/state/locale'
 import { useInteraction } from '@/state/interaction'
 import { BUBBLE_IN_MS } from '@/scene/Bubble'
 import { Logo } from '@/ui/Logo'
+import { Mark } from '@/ui/Mark'
 
 /**
  * La barre de menu persistante (issue #26), recréée depuis les maquettes de
@@ -130,10 +131,15 @@ export function Menu() {
           className="menu__social"
           href={social.href}
           title={social.title}
+          // Le nom accessible est du TEXTE, et il est nécessaire dès que la
+          // marque est un masque : un masque n'a pas de contenu, donc sans lui
+          // le lien s'annoncerait par son URL. `title` seul ne suffit pas — il
+          // n'est pas lu de façon fiable et n'apparaît qu'au survol souris.
+          aria-label={social.title}
           target="_blank"
           rel="noreferrer"
         >
-          {social.label}
+          <Mark icon={social.icon} fallback={social.label} />
         </a>
       ))}
 

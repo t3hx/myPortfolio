@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { CAMERA_STOPS } from '@/config/cameraStops'
+import { MARKS } from '@/config/icons'
 import { MENU_SECTIONS, MENU_SOCIALS } from '@/content/menu'
 import { t } from '@/lib/locale'
 
@@ -24,7 +25,11 @@ describe('menu sections', () => {
   })
 })
 
+const tokens = readFileSync('src/styles/tokens.css', 'utf8')
+
 describe('menu socials', () => {
+  const menu = readFileSync('src/ui/Menu.tsx', 'utf8')
+
   it('never ships a link that goes nowhere', () => {
     // Une entrée sans href est filtrée à l'affichage ; celles qui en ont une
     // doivent être absolues (elles ouvrent un autre site).
@@ -32,10 +37,41 @@ describe('menu socials', () => {
       expect(social.href, social.title).toMatch(/^https:\/\//)
     }
   })
+
+  it('porte une marque déclarée, et garde ses deux lettres en repli', () => {
+    // La marque est un chemin de `MARKS` (#170) : c'est `tests/icons.test.ts`
+    // qui garantit que le fichier existe, parce qu'un masque absent n'affiche
+    // rien du tout et n'émet aucune erreur. Le `label` reste, et ce n'est pas
+    // redondant : c'est ce qui s'affiche si une marque vient à manquer.
+    const marques = new Set<string>(Object.values(MARKS))
+    for (const social of MENU_SOCIALS) {
+      expect(social.label.trim(), social.title).not.toBe('')
+      if (social.icon === undefined) continue
+      expect(marques.has(social.icon), `${social.title} : ${social.icon}`).toBe(true)
+    }
+  })
+
+  it('dit son nom en TEXTE, même quand la marque est un masque', () => {
+    // Un masque CSS n'a pas de contenu : sans nom accessible, le lien s'annonce
+    // par son URL. `title` seul ne suffit pas — les technologies d'assistance
+    // ne le lisent pas de façon fiable, et il n'apparaît qu'au survol souris.
+    expect(menu).toContain('aria-label={social.title}')
+  })
+
+  it('laisse la marque prendre la couleur de la barre', () => {
+    // C'est tout l'intérêt du masque : la marque hérite du repos à 72 % et du
+    // survol sans qu'on lui donne une couleur. Une `<img>` aurait imposé la
+    // sienne — et pour ces fichiers-là, du noir.
+    const règle = tokens.slice(
+      tokens.indexOf('.menu__social {'),
+      tokens.indexOf('.menu__social:hover'),
+    )
+    expect(règle, '.menu__social doit dimensionner la marque').toMatch(/--mark-size:/)
+    expect(règle).toMatch(/color:/)
+  })
 })
 
 describe('la bascule de langue', () => {
-  const tokens = readFileSync('src/styles/tokens.css', 'utf8')
   // Les COMMENTAIRES sont retirés : celui de cette règle explique justement
   // pourquoi `color` n'y est pas, et le mot y apparaît donc forcément.
   const reset = tokens

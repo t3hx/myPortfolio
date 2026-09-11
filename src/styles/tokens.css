@@ -585,6 +585,11 @@
   width: 36px; height: 30px; border-radius: 15px;
   font-size: var(--fs-kicker); font-weight: 600; letter-spacing: .04em;
   color: rgba(var(--cream-rgb), .72); text-decoration: none;
+  /* La marque prend la couleur de la barre parce que c'est un MASQUE peint en
+     `currentColor` (#170) : elle hérite donc du repos à 72 % et du survol sans
+     qu'on la colore, là où une image aurait imposé la sienne — du noir, pour
+     des fichiers en `currentColor`. Seule la taille se pose ici. */
+  --mark-size: 16px;
 }
 .menu__social:hover, .menu__social:focus-visible { background: rgba(var(--cream-rgb), .09); color: var(--cream); }
 .menu__lang { display: flex; flex-direction: column; align-items: center; gap: 3px; margin-top: 10px; font-size: 10px; font-weight: 600; letter-spacing: .08em; }
