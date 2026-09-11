@@ -469,8 +469,25 @@ describe('les vignettes de savoir-faire', () => {
   it('donnent la même marque aux deux expériences', () => {
     // La règle vit dans `cv.ts` et non dans les composants : deux replis
     // différents feraient dire deux choses à une seule donnée.
+    //
+    // **Le contrôle a changé de forme avec #169, et il s'est renforcé.** Il
+    // vérifiait que les deux composants appelaient `glyphMark` chacun de son
+    // côté — ce qui garantissait le même REPLI mais laissait chacun peindre la
+    // marque à sa façon, et ils divergeaient déjà : `<img>` en couleur ici,
+    // `<img>` en couleur là, pour des fichiers en `currentColor` qui rendaient
+    // noir. Les deux rendent maintenant le MÊME composant, qui porte la règle
+    // entière — masque, couleur du contexte, repli par initiale.
     const cvScreen = readFileSync('src/ui/CvScreen.tsx', 'utf8')
-    expect(cvScreen).toContain('glyphMark(item, locale)')
-    expect(page).toContain('glyphMark(skill, locale)')
+    expect(cvScreen).toContain('<CvMark glyph={item} locale={locale} />')
+    expect(page).toContain('<CvMark glyph={skill} locale={locale} />')
+    const mark = readFileSync('src/ui/CvMark.tsx', 'utf8')
+    expect(mark).toContain('glyphMark(glyph, locale)')
+    // Un masque, jamais une image : `currentColor` dans une `<img>` vaut noir.
+    // Les commentaires sont retirés d'abord — celui de ce fichier CITE la
+    // balise pour expliquer pourquoi elle est écartée, et un contrôle qui lit
+    // la prose finirait par interdire d'expliquer sa propre règle.
+    const sansCommentaires = mark.replace(/\/\*[\s\S]*?\*\//g, '')
+    expect(sansCommentaires).not.toContain('<img')
+    expect(tokens).toMatch(/\.glyph-mark\s*\{[^}]*mask:/)
   })
 })

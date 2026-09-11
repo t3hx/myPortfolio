@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { CAMERA_STOPS } from '@/config/cameraStops'
-import { CV, CV_JOBS_EMPTY, glyphMark, type CvGlyph } from '@/content/cv'
+import { CV, CV_JOBS_EMPTY, type CvGlyph } from '@/content/cv'
 import { UI } from '@/content/ui'
+import { CvMark } from '@/ui/CvMark'
 import { type Locale, t, tm } from '@/lib/locale'
 import { useLocale } from '@/state/locale'
 import { useInteraction } from '@/state/interaction'
@@ -122,7 +123,7 @@ function CvTiles({
         return (
           <div className="cv__tile" key={name}>
             <span className="cv__tile-mark" aria-hidden="true">
-              {item.icon ? <img src={item.icon} alt="" /> : glyphMark(item, locale)}
+              <CvMark glyph={item} locale={locale} />
             </span>
             <span className="cv__tile-label">{name}</span>
           </div>
