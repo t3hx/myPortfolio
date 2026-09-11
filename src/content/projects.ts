@@ -6,9 +6,13 @@
  * aurait un état de chargement, un état d'erreur et un écran vide à dessiner —
  * pour cinq fiches qui changent trois fois par an.
  *
- * **L'ordre du tableau EST l'ordre des dossiers dans le tiroir**, du fond vers
- * l'avant — même convention que `CAMERA_STOPS`, dont l'ordre est celui du tour.
- * Réordonner ici réordonne la commode, et rien d'autre à faire.
+ * **L'ordre du tableau EST l'ordre des dossiers dans le tiroir**, de l'AVANT
+ * vers le fond : le premier du tableau est celui qu'on voit en ouvrant, contre
+ * la poignée. Même convention que `CAMERA_STOPS`, dont l'ordre est celui du
+ * tour. Réordonner ici réordonne la commode, et rien d'autre à faire.
+ *
+ * Ce sens a été corrigé le 2026-09-11 (#180) : il était inversé, et
+ * « Portfolio » se rangeait au fond, derrière les quatre autres.
  *
  * ⚠️ **Les textes sont des placeholders**, comme ceux des bulles : les faits
  * (nom, année, stack, liens) sont exacts, les phrases attendent la plume de
@@ -129,10 +133,11 @@ export const SHOTS_MAX = 5
 
 /**
  * **L'ORDRE EST CELUI DU TIROIR** (décision de l'auteur, 2026-09-07) :
- * Portfolio, Owlog, Solarsys, Anima, Odysong. Le tableau EST la rangée de
- * dossiers — `buildFolders` place le dossier n° i à `folderZ(i, n)` et ne lit
- * rien d'autre —, exactement comme `CAMERA_STOPS` EST le parcours. Réordonner
- * ici réordonne la commode, sans qu'aucune position ne soit écrite nulle part.
+ * Portfolio, Owlog, Solarsys, Anima, Odysong, **de la poignée vers le fond**.
+ * Le tableau EST la rangée de dossiers — `buildFolders` place le dossier n° i
+ * à `folderZ(i, n)` et ne lit rien d'autre —, exactement comme `CAMERA_STOPS`
+ * EST le parcours. Réordonner ici réordonne la commode, sans qu'aucune
+ * position ne soit écrite nulle part.
  *
  * « Celestial Walker » s'appelle Solarsys et « TXPF » s'appelle Anima depuis
  * la même date. Le `slug` a suivi le nom, et il pouvait : les dossiers du

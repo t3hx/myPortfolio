@@ -319,6 +319,14 @@ The active item is an exact stop match, and it lights up on _departure_, not arr
 
 **The second click does not exist yet.** #26 was closed on the bar alone (product decision, 2026-08-18); reaching a project card once parked at the Cabinet was deliberately deferred, and this paragraph is its only written trace — there is no follow-up issue.
 
+### The drawer's folders (`src/lib/folders.ts` + `src/config/cabinet.ts`)
+
+`PROJECTS` **is** the row of folders, and its order is read **from the handle towards the back**: the first entry is the one you see when the drawer opens. `buildFolders` places folder _i_ at `folderZ(i, n)` and reads nothing else, so reordering the array reorders the cabinet with no position written anywhere.
+
+**That direction was reversed until #180, and a reversed order is invisible.** "Portfolio", first in the array, sat at the _back_ behind the other four, so the folder you met first was the last project on the list — which looks exactly like a decision someone made. The fix swaps the two bounds inside the interpolation, never the bounds themselves: `FOLDER_Z_BACK` and `FOLDER_Z_FRONT` describe the physical limits of the drawer, past which a tab enters the cabinet's top or crosses the front panel (#81), and they were right all along.
+
+The step is **derived** from the project count (0.055 at five, 0.11 at three); hardcoding it would push the front folder through the panel the day a sixth project lands. `tests/folders.test.ts` measures that step in absolute value and asserts the direction separately — a signed test would have failed on #180 for a reason that was not its own.
+
 ### The CV on the vertical monitor (`src/ui/CvScreen.tsx` + `src/content/cv.ts`)
 
 Issue #93. Seven blocks that must read as being displayed **by** the scene's second monitor, not floating over it: the name, then photo · savoir-être · langues & permis, savoir-faire, « Le cap », Expériences, Formations. The name **decrypts on arrival** (1600 ms, `--t-decrypt` ↔ `DECRYPT_MS`) — characters settle left to right and spaces are never scrambled, since they are what holds the name's silhouette. It is set in a **monospace** face on purpose: in a proportional one every random glyph changes the word's width and the name jitters. Every other title decrypts too, in a **cascade** (420 ms, `--t-cascade`, 60 ms apart, top to bottom), and **one clock drives them all** — fifteen titles each with their own `rAF` loop and state would be fifteen React renders per frame next to a 3D scene, so `Scrambled` is pure and derives its text from an elapsed time passed in. The glyph draw is **deterministic** (from frame + position, never `Math.random`) because the component runs during React's render phase. Being self-starting, the whole cascade is **cut**, not shortened, under `prefers-reduced-motion`.

@@ -90,16 +90,36 @@ afterEach(() => {
 })
 
 describe('folderZ', () => {
-  it('range le premier au fond et le dernier devant', () => {
-    expect(folderZ(0, 5)).toBeCloseTo(FOLDER_Z_BACK, 6)
-    expect(folderZ(4, 5)).toBeCloseTo(FOLDER_Z_FRONT, 6)
+  it('range le premier DEVANT, contre la poignée, et le dernier au fond', () => {
+    // **Le sens a été corrigé le 2026-09-11 (#180)**, et il était inversé :
+    // « Portfolio », premier du tableau, se retrouvait au fond du tiroir,
+    // derrière les quatre autres. Le dossier qu'on voit en ouvrant doit être
+    // le premier de la liste — l'ordre du tableau est celui de la LECTURE,
+    // pas celui de l'empilement vu du fond.
+    expect(folderZ(0, 5)).toBeCloseTo(FOLDER_Z_FRONT, 6)
+    expect(folderZ(4, 5)).toBeCloseTo(FOLDER_Z_BACK, 6)
   })
 
   it('dérive le pas du nombre de projets', () => {
     // Coder le pas en dur ferait traverser la façade au dossier de devant dès
     // qu'on ajoute une fiche — c'est ce que le spike a montré à 0.09.
-    expect(folderZ(1, 5) - folderZ(0, 5)).toBeCloseTo(0.055, 6)
-    expect(folderZ(1, 3) - folderZ(0, 3)).toBeCloseTo(0.11, 6)
+    //
+    // Mesuré en VALEUR ABSOLUE : c'est l'écartement qui est dérivé, et son
+    // signe ne dit que la direction. Un test signé aurait échoué à la
+    // correction du sens (#180) pour une raison qui n'est pas la sienne.
+    expect(Math.abs(folderZ(1, 5) - folderZ(0, 5))).toBeCloseTo(0.055, 6)
+    expect(Math.abs(folderZ(1, 3) - folderZ(0, 3))).toBeCloseTo(0.11, 6)
+  })
+
+  it('enfonce chaque dossier un peu plus que le précédent', () => {
+    // Le sens, exprimé sans nommer les bornes : chaque dossier est plus loin
+    // de la poignée que celui qui le précède dans le tableau. C'est la règle
+    // que #180 a rétablie, et elle vaut à toutes les capacités.
+    for (let count = 2; count <= DRAWER_CAPACITY; count++) {
+      for (let i = 1; i < count; i++) {
+        expect(folderZ(i, count), `${i}/${count}`).toBeLessThan(folderZ(i - 1, count))
+      }
+    }
   })
 
   it('centre un dossier unique plutôt que de le coller au fond', () => {
