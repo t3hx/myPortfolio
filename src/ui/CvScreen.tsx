@@ -35,6 +35,16 @@ export const CV_STOP_LABEL = 'CV'
 
 /** Doit égaler `--t-cv-out` de tokens.css — `tests/cv.test.ts` est la seule
  *  chose qui relie les deux. */
+/**
+ * Combien de missions l'écran vertical montre par poste (#173).
+ *
+ * **La donnée en porte plus, et c'est voulu** : le site classique les affiche
+ * toutes, le PDF aussi. Ici la hauteur est la ressource rare — chaque puce
+ * coûte ~21 px d'accordéon ouvert, et le CV débordait déjà au repos à
+ * 1512 × 945. Couper dans la donnée aurait privé les surfaces qui ont la place.
+ */
+export const MISSIONS_ON_SCREEN = 4
+
 export const CV_OUT_MS = 200
 
 /** Doit égaler `--t-decrypt` de tokens.css — `tests/cv.test.ts` relie les deux. */
@@ -253,27 +263,53 @@ export function CvScreen() {
       {CV.jobs.length === 0 ? (
         <p className="cv__empty">{t(CV_JOBS_EMPTY, locale)}</p>
       ) : (
-        CV.jobs.map((job, i) => (
-          <div className="job" key={`${job.company}-${job.period}`} tabIndex={0}>
-            <div className="job__head">
-              <span className="job__title">
-                <CascadeTitle text={t(job.title, locale)} elapsed={elapsed} delay={cue(6 + i)} />
-              </span>
-              <span className="job__company">{job.company}</span>
-              <span className="job__period">{job.period}</span>
+        CV.jobs.map((job, i) => {
+          // Les quatre premières seulement (#173). La donnée en porte jusqu'à
+          // sept — le site classique les affiche toutes —, mais chaque puce
+          // coûte ~21 px de hauteur ouverte ici, et la hauteur est la ressource
+          // rare de cet écran.
+          const missions = job.missions && t(job.missions, locale).slice(0, MISSIONS_ON_SCREEN)
+          return (
+            <div
+              // Un poste sans mission est une cartouche STATIQUE, comme une
+              // formation : pas d'accordéon, donc pas de `tabIndex` non plus.
+              // Un arrêt de tabulation qui n'ouvre rien est un faux bouton.
+              className={missions ? 'job' : 'job job--static'}
+              key={`${job.company}-${job.period}`}
+              tabIndex={missions ? 0 : undefined}
+            >
+              <div className="job__head">
+                <span className="job__title">
+                  <CascadeTitle text={t(job.title, locale)} elapsed={elapsed} delay={cue(6 + i)} />
+                </span>
+                <span className="job__company">{job.company}</span>
+                <span className="job__period">{job.period}</span>
+              </div>
+              {job.clients && (
+                <p className="job__clients">
+                  {/* L'espace est EXPLICITE : sans lui le texte du nœud se lit
+                      « ClientsMidas » pour une synthèse vocale, que la marge
+                      CSS du libellé ne corrige pas — elle ne sépare que les
+                      pixels. */}
+                  <span className="job__clients-key">{t(CV.clientsLabel, locale)}</span>{' '}
+                  {tm(job.clients, locale)}
+                </p>
+              )}
+              {/* L'accordéon est pur CSS (survol / focus-within, --t-accordion) :
+                  un état React ici n'ajouterait qu'un rendu par mouvement de
+                  souris pour reproduire ce que le sélecteur fait seul. */}
+              {missions && (
+                <div className="job__missions">
+                  <ul>
+                    {missions.map((mission) => (
+                      <li key={mission}>{mission}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
-            {/* L'accordéon est pur CSS (survol / focus-within, --t-accordion) :
-                un état React ici n'ajouterait qu'un rendu par mouvement de
-                souris pour reproduire ce que le sélecteur fait seul. */}
-            <div className="job__missions">
-              <ul>
-                {t(job.missions, locale).map((mission) => (
-                  <li key={mission}>{mission}</li>
-                ))}
-              </ul>
-            </div>
-          </div>
-        ))
+          )
+        })
       )}
 
       <h2 className="cv__section-title">

@@ -1,8 +1,15 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { CAMERA_STOPS } from '@/config/cameraStops'
-import { CV, CV_JOBS_EMPTY, type CvGlyph } from '@/content/cv'
-import { CASCADE_MS, CASCADE_STEP_MS, CV_OUT_MS, CV_STOP_LABEL, DECRYPT_MS } from '@/ui/CvScreen'
+import { CV, CV_JOBS_EMPTY, glyphMark, type CvGlyph } from '@/content/cv'
+import {
+  CASCADE_MS,
+  CASCADE_STEP_MS,
+  CV_OUT_MS,
+  CV_STOP_LABEL,
+  DECRYPT_MS,
+  MISSIONS_ON_SCREEN,
+} from '@/ui/CvScreen'
 import { LOCALES, t, tm } from '@/lib/locale'
 
 /**
@@ -25,6 +32,11 @@ import { LOCALES, t, tm } from '@/lib/locale'
 const tokens = readFileSync('src/styles/tokens.css', 'utf8')
 const mockup = readFileSync('design/screens/02-cv.html', 'utf8')
 const component = readFileSync('src/ui/CvScreen.tsx', 'utf8')
+// Le site classique lit la MÊME donnée et la rend autrement : toutes les
+// missions, et pas de mention d'âge en anglais. Les deux règles se vérifient
+// dans son source, faute de DOM ici.
+const classique = readFileSync('src/ui/ClassicApp.tsx', 'utf8')
+const heros = readFileSync('src/ui/classic/Hero.tsx', 'utf8')
 // Le déchiffrage a déménagé dans un module partagé avec le site classique
 // (#29). **La garde suit le fichier** : ces trois règles — figement de
 // gauche à droite, espaces jamais brouillés, tirage déterministe — sont ce
@@ -218,12 +230,65 @@ describe('le contenu du CV', () => {
       for (const locale of LOCALES) {
         const where = `${job.company} (${locale})`
         expect(t(job.title, locale).trim(), where).not.toBe('')
-        // Quatre au minimum (décision de l'auteur, 2026-08-20) : une cartouche
-        // qui n'en montre que deux ne récompense pas le survol qui l'a ouverte.
-        expect(t(job.missions, locale).length, where).toBeGreaterThanOrEqual(4)
+        // **La règle « quatre missions au minimum » est retirée** (#173). Elle
+        // datait du 2026-08-20, quand la donnée était inventée et pouvait donc
+        // se rembourrer jusqu'à quatre. Sur le vrai parcours, un poste en porte
+        // sept, un autre trois, et un autre aucune — celui qui n'en a pas se
+        // rend en cartouche STATIQUE, sans rien promettre au survol. Ce qui
+        // reste vrai : une liste déclarée n'est jamais vide ni trouée.
+        if (job.missions === undefined) continue
+        expect(t(job.missions, locale).length, where).toBeGreaterThan(0)
         for (const m of t(job.missions, locale)) expect(m.trim(), where).not.toBe('')
       }
+      // Les deux langues disent le même nombre de missions : une traduction
+      // qui en perd une la fait disparaître de l'écran anglais, et rien ne le
+      // signale — c'est le même piège que les pages de bulle (#32).
+      if (job.missions !== undefined) {
+        expect(t(job.missions, 'en').length, job.company).toBe(t(job.missions, 'fr').length)
+      }
     }
+  })
+
+  it('ne montre que les quatre premières missions à l’écran', () => {
+    // Décision de l'auteur (2026-09-11) : quatre au plus dans la scène, toutes
+    // sur le site classique. Le PDF reste exhaustif, l'écran vertical non — son
+    // budget de hauteur est la ressource rare, et un accordéon de sept lignes
+    // pousse le CV dehors. La donnée porte TOUT : c'est le rendu qui coupe.
+    expect(MISSIONS_ON_SCREEN).toBe(4)
+    const plusLong = Math.max(...CV.jobs.map((j) => (j.missions ? t(j.missions, 'fr').length : 0)))
+    // Sans un poste qui dépasse, la coupe ne serait vérifiée par personne.
+    expect(plusLong, 'aucun poste ne dépasse la coupe : la règle est muette').toBeGreaterThan(
+      MISSIONS_ON_SCREEN,
+    )
+    expect(component).toContain('MISSIONS_ON_SCREEN')
+    expect(classique, 'le site classique doit garder toutes les missions').not.toContain(
+      'MISSIONS_ON_SCREEN',
+    )
+  })
+
+  it('nomme de vraies entreprises, et aucune invention', () => {
+    // Le CV de l'app a affiché pendant des semaines quatre postes inventés —
+    // Studio Nova, Atelier K, Freelance, Coopérative Lumen — posés par #93 pour
+    // que l'écran ait une forme. À l'écran ça ne ressemblait pas à un trou, ça
+    // ressemblait à un CV. La liste est donc verrouillée par son contenu.
+    expect(CV.jobs.map((j) => j.company)).toEqual([
+      'Optimal Ways',
+      'IDKIDS Group',
+      'Web Transition',
+      'OVHcloud',
+    ])
+    expect(CV.formations.map((f) => f.school)).toEqual(['vueschool.io', 'OpenClassrooms', 'ISEG'])
+  })
+
+  it('nomme ses clients quand il y en a', () => {
+    for (const job of CV.jobs) {
+      if (job.clients === undefined) continue
+      for (const locale of LOCALES) {
+        expect(tm(job.clients, locale).trim(), `${job.company} (${locale})`).not.toBe('')
+      }
+    }
+    // Le libellé est dans la donnée, pas dans les deux composants qui l'affichent.
+    for (const locale of LOCALES) expect(t(CV.clientsLabel, locale).trim(), locale).not.toBe('')
   })
 
   it('identifie chaque poste de façon unique', () => {
@@ -305,12 +370,66 @@ describe('les réglettes de vignettes', () => {
     }
   })
 
+  it('ne montre jamais deux fois la même marque, dans aucune langue', () => {
+    // Le piège est TRADUIT (#173) : les six qualités réelles donnent S, A, O,
+    // P, C, E en français — toutes distinctes — mais « Efficiency-driven » et
+    // « Empathetic » partagent leur E en anglais. Deux vignettes identiques
+    // côte à côte n'ont l'air de rien, juste de deux tuiles qui se répètent.
+    // C'est pour ça que `initial` est traduisible.
+    for (const [strip, items] of strips) {
+      for (const locale of LOCALES) {
+        const marques = items.map((i) => glyphMark(i, locale))
+        expect(new Set(marques).size, `${strip} (${locale}) : ${marques.join(' ')}`).toBe(
+          marques.length,
+        )
+      }
+    }
+  })
+
   it('garde le savoir-être à six, ni plus ni moins', () => {
     // La carte les range en 3 × 2 pour tenir à la hauteur de la photo. Cinq
     // laissent un trou ; sept ouvrent une troisième rangée, qui rallonge toute
     // la rangée du haut et pousse le CV hors de l'écran quand un accordéon
     // s'ouvre (mesuré à 1000 × 720).
     expect(CV.traits.length).toBe(6)
+  })
+})
+
+describe('une cartouche ne se laisse pas écraser', () => {
+  it('porte `flex: none`, parce que son `overflow: hidden` a ramené son minimum à zéro', () => {
+    // **Mesuré sur `dev` avant #173** : les huit cartouches perdaient jusqu'à
+    // 28 px de leur propre contenu, et aucune ne le disait. Avec le vrai
+    // parcours, jusqu'à 44 px — la ligne des clients passait à la trappe.
+    //
+    // La cause n'est pas la hauteur, c'est une règle de flexbox : `.cv` est une
+    // colonne flex, et le minimum automatique d'un élément flex vaut sa taille
+    // de contenu — SAUF s'il porte un `overflow` autre que `visible`, qui le
+    // ramène à zéro. Or `.job` porte `overflow: hidden`, posé pour couper le
+    // balayage aux angles arrondis. Rien n'empêchait donc la colonne de tasser
+    // ses cartouches au lieu de défiler, et un contenu tassé est COUPÉ, pas
+    // reflué : c'est pire qu'un débordement, qui au moins se voit et se défile.
+    const règle = tokens.slice(tokens.indexOf('.job {'), tokens.indexOf('.job:hover'))
+    expect(règle, '.job doit refuser de grandir ET de se compresser').toMatch(/flex:\s*none/)
+  })
+})
+
+describe("l'âge", () => {
+  it('est dit en français et volontairement absent en anglais', () => {
+    // Un CV anglophone ne porte pas l'âge, et le mentionner ouvre un biais que
+    // la version française n'ouvre pas de la même façon (décision de l'auteur,
+    // 2026-09-11). Le PDF anglais l'a retiré aussi : les quatre surfaces
+    // racontent la même chose.
+    //
+    // `null` et non `''` : une chaîne vide se lit comme un oubli, `null` dit
+    // qu'il n'y a rien à dire. Le composant saute la mention.
+    expect(t(CV.identity.age, 'fr')?.trim()).toBeTruthy()
+    expect(t(CV.identity.age, 'en')).toBeNull()
+  })
+
+  it("n'ouvre pas la ligne de méta du site classique avec un séparateur", () => {
+    // Le point cyan PRÉCÈDE chaque fait, donc c'est l'âge qui ouvre la ligne.
+    // Sans âge, la ligne commencerait par un séparateur orphelin.
+    expect(heros).toContain('ageAffiché')
   })
 })
 

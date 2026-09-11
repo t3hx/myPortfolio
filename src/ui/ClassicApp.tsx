@@ -106,7 +106,10 @@ function ExperienceCards({ locale }: { locale: Locale }) {
             open === i ? ' classic-card--open' : ''
           }`}
           style={revealDelay(i * REVEAL_STEP_CARD_MS)}
-          onMouseEnter={() => setOpen(i)}
+          // Un poste sans mission n'ouvre rien : le survol ne doit donc pas le
+          // désigner comme la cartouche ouverte, sinon il referme la
+          // précédente pour n'afficher que du vide.
+          onMouseEnter={() => job.missions && setOpen(i)}
         >
           <div className="classic-card__head">
             <div>
@@ -115,18 +118,28 @@ function ExperienceCards({ locale }: { locale: Locale }) {
             </div>
             <div className="classic-card__period">{job.period}</div>
           </div>
-          <div className="classic-card__missions">
-            <div>
-              <ul className="classic-card__list">
-                {t(job.missions, locale).map((mission) => (
-                  <li key={mission}>
-                    <i aria-hidden="true" />
-                    <span>{mission}</span>
-                  </li>
-                ))}
-              </ul>
+          {job.clients && (
+            <p className="classic-card__clients">
+              <span>{t(CV.clientsLabel, locale)}</span> {tm(job.clients, locale)}
+            </p>
+          )}
+          {/* TOUTES les missions, contrairement à l'écran vertical de la scène
+              qui s'arrête à quatre (#173) : cette page a la hauteur pour
+              elles, et la donnée les porte déjà. */}
+          {job.missions && (
+            <div className="classic-card__missions">
+              <div>
+                <ul className="classic-card__list">
+                  {t(job.missions, locale).map((mission) => (
+                    <li key={mission}>
+                      <i aria-hidden="true" />
+                      <span>{mission}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
             </div>
-          </div>
+          )}
         </article>
       ))}
     </div>
