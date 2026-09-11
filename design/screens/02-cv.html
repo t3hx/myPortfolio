@@ -21,7 +21,7 @@
     <article class="bubble" style="left:1.6%; top:20%; max-width:260px;">
       <span class="bubble__tick bubble__tick--right" aria-hidden="true"></span>
       <header class="bubble__kicker"><span class="bubble__dot"></span><span class="bubble__label">02 — Le CV</span></header>
-      <p class="bubble__text" style="margin:0">Mon CV, à jour (promis). Le parcours, les langues, et ce que je cherche : tout est à l’écran.</p>
+      <p class="bubble__text" style="margin:0">Mon CV, à jour (promis). Un clic pour le télécharger, l’imprimante c’est vous qui gérez.</p>
     </article>
     <!-- Les vignettes affichent l'INITIALE du nom : c'est le glyphe neutre en
          attendant les vrais SVG, pas un état d'erreur. Avec un fichier, l'app
@@ -40,7 +40,10 @@
            maquette en montre l'état final. La chasse fixe du nom n'est pas
            décorative : elle l'empêche de gigoter pendant que les glyphes se
            tirent au sort. -->
-      <h1 class="cv__name">Thibault Dubois</h1>
+      <div class="cv__head">
+        <h1 class="cv__name">Thibault Dubois</h1>
+        <a class="cv__download" href="#">Télécharger le CV</a>
+      </div>
       <div class="cv__row">
         <div class="cv__photo">photo</div>
         <div class="cv__card cv__card--traits">

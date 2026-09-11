@@ -38,3 +38,10 @@ playwright-report/
 
 # Playwright MCP session artifacts (snapshots, console logs)
 .playwright-mcp/
+
+# Les SOURCES du CV (SVG Inkscape) ne vivent pas dans l'app : seuls les PDF
+# exportés sont servis, et eux sont versionnés (décision de l'auteur,
+# 2026-09-11). Même partage que Blender — le `.glb` est suivi, le `.blend` non.
+# `scripts/export-resume.sh` lit ce dossier quand il existe, et accepte sinon un
+# chemin par $RESUME_SOURCES.
+design/resume/

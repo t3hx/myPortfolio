@@ -722,6 +722,36 @@
 /* Les vignettes de savoir-faire. `auto-fill` et non `auto-fit` : sur une ligne
    incomplète, `auto-fit` étire les tuiles restantes pour occuper la largeur et
    la dernière rangée n'a plus le pas des autres. */
+/* Le lien du PDF du CV (#162). Plus grand que la pastille de la scène : cette
+   page est lue à la taille d'un document, pas dans un écran de 573 px, et la
+   même mesure y paraîtrait timide. La forme reste celle du système — un fond
+   discret, une bordure fine, le halo froid au survol. */
+.classic-download {
+  display: inline-block;
+  font-size: 13.5px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  color: var(--cream);
+  text-decoration: none;
+  background: rgba(var(--cream-rgb), 0.07);
+  border: 1px solid rgba(var(--cream-rgb), 0.16);
+  border-radius: 9px;
+  padding: 11px 20px;
+  margin-bottom: 26px;
+  transition:
+    background 200ms var(--ease-out),
+    border-color 200ms var(--ease-out),
+    box-shadow 200ms var(--ease-out);
+}
+
+.classic-download:hover,
+.classic-download:focus-visible {
+  background: rgba(var(--cream-rgb), 0.11);
+  border-color: rgba(var(--glow-rgb), 0.6);
+  box-shadow: 0 0 18px rgba(var(--glow-rgb), 0.18);
+  outline: none;
+}
+
 .classic-tiles {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(88px, 1fr));

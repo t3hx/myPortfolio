@@ -1003,6 +1003,29 @@
    gigoterait pendant toute l'animation. La lueur froide est la seule de tout
    le CV : c'est la ligne qui doit se lire comme un affichage, pas comme du
    papier. */
+/* La ligne du nom porte AUSSI le lien de téléchargement (#161). Elle est en
+   flex avec la pastille poussée à droite : le nom est en 30 px et la pastille
+   en 12 px, donc elle tient dans l'interligne déjà réservé et n'ajoute pas un
+   pixel de hauteur. Une rangée à elle aurait poussé tout le CV vers le bas, et
+   le haut du CV ne bouge jamais — voir l'entretoise incompressible. */
+.cv__head { display: flex; align-items: baseline; gap: 16px; }
+.cv__head .cv__name { flex: 1 1 auto; min-width: 0; }
+/* Même recette que `.sheet__link` de la fiche projet, et c'est voulu : dans ce
+   système, une chose qu'on clique et qui emmène ailleurs a cette forme-là. Les
+   mesures sont resserrées parce que la ligne est partagée avec un titre. */
+.cv__download {
+  flex: none; font-family: var(--font-ui); font-size: 11px; font-weight: 500;
+  letter-spacing: .04em; color: var(--cream); text-decoration: none;
+  background: rgba(var(--cream-rgb), .07); border: 1px solid rgba(var(--cream-rgb), .14);
+  border-radius: 7px; padding: 6px 12px;
+  transition: background var(--t-item), border-color var(--t-item), box-shadow var(--t-halo);
+}
+.cv__download:hover, .cv__download:focus-visible {
+  background: rgba(var(--cream-rgb), .11); border-color: rgba(var(--glow-deep-rgb), .6);
+  box-shadow: 0 0 0 1.5px rgba(var(--glow-deep-rgb), .35), 0 0 40px 5px rgba(var(--glow-deep-rgb), .42);
+  outline: none;
+}
+
 .cv__name {
   margin: 0 0 4px 2px; font-family: ui-monospace, monospace;
   font-size: 30px; font-weight: 500; letter-spacing: .05em; color: var(--cream);
