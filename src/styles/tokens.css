@@ -1102,7 +1102,32 @@
   display: flex; align-items: center; justify-content: center;
   font-size: 12px; font-weight: 500; color: rgba(var(--cream-rgb), .8);
 }
-.cv__tile-mark img { width: 16px; height: 16px; object-fit: contain; }
+/* LA MARQUE D'UNE VIGNETTE (#169). Un masque, pas une image : les fichiers
+   portent `fill="currentColor"`, qui dans une balise `<img>` n'a aucun contexte
+   dont hériter et vaut noir — invisible sur du verre fumé. Le masque ne lit que
+   la transparence du fichier et prend sa couleur d'ici, si bien qu'une seule
+   marque sert la vignette crème du CV et la barre de menu à 40 % d'opacité.
+
+   La recette vit ici parce que `tokens.css` est chargé par les DEUX
+   expériences ; la taille, elle, appartient à chaque réglette.
+
+   `--mark` est posé en ligne par le composant : c'est la seule chose qui
+   change d'une vignette à l'autre, et une classe par technologie aurait mis
+   dix-neuf règles dans la feuille pour une seule différence. */
+.glyph-mark {
+  display: block; background: currentColor;
+  -webkit-mask: var(--mark) center / contain no-repeat;
+  mask: var(--mark) center / contain no-repeat;
+  width: var(--mark-size, 16px); height: var(--mark-size, 16px);
+}
+/* UN PAVÉ SE PEINT PLUS PETIT, et le chiffre est mesuré (#167) : l'encre — la
+   part du carré réellement peinte — va de 14,9 % à 86,4 %. Au-delà de 50 %, la
+   marque ne lit plus comme un pictogramme mais comme un bloc clair, et elle
+   écrase les silhouettes posées à côté. Un cran plus petit ne l'égalise pas
+   — c'est impossible sans rendre le glyphe illisible — mais il ramène son
+   poids dans la même famille. */
+.glyph-mark--slab { width: var(--mark-slab, 13px); height: var(--mark-slab, 13px); }
+
 .cv__tile-label {
   font-size: 9px; line-height: 1.25; text-align: center; max-width: 100%;
   /* Surtout PAS d'`overflow-wrap: anywhere` : mesuré à 1000 px, il coupait
