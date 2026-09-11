@@ -219,6 +219,10 @@ export interface Cv {
   jobs: CvJob[]
   /** Le libellé qui introduit les clients d'un poste — « Clients ». */
   clientsLabel: Localized
+  /** Le libellé du lien qui rapporte le PDF (#161, #162). Le chemin du
+   *  document, lui, vit dans `src/config/resume.ts` : c'est une adresse
+   *  servie, pas du contenu rédigé. */
+  downloadLabel: Localized
   /** Le titre de la pile de formations — « Formations ». */
   formationsTitle: Localized
   /** Quatre cartouches, du plus récent au plus ancien. */
@@ -303,6 +307,7 @@ export const CV: Cv = {
   },
   jobsTitle: { fr: 'Expériences', en: 'Experience' },
   clientsLabel: { fr: 'Clients', en: 'Clients' },
+  downloadLabel: { fr: 'Télécharger le CV', en: 'Download the résumé' },
   /**
    * Le parcours réel, du plus récent au plus ancien (#173).
    *

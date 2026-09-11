@@ -13,6 +13,7 @@ import { MENU_SOCIALS } from '@/content/menu'
 import { PROJECTS } from '@/content/projects'
 import { UI } from '@/content/ui'
 import { CvMark } from '@/ui/CvMark'
+import { ResumeDownload } from '@/ui/ResumeDownload'
 import { t, tm, type Locale } from '@/lib/locale'
 import { useLocale } from '@/state/locale'
 import { LangToggle } from '@/ui/LangToggle'
@@ -222,6 +223,14 @@ function CvSection({ locale }: { locale: Locale }) {
           kicker={t(UI.classic.cvKicker, locale)}
           title={t(UI.classic.cvTitle, locale)}
         />
+        {/* Le lien du PDF est en TÊTE de la section, sous son titre : c'est le
+            visiteur qui veut emporter le document, et il ne doit pas avoir à
+            traverser trois hauteurs d'écran de cartouches pour le trouver
+            (#162). Même composant que l'écran vertical de la scène, autre
+            anatomie. */}
+        <div className="classic-reveal" style={revealDelay(REVEAL_BODY_MS)}>
+          <ResumeDownload locale={locale} className="classic-download" />
+        </div>
         <div className="classic-sub classic-reveal" style={revealDelay(REVEAL_BODY_MS)}>
           {t(CV.jobsTitle, locale)}
         </div>

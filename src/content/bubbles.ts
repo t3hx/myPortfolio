@@ -167,12 +167,12 @@ export const BUBBLES: BubbleContent[] = [
     subject: { fr: 'Le CV', en: 'The résumé' },
     text: [
       {
-        // PAS de consigne ici, et c'est une décision : la phrase promettait
-        // « un **clic** pour le télécharger » alors qu'il n'existe aucun
-        // fichier à télécharger. Le bouton est #159, dont la definition of
-        // done repose la consigne le jour où il arrive.
-        fr: 'Mon CV, à jour (promis). Le parcours, les langues, et ce que je cherche : tout est à l’écran.',
-        en: "My CV, up to date (I promise). The track record, the languages, and what I'm after: it's all on screen.",
+        // La consigne est REVENUE avec #161 : le bouton existe, sur la ligne
+        // du nom de l'écran vertical, et il rapporte le PDF de la langue
+        // courante. Elle avait été retirée le temps de #32, où elle promettait
+        // un clic qui ne menait à rien.
+        fr: 'Mon CV, à jour (promis). Un **clic** pour le télécharger, l’imprimante c’est vous qui gérez.',
+        en: "My CV, up to date (I promise). One **click** to download it — the printer's on you.",
       },
     ],
     tick: 'right',

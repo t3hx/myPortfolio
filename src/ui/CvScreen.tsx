@@ -3,6 +3,7 @@ import { CAMERA_STOPS } from '@/config/cameraStops'
 import { CV, CV_JOBS_EMPTY, type CvGlyph } from '@/content/cv'
 import { UI } from '@/content/ui'
 import { CvMark } from '@/ui/CvMark'
+import { ResumeDownload } from '@/ui/ResumeDownload'
 import { type Locale, t, tm } from '@/lib/locale'
 import { useLocale } from '@/state/locale'
 import { useInteraction } from '@/state/interaction'
@@ -84,15 +85,32 @@ function CascadeTitle(props: { text: string; elapsed: number | null; delay?: num
  * Le texte brouillé est `aria-hidden` et le vrai nom vit dans `aria-label` :
  * une synthèse vocale lirait sinon une ligne de bruit.
  */
-function CvName({ text, elapsed }: { text: string; elapsed: number | null }) {
+function CvName({
+  text,
+  elapsed,
+  locale,
+}: {
+  text: string
+  elapsed: number | null
+  locale: Locale
+}) {
   const typing = elapsed !== null && elapsed < DECRYPT_MS
   return (
-    <h1 className="cv__name" aria-label={text}>
-      <span aria-hidden="true">
-        <Scrambled text={text} elapsed={elapsed} duration={DECRYPT_MS} />
-        {typing && <i className="cv__caret" />}
-      </span>
-    </h1>
+    // Le lien est sur la LIGNE DU NOM, et c'est ce qui le rend gratuit en
+    // hauteur : le nom est composé en 30 px, la pastille en 12 px avec ses
+    // marges internes, donc elle tient dans l'interligne déjà réservé. Une
+    // rangée à elle aurait poussé tout le CV vers le bas, et le haut du CV ne
+    // bouge jamais (voir `.cv::before`). C'est aussi la première chose visible
+    // sans défiler, ce que #161 demande.
+    <div className="cv__head">
+      <h1 className="cv__name" aria-label={text}>
+        <span aria-hidden="true">
+          <Scrambled text={text} elapsed={elapsed} duration={DECRYPT_MS} />
+          {typing && <i className="cv__caret" />}
+        </span>
+      </h1>
+      <ResumeDownload locale={locale} className="cv__download" />
+    </div>
   )
 }
 
@@ -196,7 +214,7 @@ export function CvScreen() {
       className={visible ? 'cv' : 'cv cv--out'}
       aria-label={t(UI.cv.region, locale)}
     >
-      <CvName text={CV.identity.name} elapsed={elapsed} />
+      <CvName text={CV.identity.name} elapsed={elapsed} locale={locale} />
 
       <div className="cv__row">
         {/* Sans photo, le cadre hachuré EST l'illustration — même parti que la
