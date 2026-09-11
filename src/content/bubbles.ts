@@ -205,8 +205,8 @@ export const BUBBLES: BubbleContent[] = [
     subject: { fr: 'L’étagère', en: 'The shelf' },
     text: [
       {
-        fr: 'Orwell, Asimov, Poe, Horowitz : la bibliothèque qui m’a formé l’esprit. Et parfois gâché des nuits !',
-        en: "Orwell, Asimov, Poe, Horowitz: the bookshelf that shaped my mind. And ruined a few nights' sleep!.",
+        fr: 'Orwell, Asimov, Poe, Horowitz : la bibliothèque qui m’a formé l’esprit. Et parfois gâché des nuits !',
+        en: "Orwell, Asimov, Poe, Horowitz: the bookshelf that shaped my mind. And ruined a few nights' sleep!",
       },
     ],
     tick: 'right',
@@ -223,11 +223,11 @@ export const BUBBLES: BubbleContent[] = [
     subject: { fr: 'Le chat', en: 'The cat' },
     text: [
       {
-        fr: 'Pixel, contrôle qualité. Surveillance constante : rien n’est poussé en "prod" sans son approbation.',
-        en: 'Pixel, quality control. Constant surveillance: nothing gets pushed to "prod" without his approval.',
+        fr: 'Pixel, contrôle qualité. Surveillance constante : rien n’est poussé en « prod » sans son approbation.',
+        en: 'Pixel, quality control. Constant surveillance: nothing gets pushed to “prod” without his approval.',
       },
       {
-        fr: 'Et il ne vous lâchera jamais des yeux. Si si, je vous jure ! **Bougez votre souris**, vous verrez.',
+        fr: 'Et il ne vous lâchera jamais des yeux. Si si, je vous jure ! **Bougez votre souris**, vous verrez.',
         en: "And he'll never take his eyes off you. No really, I swear! **Move your mouse**, you'll see.",
       },
     ],
