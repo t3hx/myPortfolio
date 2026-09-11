@@ -8,10 +8,11 @@ import {
   REVEAL_STEP_TILE_MS,
   REVEAL_TILE_BASE_MS,
 } from '@/config/classic'
-import { CV, glyphMark } from '@/content/cv'
+import { CV } from '@/content/cv'
 import { MENU_SOCIALS } from '@/content/menu'
 import { PROJECTS } from '@/content/projects'
 import { UI } from '@/content/ui'
+import { CvMark } from '@/ui/CvMark'
 import { t, tm, type Locale } from '@/lib/locale'
 import { useLocale } from '@/state/locale'
 import { LangToggle } from '@/ui/LangToggle'
@@ -161,7 +162,7 @@ function Skills({ locale }: { locale: Locale }) {
               style={revealDelay(REVEAL_TILE_BASE_MS + i * REVEAL_STEP_TILE_MS)}
             >
               <span className="classic-tile__mark" aria-hidden="true">
-                {skill.icon ? <img src={skill.icon} alt="" /> : glyphMark(skill, locale)}
+                <CvMark glyph={skill} locale={locale} />
               </span>
               <span className="classic-tile__label">{name}</span>
             </div>

@@ -36,9 +36,13 @@
  * masque à 96 px (2026-09-11) :
  *
  *     vue 14,9 · three.js 15,9 · tailwind 20,5 · gsap 23,0 · vitest 24,3
- *     figma 25,2 · react 27,1 · blender 37,6 · claude 39,7 · github 42,8
- *     vite 46,8 · postgresql 52,9 · node.js 65,1 · typescript 85,9
- *     javascript 86,4
+ *     figma 25,2 · docker 27,0 · react 27,1 · blender 37,6 · claude 39,7
+ *     github 42,8 · vite 46,8 · postgresql 52,9 · node.js 65,1
+ *     typescript 85,9 · javascript 86,4
+ *
+ * `docker` est arrivé après (#169) : son dessin remplissait déjà 98 % de sa
+ * boîte, il ne lui manquait que le rognage carré, et son encre de 27,0 % le
+ * place dans la famille des silhouettes, à côté de React.
  *
  * Un glyphe détouré dans un carré plein ne lit pas comme une marque, il lit
  * comme un pavé, et il écrase les silhouettes posées à côté. L'encre ne se
@@ -86,6 +90,7 @@ import type { Locale } from '@/lib/locale'
 export const MARKS = {
   blender: '/icons/blender.svg',
   'claude-ai': '/icons/claude-ai.svg',
+  docker: '/icons/docker.svg',
   figma: '/icons/figma.svg',
   github: '/icons/github.svg',
   gsap: '/icons/gsap.svg',
