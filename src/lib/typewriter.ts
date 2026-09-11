@@ -1,4 +1,4 @@
-import { plainText } from '@/lib/richText'
+import { plainLength } from '@/lib/richText'
 
 /**
  * La machine à écrire des bulles (#121) — **une fonction pure**, pour que la
@@ -11,12 +11,12 @@ import { plainText } from '@/lib/richText'
 
 /**
  * Millisecondes par caractère. **Mesurée sur la copy livrée, pas choisie.**
- * Les dix phrases françaises font de 58 à 101 caractères, ce qui donne :
+ * Les quinze pages françaises de #32 font de 51 à 101 caractères, ce qui donne :
  *
- *     15 ms →  0,87 s … 1,51 s   trop rapide, c'est un fondu, pas une frappe
- *     20 ms →  1,16 s … 2,02 s   retenu (arbitrage à l'écran, 2026-08-24)
- *     26 ms →  1,51 s … 2,63 s   premier essai, jugé encore un peu lent
- *     40 ms →  2,32 s … 4,04 s   on attend la machine
+ *     15 ms →  0,77 s … 1,52 s   trop rapide, c'est un fondu, pas une frappe
+ *     20 ms →  1,02 s … 2,02 s   retenu (arbitrage à l'écran, 2026-08-24)
+ *     26 ms →  1,33 s … 2,63 s   premier essai, jugé encore un peu lent
+ *     40 ms →  2,04 s … 4,04 s   on attend la machine
  *
  * Le repère : la frappe doit rester assez lente pour qu'on la VOIE écrire —
  * sinon autant afficher — et finir avant que le lecteur ait fini de lire, sinon
@@ -35,7 +35,7 @@ export const TYPE_MS_PER_CHAR = 20
  * d'une phrase à proportion de son balisage, ce qui n'a aucun sens à l'écran.
  */
 export function typeDuration(text: string): number {
-  return plainText(text).length * TYPE_MS_PER_CHAR
+  return plainLength(text) * TYPE_MS_PER_CHAR
 }
 
 /**
@@ -47,7 +47,7 @@ export function typeDuration(text: string): number {
  * « est-ce que ça écrit encore ».
  */
 export function typedLength(text: string, elapsed: number, duration: number): number {
-  const longueur = plainText(text).length
+  const longueur = plainLength(text)
   if (elapsed >= duration) return longueur
   if (elapsed <= 0) return 0
   return Math.min(longueur, Math.floor(elapsed / TYPE_MS_PER_CHAR))

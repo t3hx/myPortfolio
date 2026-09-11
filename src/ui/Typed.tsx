@@ -1,4 +1,5 @@
-import { parseCues } from '@/lib/richText'
+import { Fragment } from 'react'
+import { layout } from '@/lib/richText'
 
 /**
  * Le texte en train de s'écrire, et le reste **rendu mais invisible**.
@@ -13,43 +14,48 @@ import { parseCues } from '@/lib/richText'
  * par le bas et remonterait à mesure qu'il parle. `visibility: hidden` occupe la place sans peindre
  * — `display: none` ne l'occuperait pas, et `opacity: 0` laisserait le texte
  * sélectionnable et lisible par un lecteur d'écran.
+ *
+ * Le composant ne découpe RIEN lui-même : les consignes, les sauts de ligne et
+ * l'avancée de la frappe sont trois découpes croisées, et elles vivent dans
+ * `layout`, une fonction pure que les tests peuvent lire (#32). Découper ici
+ * remettrait dans le DOM une logique qui ne s'y relit qu'à l'œil — et c'est
+ * ainsi qu'une émoticône se faisait couper au milieu de sa paire d'unités.
  */
 export function Typed({ text, shown }: { text: string; shown: number }) {
-  // Les segments sont découpés sur le texte MARQUÉ, mais la frappe compte sur
-  // le texte NU : le visiteur ne voit pas les `**`, ils ne doivent donc pas lui
-  // coûter des millisecondes ni décaler l'endroit où la phrase s'arrête.
-  const segments = parseCues(text)
-  let déjà = 0
+  const lines = layout(text, shown)
 
   return (
     <>
-      {segments.map((seg) => {
-        const visible = Math.min(seg.text.length, Math.max(0, shown - déjà))
-        const début = déjà
-        déjà += seg.text.length
-        const écrit = seg.text.slice(0, visible)
-        const reste = seg.text.slice(visible)
-        // La consigne garde son enveloppe même quand elle n'est pas encore
-        // écrite : c'est elle qui porte l'accent et le balayage, et la faire
-        // apparaître au dernier caractère ferait clignoter la couleur.
-        const contenu = (
-          <>
-            {écrit}
-            {reste && (
-              <span aria-hidden="true" style={{ visibility: 'hidden' }}>
-                {reste}
+      {lines.map((line, i) => (
+        <Fragment key={i}>
+          {/* Le saut est un `<br>` et non un `white-space` de CSS : la variante
+              sans titre de l'accueil pose `nowrap`, qui réduirait le saut à une
+              espace sans que rien ne le dise. Voir `layout`. */}
+          {i > 0 && <br />}
+          {line.map((span, j) => {
+            // La consigne garde son enveloppe même quand elle n'est pas encore
+            // écrite : c'est elle qui porte l'accent et le balayage, et la faire
+            // apparaître au dernier caractère ferait clignoter la couleur.
+            const contenu = (
+              <>
+                {span.written}
+                {span.pending && (
+                  <span aria-hidden="true" style={{ visibility: 'hidden' }}>
+                    {span.pending}
+                  </span>
+                )}
+              </>
+            )
+            return span.cue ? (
+              <span className="cue" key={j}>
+                {contenu}
               </span>
-            )}
-          </>
-        )
-        return seg.cue ? (
-          <span className="cue" key={début}>
-            {contenu}
-          </span>
-        ) : (
-          <span key={début}>{contenu}</span>
-        )
-      })}
+            ) : (
+              <span key={j}>{contenu}</span>
+            )
+          })}
+        </Fragment>
+      ))}
     </>
   )
 }

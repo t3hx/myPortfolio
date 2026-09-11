@@ -176,8 +176,8 @@ export const UI = {
      * l'arrivée de la lune, qui reste tant qu'on regarde.
      */
     moon: {
-      fr: 'À 384 000 km, le seul sujet qui accepte de poser par nuit claire.',
-      en: 'At 384,000 km, the only subject that will pose on a clear night.',
+      fr: 'À 384 000 km. La seule cliente qui ne demande jamais de modifications.',
+      en: '384,000 km away. The only client who never asks for changes.',
     } as Localized,
   },
   menu: {
