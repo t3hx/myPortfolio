@@ -33,6 +33,12 @@ export interface CvGlyph {
   /**
    * Ce qui s'écrit DANS la vignette quand il n'y a pas d'icône.
    *
+   * **Traduisible, et c'est nécessaire** (#173) : les six qualités donnent
+   * S, A, O, P, C, E en français, toutes distinctes, mais « Efficiency-driven »
+   * et « Empathetic » partagent leur E en anglais. Une marque non traduisible
+   * aurait forcé à choisir entre une collision dans une langue et une initiale
+   * fausse dans l'autre.
+   *
    * Sans lui, c'est la première lettre du nom — ce qui suffit tant que les
    * noms se distinguent par elle. Les tuiles du site classique (#29) ne
    * peuvent pas s'en contenter : `TypeScript` et `Tailwind CSS` commencent
@@ -41,7 +47,7 @@ export interface CvGlyph {
    * mot ; au-delà, la vignette n'est plus un glyphe mais une étiquette, et il
    * y en a déjà une dessous.
    */
-  initial?: string
+  initial?: MaybeLocalized
   /**
    * Une marque de `MARKS` (`src/config/icons.ts`). Absente = l'initiale.
    *
@@ -68,7 +74,9 @@ export interface CvGlyph {
  * `P` de l'autre, sans que rien ne le signale.
  */
 export function glyphMark(glyph: CvGlyph, locale: Locale): string {
-  return glyph.initial ?? tm(glyph.name, locale).slice(0, 1)
+  return glyph.initial === undefined
+    ? tm(glyph.name, locale).slice(0, 1)
+    : tm(glyph.initial, locale)
 }
 
 /** Une ligne de la carte « Langues & permis » : un intitulé, une valeur. */
@@ -87,17 +95,33 @@ export interface CvJob {
   /** « 2023 — 2026 ». Du texte : ce n'est pas une date qu'on trie. */
   period: string
   /**
-   * Les missions révélées par l'accordéon au survol.
+   * Les missions révélées par l'accordéon au survol. **Absentes = cartouche
+   * statique**, qui ne réagit pas au survol et ne promet donc rien : c'est le
+   * cas d'un poste dont le CV ne détaille aucune mission, et c'est le même
+   * traitement qu'une formation (`.job--static`).
    *
-   * **Quatre au minimum** (décision de l'auteur, 2026-08-20) : une cartouche
-   * qui n'en montre que deux ne récompense pas le survol qui l'a ouverte.
-   * `tests/cv.test.ts` le vérifie. Le maximum, lui, n'est pas technique —
-   * l'accordéon s'adapte à son contenu (`.job__missions` interpole
-   * `grid-template-rows` au lieu d'une `max-height` devinée) — mais chaque
-   * puce coûte ~21 px de hauteur ouverte, et la hauteur est la ressource rare
-   * de cet écran.
+   * **La règle « quatre au minimum » a été retirée** (#173). Elle datait du
+   * 2026-08-20, quand cette donnée était inventée et pouvait se rembourrer
+   * jusqu'à quatre. Le vrai parcours en porte sept, cinq, trois et zéro, et
+   * inventer une quatrième puce pour satisfaire une règle de forme serait
+   * exactement ce que cette issue est venue corriger.
+   *
+   * **La liste porte TOUT ce que le CV dit ; c'est le rendu qui coupe.** Le
+   * site classique les affiche toutes, l'écran vertical s'arrête à
+   * `MISSIONS_ON_SCREEN` — chaque puce y coûte ~21 px de hauteur ouverte, et
+   * la hauteur est la ressource rare de cet écran. Couper dans la DONNÉE
+   * aurait privé les deux surfaces, dont celle qui a la place.
    */
-  missions: Localized<string[]>
+  missions?: Localized<string[]>
+  /**
+   * Les clients servis pendant ce poste, en une ligne.
+   *
+   * Un champ à part et non une puce : ce n'est pas une mission, c'est le
+   * contexte du poste — et le CV papier le compose ainsi, sur sa propre ligne
+   * sous l'intitulé. `MaybeLocalized` parce que la plupart sont des noms
+   * propres et ne se traduisent pas, mais « France/Suisse/Singapour » si.
+   */
+  clients?: MaybeLocalized
 }
 
 /**
@@ -132,8 +156,15 @@ export interface Cv {
      * juste toute seule, mais elle ferait entrer une horloge dans un module
      * de contenu statique, pour une valeur qui change une fois par an et que
      * l'auteur relit de toute façon en même temps que ses dates de poste.
+     *
+     * **`null` dans une langue veut dire « rien à dire », et l'anglais est
+     * dans ce cas** (décision de l'auteur, 2026-09-11) : un CV anglophone ne
+     * porte pas l'âge, et le PDF anglais l'a retiré aussi. `null` plutôt
+     * qu'une chaîne vide, parce qu'une chaîne vide se lit comme un oubli — et
+     * parce que la ligne de méta doit alors sauter la mention ET son
+     * séparateur, ce qu'un blanc ne lui dirait pas.
      */
-    age: Localized
+    age: Localized<string | null>
     /** Le texte alternatif de la photo, quand il y en a une. */
     alt: Localized
   }
@@ -165,6 +196,8 @@ export interface Cv {
   jobsTitle: Localized
   /** Du plus récent au plus ancien : l'ordre du tableau EST l'ordre affiché. */
   jobs: CvJob[]
+  /** Le libellé qui introduit les clients d'un poste — « Clients ». */
+  clientsLabel: Localized
   /** Le titre de la pile de formations — « Formations ». */
   formationsTitle: Localized
   /** Quatre cartouches, du plus récent au plus ancien. */
@@ -187,123 +220,159 @@ export const CV_JOBS_EMPTY: Localized = {
 export const CV: Cv = {
   identity: {
     name: 'Thibault Dubois',
-    age: { fr: '36 ans', en: '36 years old' },
+    age: { fr: '36 ans', en: null },
     alt: { fr: 'Photo de Thibault', en: 'Photograph of Thibault' },
   },
   traitsTitle: { fr: 'Savoir-être', en: 'Soft skills' },
   traits: [
-    { name: { fr: 'Curiosité', en: 'Curiosity' } },
-    { name: { fr: 'Rigueur', en: 'Rigour' } },
-    { name: { fr: 'Autonomie', en: 'Autonomy' } },
-    { name: { fr: 'Écoute', en: 'Listening' } },
-    { name: { fr: 'Pédagogie', en: 'Teaching' } },
-    { name: { fr: 'Ténacité', en: 'Tenacity' } },
+    { name: { fr: 'Stratège', en: 'Strategist' } },
+    { name: { fr: 'Agile', en: 'Agile' } },
+    // Deux marques traduites, parce que « Efficiency-driven » et
+    // « Empathetic » partagent leur E : sans ça, deux vignettes anglaises
+    // identiques côte à côte.
+    { name: { fr: 'Optimiseur', en: 'Efficiency-driven' }, initial: { fr: 'O', en: 'Ef' } },
+    { name: { fr: 'Persévérant', en: 'Persistent' } },
+    { name: { fr: 'Communiquant', en: 'Communicative' } },
+    { name: { fr: 'Empathique', en: 'Empathetic' } },
   ],
   factsTitle: { fr: 'Langues & permis', en: 'Languages & licence' },
   facts: [
     { label: { fr: 'Français', en: 'French' }, value: { fr: 'natif', en: 'native' } },
-    { label: { fr: 'Anglais', en: 'English' }, value: 'C1' },
+    { label: { fr: 'Anglais', en: 'English' }, value: 'C2' },
     { label: { fr: 'Permis', en: 'Driving licence' }, value: 'B' },
   ],
   skillsTitle: { fr: 'Savoir-faire', en: 'Technical skills' },
+  /**
+   * Sept vignettes, choisies par l'auteur (2026-09-11) : ce qui vaut une place
+   * dédiée dans l'interface, pas l'inventaire du CV. JavaScript et Git en sont
+   * absents exprès — le premier découle de TypeScript, le second va de soi. Le
+   * reste du CV (MongoDB, Firebase, GCP, Cloudflare, Linux, MacOS, Asana,
+   * Jira) est vrai et reste dans le PDF, qui n'a pas la même économie de place.
+   */
   skills: [
     { name: 'TypeScript', initial: 'Ts' },
-    { name: 'React', initial: 'R' },
-    { name: 'Node', initial: 'N' },
-    { name: 'PostgreSQL', initial: 'Pg' },
-    { name: 'Three.js', initial: '3' },
+    { name: 'React.js', initial: 'R' },
+    { name: 'Vue.js', initial: 'V' },
+    { name: 'Three.js', initial: 'Th' },
+    { name: 'Node.js', initial: 'N' },
+    { name: 'Postgres', initial: 'Pg' },
     { name: 'Docker', initial: 'Dk' },
-    { name: 'Blender', initial: 'Bl' },
-    { name: 'Git', initial: 'Gi' },
   ],
   outlookTitle: { fr: 'Le cap', en: 'The heading' },
+  /**
+   * Le paragraphe « projet » du CV papier, mot pour mot. Le texte qui vivait
+   * ici avant était une invention de #93 : il disait une intention plausible
+   * que personne n'avait écrite.
+   */
   outlook: {
     fr:
-      "Continuer à faire des interfaces qu'on a envie de toucher, là où le détail " +
-      'compte autant que la structure. Je cherche une équipe qui construit sur ' +
-      'plusieurs années plutôt que sur plusieurs sprints, et qui laisse le temps ' +
-      'de bien poser les fondations.',
+      'Explorateur du code issu du monde du digital analytics, je me reconvertis ' +
+      'en développeur web avec une passion sincère pour le JavaScript, côté front ' +
+      "comme côté back. Polyvalent, j'associe ma rigueur d'analyste à ma " +
+      'créativité afin de construire des applications qui répondent précisément ' +
+      'aux besoins métier ou utilisateur.',
     en:
-      'Keep building interfaces people want to touch, where the detail matters as ' +
-      'much as the structure. I am looking for a team that builds over years ' +
-      'rather than over sprints, and that leaves time to lay the foundations ' +
-      'properly.',
+      'A code explorer from the digital analytics world, I am moving into web ' +
+      'development with a genuine passion for JavaScript, front end and back end ' +
+      "alike. Versatile, I pair an analyst's rigour with creativity to build " +
+      'applications that answer business and user needs precisely.',
   },
   jobsTitle: { fr: 'Expériences', en: 'Experience' },
+  clientsLabel: { fr: 'Clients', en: 'Clients' },
+  /**
+   * Le parcours réel, du plus récent au plus ancien (#173).
+   *
+   * **Les périodes sont en ANNÉES et non en mois**, alors que le PDF donne le
+   * mois : la cartouche est étroite, et `period` n'est pas traduisible — « Août
+   * 2020 » y serait du français servi à un lecteur anglais. Le PDF reste la
+   * version exhaustive, ici c'est un repère.
+   */
   jobs: [
     {
-      title: { fr: 'Développeur front-end senior', en: 'Senior front-end developer' },
-      company: 'Studio Nova',
-      period: '2023 — 2026',
+      title: {
+        fr: 'Consultant technique senior, digital analytics',
+        en: 'Senior technical consultant, digital analytics',
+      },
+      company: 'Optimal Ways',
+      period: '2020 — 2024',
+      clients: {
+        fr:
+          'Midas, Cyrillus, Armand Thiery, Brady Seton, Mobalpa, Brico-Dépôt, ' +
+          'Decathlon France/Suisse/Singapour/PRO',
+        en:
+          'Midas, Cyrillus, Armand Thiery, Brady Seton, Mobalpa, Brico-Dépôt, ' +
+          'Decathlon France/Switzerland/Singapore/PRO',
+      },
       missions: {
         fr: [
-          'Refonte WebGL du site vitrine (three.js, 60 fps)',
-          'Design system interne — tokens, composants, docs',
-          'Mentorat de deux développeurs juniors',
-          'Budget de performance tenu sur trois refontes de suite',
+          'Gestion de projets de A à Z, autonomie sur le renouvellement des contrats',
+          'Analyse des données, assurance qualité, conseil en stratégie analytics et en UX',
+          "Développement d'outils pour l'intégration et le traitement des données (JS, Node.js)",
+          'Traitement des données collectées dans BigQuery (GCP) et Azure Cloud',
+          "Intégration et migration d'outils analytics : GA, Piano, Adobe",
+          "Création du système d'information interne à l'agence",
+          "Management d'équipe : planification, formation interne et externe, intégration",
         ],
         en: [
-          'WebGL rebuild of the marketing site (three.js, 60 fps)',
-          'Internal design system — tokens, components, docs',
-          'Mentored two junior developers',
-          'Performance budget held across three consecutive rebuilds',
+          'End-to-end project ownership, autonomy on contract renewals',
+          'Data analysis, quality assurance, analytics strategy and UX consulting',
+          'Tooling for data integration and processing (JS, Node.js)',
+          'Processing of collected data in BigQuery (GCP) and Azure Cloud',
+          'Analytics tool integration and migration: GA, Piano, Adobe',
+          "Built the agency's internal information system",
+          'Team management: planning, internal and external training, onboarding',
         ],
       },
     },
     {
-      title: { fr: 'Développeur full-stack', en: 'Full-stack developer' },
-      company: 'Atelier K',
-      period: '2020 — 2023',
+      title: {
+        fr: "Responsable d'application (MCO)",
+        en: 'Application manager (run & maintenance)',
+      },
+      company: 'IDKIDS Group',
+      period: '2019 — 2020',
       missions: {
         fr: [
-          'Plateforme e-commerce (Node, PostgreSQL)',
-          'Intégration paiement et facturation',
-          'Mise en place CI/CD et revues de code',
-          'Migration du catalogue vers un schéma versionné',
+          'Collecte des besoins des équipes métier e-commerce et rédaction des cas d’usage',
+          'Organisation des sprints et priorisation des tâches avec les équipes de développement',
+          'Extractions de base de données pour le contrôle de gestion',
+          'Adressage des problématiques prioritaires du service client (run, support N2)',
+          'Astreinte technique et assurance qualité lors des mises en production',
         ],
         en: [
-          'E-commerce platform (Node, PostgreSQL)',
-          'Payment and invoicing integration',
-          'Set up CI/CD and code review',
-          'Migrated the catalogue to a versioned schema',
+          'Requirements gathering with the e-commerce business teams, use-case writing',
+          'Sprint planning and task prioritisation with the development teams',
+          'Database extractions for the management control team',
+          'Handling of priority customer-service issues (run, L2 support)',
+          'On-call duty and quality assurance during production releases',
         ],
       },
     },
     {
-      title: { fr: 'Intégrateur web', en: 'Web integrator' },
-      company: 'Freelance',
-      period: '2018 — 2020',
-      missions: {
-        fr: [
-          'Sites vitrines pour artisans et studios',
-          'Audits performance et accessibilité',
-          'Reprise de trois sites laissés sans mainteneur',
-          'Formation des clients à la mise à jour de leur contenu',
-        ],
-        en: [
-          'Showcase sites for craftspeople and studios',
-          'Performance and accessibility audits',
-          'Took over three sites left without a maintainer',
-          'Trained clients to update their own content',
-        ],
-      },
+      // Le CV ne détaille aucune mission pour ce poste : la cartouche est donc
+      // statique, et elle ne promet rien au survol.
+      title: { fr: 'Consultant data', en: 'Data consultant' },
+      company: 'Web Transition',
+      period: '2018 — 2019',
+      clients: 'KingFisher, IDKIDS Group',
     },
     {
-      title: { fr: 'Alternance développement web', en: 'Web development apprenticeship' },
-      company: 'Coopérative Lumen',
-      period: '2016 — 2018',
+      title: {
+        fr: 'Technicien support N2, serveurs BareMetal et Cloud',
+        en: 'Support technician L2, BareMetal and Cloud servers',
+      },
+      company: 'OVHcloud',
+      period: '2015 — 2018',
       missions: {
         fr: [
-          'Outil interne de suivi des adhérents',
-          'Reprise du parc de sites sous un socle commun',
-          'Automatisation des exports comptables mensuels',
-          'Documentation du socle pour les alternants suivants',
+          'Traitement et priorisation des incidents critiques avec les équipes DevOps et SysAdmin',
+          'Intervention à distance sur les serveurs (Proxmox, VMware, SSH)',
+          'Dépannage téléphonique des clients non hébergés',
         ],
         en: [
-          'Internal member-tracking tool',
-          'Consolidated the site estate onto a shared base',
-          'Automated the monthly accounting exports',
-          'Documented the base for the next apprentices',
+          'Triage and prioritisation of critical incidents with DevOps and SysAdmin teams',
+          'Remote work on servers (Proxmox, VMware, SSH)',
+          'Phone troubleshooting for non-hosted customers',
         ],
       },
     },
@@ -311,24 +380,30 @@ export const CV: Cv = {
   formationsTitle: { fr: 'Formations', en: 'Education' },
   formations: [
     {
-      title: { fr: 'Master développement web', en: "Master's in web development" },
-      school: 'École Ardent',
-      period: '2016 — 2018',
+      title: {
+        fr: 'Certification Vue.js (beginner + masterclass)',
+        en: 'Vue.js certification (beginner + masterclass)',
+      },
+      school: 'vueschool.io',
+      period: '2024',
     },
     {
-      title: { fr: 'Licence informatique', en: "Bachelor's in computer science" },
-      school: 'Université de Verlaine',
-      period: '2013 — 2016',
+      title: {
+        fr: 'Certification JavaScript (beginner + advanced)',
+        en: 'JavaScript certification (beginner + advanced)',
+      },
+      // Le CV papier écrit « Openclassroom » ; la plateforme s'appelle
+      // OpenClassrooms. Corrigé ici, à corriger là-bas.
+      school: 'OpenClassrooms',
+      period: '2022',
     },
     {
-      title: { fr: 'DUT informatique', en: 'Two-year computer science diploma' },
-      school: 'IUT de Vallonne',
-      period: '2011 — 2013',
-    },
-    {
-      title: { fr: 'Baccalauréat scientifique', en: 'Science baccalaureate' },
-      school: 'Lycée Saint-Aubert',
-      period: '2011',
+      title: {
+        fr: 'BTS négociation et relation client',
+        en: 'BTS sales & customer relations (two-year degree)',
+      },
+      school: 'ISEG',
+      period: '2010 — 2012',
     },
   ],
 }

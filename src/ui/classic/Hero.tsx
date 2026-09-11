@@ -101,6 +101,9 @@ export function Hero({ locale }: { locale: Locale }) {
   // taille. Découpé sur l'espace plutôt qu'à un index écrit en dur, pour que le
   // jour où le nom change la ligne ne se coupe pas au milieu d'un mot.
   const full = CV.identity.name.toUpperCase()
+  // L'âge n'est dit qu'en français (#173) : `null` de l'autre côté, et la ligne
+  // de méta s'ouvre alors sur le premier fait.
+  const ageAffiché = t(CV.identity.age, locale)
   const space = full.indexOf(' ')
   const firstName = space === -1 ? full : full.slice(0, space)
   const lastName = space === -1 ? '' : full.slice(space + 1)
@@ -176,12 +179,15 @@ export function Hero({ locale }: { locale: Locale }) {
             se serait mis à mentir au premier changement. L'âge, lui, n'est
             affiché que par cette page : il vit dans `CV.identity`. */}
         <div className="classic-hero__meta classic-ignite" style={ignite(1400, 2500)}>
-          <span>{t(CV.identity.age, locale)}</span>
-          {CV.facts.map((fact) => (
+          {ageAffiché && <span>{ageAffiché}</span>}
+          {CV.facts.map((fact, i) => (
             <Fragment key={t(fact.label, locale)}>
               {/* Le point cyan est un SÉPARATEUR : il précède chaque fait, donc
-                  il n'ouvre jamais la ligne — c'est l'âge qui l'ouvre. */}
-              <i aria-hidden="true" />
+                  il n'ouvre jamais la ligne. C'est l'âge qui l'ouvre — et quand
+                  il n'est pas dit, en anglais (#173), c'est le premier fait qui
+                  ouvre, donc sans séparateur. Un point orphelin en tête de
+                  ligne se lit comme une puce vide. */}
+              {(i > 0 || ageAffiché) && <i aria-hidden="true" />}
               <span>
                 {t(fact.label, locale)} {tm(fact.value, locale)}
               </span>

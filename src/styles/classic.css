@@ -664,6 +664,23 @@
    longue elle rend l'ouverture molle sur un poste bref — et personne ne s'en
    aperçoit tant que le contenu ne change pas. Même mécanique que `.job__missions`
    du CV de la scène. */
+/* Les clients d'un poste (#173) — même décision que dans la scène : une ligne
+   de contexte sous l'intitulé, hors de l'accordéon, donc lisible sans survol.
+   Ici la cartouche est plus large, la ligne tient donc sur une ou deux lignes
+   au lieu de trois. */
+.classic-card__clients {
+  margin: 10px 0 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: rgba(var(--cream-rgb), 0.5);
+}
+.classic-card__clients span {
+  color: var(--glow);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 10.5px;
+}
+
 .classic-card__missions {
   display: grid;
   grid-template-rows: 0fr;

@@ -1144,6 +1144,16 @@
 }
 .job {
   pointer-events: auto;
+  /* NI croissance NI COMPRESSION. `.cv` est une colonne flex, et le minimum
+     automatique d'un élément flex vaut sa taille de contenu — sauf s'il porte
+     un `overflow` autre que `visible`, qui le ramène à ZÉRO. C'est le cas ici
+     (voir plus bas : `overflow: hidden` coupe le balayage aux angles arrondis),
+     si bien que la colonne tassait ses cartouches au lieu de défiler.
+     Mesuré avant : les huit cartouches perdaient jusqu'à 28 px de leur propre
+     contenu à 1512 × 945, et 44 px avec le vrai parcours (#173). Un contenu
+     tassé est COUPÉ, pas reflué : c'est pire qu'un débordement, qui se voit et
+     se défile. `.cv` porte déjà `overflow-y: auto` pour ça. */
+  flex: none;
   background: rgba(var(--cream-rgb), .07); border: 1px solid rgba(var(--cream-rgb), .12);
   border-radius: 8px; padding: 11px 16px;
   transition: background var(--t-item), border-color var(--t-item);
@@ -1181,6 +1191,22 @@
   margin-left: auto; flex: none; font-size: 11px; font-family: ui-monospace, monospace;
   color: rgba(var(--cream-rgb), .5);
 }
+/* Les clients d'un poste (#173). Une LIGNE, sous l'intitulé, hors de
+   l'accordéon : ce n'est pas une mission, c'est le contexte du poste, et le CV
+   papier la compose au même endroit. Elle reste donc visible sans survol —
+   masquée dans l'accordéon, elle aurait promis un détail au lieu d'un cadre.
+   Le libellé porte l'accent froid, comme les titres de section : c'est lui qui
+   dit ce que la liste EST, et sans lui une suite de noms propres ressemble à
+   une énumération sans cause. */
+.job__clients {
+  margin: 6px 0 0; font-size: 10.5px; line-height: 1.45;
+  color: rgba(var(--cream-rgb), .5);
+}
+.job__clients-key {
+  color: var(--glow); letter-spacing: .06em; text-transform: uppercase;
+  font-size: 9px; margin-right: 6px;
+}
+
 /* L'accordéon interpole `grid-template-rows` de 0fr à 1fr plutôt qu'une
    `max-height` devinée : une valeur en dur (160px dans la maquette d'origine)
    est un plafond invisible, et la quatrième mission disparaîtrait en silence.
