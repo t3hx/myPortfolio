@@ -10,7 +10,12 @@ Package manager is **pnpm** (see `pnpm-lock.yaml`).
 - `pnpm build` — production build to `dist/` (does **not** type-check; run `type-check` separately).
 - `pnpm type-check` — `tsc --noEmit`.
 - `pnpm preview` — serve the production build locally.
-- `pnpm test` — Vitest, single run. `pnpm test:watch` for the loop.
+- `pnpm test` — Vitest, single run, **with coverage** (#163). `pnpm test:watch` for the loop, without.
+
+  The coverage is **deliberately partial**: it measures `src/lib`, `src/config`, `src/content` and `src/state` — the pure rules a Node test can execute — and nothing else. `src/scene` and `src/ui`, some 1500 lines, are out of scope and that is not debt: they are proven by the render-comparison loop, by mockups used as oracles, by source reads and by browser measurements, and none of those proofs moves a line under instrumentation. A global percentage would push toward tests that import components to touch lines: the number would rise, the confidence would not.
+
+  Three files are excluded inside that scope, each with its reason written in `vitest.config.ts` — two React hooks and one canvas painter, which Node cannot run at all. Everything else stays in and drags the number down honestly: `viewMode.ts` at 39% reads `window` at module scope, `nameTargets.ts` and `labRaster.ts` measure text and rasterise in a `canvas`, `interaction.ts` is a store driven by components. **The thresholds are a floor, not a target** — set just under what was measured, so what they catch is a regression, and raising them is done by measuring, never by hoping. The provider is pinned to Vitest's own major: a 5 against a 4 does not fail loudly, it reports "9 tests passed of 545" and 0% coverage.
+
 - `pnpm test:e2e` — Playwright: the render-comparison loop (10 stops vs `design/renders/refs/`). **Distinct from `test` on purpose** — Vitest's `include` only takes `tests/**/*.test.ts`, the Playwright specs are `.spec.ts` under `tests/e2e/`. Needs `pnpm exec playwright install chromium` once.
 
 `tsconfig.json` includes `tests` and both config files, so `type-check` covers them too — it did not before, and a green type-check said nothing about the tests.
