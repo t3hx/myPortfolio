@@ -6,6 +6,7 @@
  * dupliqué : le menu ne connaît pas de pose, il demande un arrêt et c'est
  * CameraRig qui vole jusque-là.
  */
+import { MARKS } from '@/config/icons'
 import type { Localized } from '@/lib/locale'
 
 export interface MenuSection {
@@ -28,13 +29,22 @@ export const MENU_SECTIONS: MenuSection[] = [
  *  un menu dont la promesse est « le contact en deux clics » n'a pas le droit
  *  d'afficher un lien mort. */
 export interface MenuSocial {
-  /** Les deux lettres de la maquette. */
+  /** Les deux lettres de la maquette. **Repli, pas doublon** : c'est ce qui
+   *  s'affiche si la marque vient à manquer, et un masque absent n'affiche
+   *  rien du tout sans émettre la moindre erreur. */
   label: string
   title: string
   href: string
+  /** Chemin de `MARKS` (#170). Absent = les deux lettres. */
+  icon?: string
 }
 
 export const MENU_SOCIALS: MenuSocial[] = [
-  { label: 'in', title: 'LinkedIn', href: 'https://www.linkedin.com/in/tdbs' },
-  { label: 'gh', title: 'GitHub', href: 'https://github.com/t3hx' },
+  {
+    label: 'in',
+    title: 'LinkedIn',
+    href: 'https://www.linkedin.com/in/tdbs',
+    icon: MARKS.linkedin,
+  },
+  { label: 'gh', title: 'GitHub', href: 'https://github.com/t3hx', icon: MARKS.github },
 ]
