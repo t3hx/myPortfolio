@@ -20,7 +20,7 @@
  *
  * **L'absence d'`icon` est le repli, jamais une erreur de chargement.** Sans
  * fichier, la vignette affiche l'INITIALE du nom en crème monochrome : c'est le
- * glyphe neutre en attendant les vrais SVG. Il n'y a délibérément pas de
+ * glyphe neutre quand aucune marque n'existe. Il n'y a délibérément pas de
  * `onError` — une icône cassée est pire qu'un vide assumé, et c'est la donnée
  * qui décide, pas le réseau. Même règle que la couverture d'une fiche projet.
  */
@@ -43,10 +43,18 @@ export interface CvGlyph {
    */
   initial?: string
   /**
-   * Chemin d'un SVG servi depuis `public/` (ex. `/icons/react.svg`). Absent =
-   * l'initiale. Rendu en `<img>`, pas en `mask-image` : les vraies marques sont
-   * en couleur et doivent le rester. Seul le repli est monochrome, et cette
-   * asymétrie est voulue.
+   * Une marque de `MARKS` (`src/config/icons.ts`). Absente = l'initiale.
+   *
+   * **Rendue par un masque CSS, en monochrome** — décision de l'auteur du
+   * 2026-09-11, qui RENVERSE celle inscrite ici auparavant. Cette ligne disait
+   * « rendu en `<img>`, pas en `mask-image` : les vraies marques sont en
+   * couleur et doivent le rester », et la couleur est écartée pour deux raisons
+   * mesurées. À 16 px sur du verre fumé elle est du bruit, et c'est l'étiquette
+   * sous la vignette qui porte l'identification. Surtout, les fichiers livrés
+   * portent `fill="currentColor"` : dans une balise `<img>` il n'a aucun
+   * contexte dont hériter et vaut noir, donc invisible. La décision précédente
+   * est datée, pas effacée — elle explique pourquoi le repli est monochrome et
+   * plus pourquoi il serait le seul à l'être.
    */
   icon?: string
 }
