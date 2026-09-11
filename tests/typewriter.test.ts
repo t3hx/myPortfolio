@@ -35,10 +35,21 @@ describe('typedLength', () => {
     expect(typedLength(phrase, -50, durée)).toBe(0)
   })
 
-  it('écrit une phrase du tour dans un temps tenable', () => {
-    // Les dix phrases françaises font de 58 à 101 caractères. La borne haute
-    // est ce qui décide : au-delà de trois secondes, on attend la machine.
+  it('compte une émoticône pour un caractère, pas pour deux', () => {
+    // Une émoticône occupe deux unités UTF-16. Comptée en unités, elle coûtait
+    // deux temps de frappe et, surtout, la frappe s'arrêtait un instant au
+    // milieu de la paire — moitié de paire que le navigateur peint en glyphe
+    // cassé. La copy de l'étagère en porte une (#32).
+    expect(typeDuration('😅')).toBe(TYPE_MS_PER_CHAR)
+    expect(typedLength('a😅b', TYPE_MS_PER_CHAR * 2, TYPE_MS_PER_CHAR * 3)).toBe(2)
+  })
+
+  it('écrit une page du tour dans un temps tenable', () => {
+    // Les quinze pages françaises livrées par #32 font de 51 à 101 caractères.
+    // La borne haute est ce qui décide : au-delà de trois secondes, on attend
+    // la machine. La borne basse, elle, doit rester assez longue pour qu'on
+    // VOIE écrire — sous la seconde, c'est un fondu.
     expect(typeDuration('x'.repeat(101))).toBeLessThan(3000)
-    expect(typeDuration('x'.repeat(58))).toBeGreaterThan(1000)
+    expect(typeDuration('x'.repeat(51))).toBeGreaterThan(1000)
   })
 })

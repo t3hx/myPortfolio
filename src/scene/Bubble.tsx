@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef, useState, type CSSProperties, type RefO
 import { Vector3, type Camera, type Object3D } from 'three'
 import { clampToSafeArea } from '@/lib/bubbleAnchors'
 import { useNow } from '@/lib/clock'
-import { plainText } from '@/lib/richText'
+import { plainLength } from '@/lib/richText'
 import { typedLength } from '@/lib/typewriter'
 import { useInteraction } from '@/state/interaction'
 import { BubbleCard } from '@/ui/BubbleCard'
@@ -141,7 +141,7 @@ export function Bubble({
 
   const now = useNow(visible && revealed && released && !done && !finished)
   const shown =
-    done || finished ? plainText(children).length : typedLength(children, now - startedAt, duration)
+    done || finished ? plainLength(children) : typedLength(children, now - startedAt, duration)
 
   // La taille rendue de la bulle, relevée aux seuls changements de taille : la
   // lire à chaque frame forcerait un calcul de mise en page par frame.

@@ -65,6 +65,22 @@ export interface BubbleContent {
    * n'est pas du Markdown : rien d'autre n'est interprété. Le texte livré garde
    * ses marqueurs, et le contrôle verbatim des maquettes compare le texte NU.
    *
+   * **Un `\n` coupe la ligne** (#32), et c'est un `<br>` que `layout` en fait,
+   * jamais un `white-space` de CSS — la variante sans titre de l'accueil pose
+   * `nowrap`, qui aurait réduit le saut à une espace sans que rien ne le dise.
+   * Le saut coûte un caractère de frappe, puisqu'il s'affiche. Trois façons de
+   * couper une phrase, dans l'ordre où il faut les essayer : baisser
+   * `maxWidth` (la boîte grandit en HAUTEUR, où elle n'a personne à recouvrir),
+   * en faire deux pages si la coupure est un temps de la narration, et le `\n`
+   * quand c'est la ligne elle-même qu'on veut casser. Une maquette dit la même
+   * chose avec un `<br>`.
+   *
+   * **L'espace insécable (U+00A0) est de la copy, pas de la mise en forme.** La
+   * typographie française la met devant « : ; ! ? », et c'est elle qui empêche
+   * le deux-points de tomber seul en début de ligne — mesuré sur l'étagère, à
+   * 240 px de large. Elle est invisible dans le source : la chercher se fait à
+   * la recherche, pas à l'œil, et la maquette doit porter la MÊME.
+   *
    * Les deux langues ont le MÊME nombre de pages, et c'est une contrainte
    * choisie : une page est un temps de la narration, et les temps ne changent
    * pas d'une langue à l'autre. Le français est 15 à 20 % plus long, ce qui se
@@ -112,10 +128,10 @@ export const BUBBLES: BubbleContent[] = [
       {
         // `**…**` marque une CONSIGNE : ces mots-là s'écrivent dans l'accent et
         // un balayage les parcourt (#129). Le marquage vise des MOTS et non la
-        // phrase — « Bienvenue » et « chaque objet ici a une histoire »
-        // racontent, seul « faites défiler » demande quelque chose.
-        fr: 'Bienvenue — **faites défiler** pour commencer la visite, chaque objet ici a une histoire.',
-        en: 'Welcome — **scroll** to begin the tour; every object in here has a story.',
+        // phrase — l'accueil et l'invitation à s'installer racontent, seul le
+        // « coup de molette » demande quelque chose.
+        fr: 'Bonjour ! Installez-vous, la visite commence. Un **coup de molette** et on y va.',
+        en: 'Hello! Make yourself comfortable, the tour is starting. **One flick of the scroll wheel** and off we go.',
       },
     ],
   },
@@ -129,23 +145,16 @@ export const BUBBLES: BubbleContent[] = [
     subject: { fr: 'Le bureau', en: 'The desk' },
     text: [
       {
-        fr: 'Deux écrans, un clavier bruyant, du café tiède : le poste de pilotage de tous mes projets.',
-        en: 'Two screens, a loud keyboard, lukewarm coffee: the cockpit of every project.',
-      },
-      // PROVISOIRE — ces deux pages ne viennent PAS de la session design, qui
-      // n'a écrit qu'une phrase par arrêt. Je les ai écrites pour que le
-      // dialogue à plusieurs temps existe quelque part et se juge à l'écran
-      // (#122) ; elles sont à remplacer par la rédaction de #32. Le contrôle
-      // verbatim de `bubbleAnchors.test.ts` ne porte que sur la PREMIÈRE page,
-      // ce qui est exactement ce qui les rend possibles sans rendre le test
-      // faux — et sans les faire passer pour de la copy validée.
-      {
-        fr: 'Le second écran ne sert qu’à une chose : garder la documentation ouverte pendant que le premier travaille.',
-        en: 'The second screen has one job: keeping the documentation open while the first one works.',
+        fr: 'Bienvenue dans mon bureau. Chaque objet a son histoire : un clic ou un scroll et elle se raconte.',
+        en: "Welcome to my office. Every object here has a story: a click or a scroll and it'll tell it.",
       },
       {
-        fr: 'Et la tasse est froide depuis une heure. Elle le reste rarement plus longtemps.',
-        en: 'And the mug has been cold for an hour. It rarely stays that way much longer.',
+        fr: 'La pièce maîtresse : café fumant, clavier bruyant, deux écrans et un PC bien trop puissant…',
+        en: "The centrepiece: steaming coffee, a loud keyboard, two screens and a PC that's way too powerful…",
+      },
+      {
+        fr: 'De quoi analyser des données, coder des outils, et perdre du temps sur Blender. Comme ici.',
+        en: 'Perfect for crunching data, building tools, and losing hours in Blender. Case in point.',
       },
     ],
     tick: 'top',
@@ -158,8 +167,12 @@ export const BUBBLES: BubbleContent[] = [
     subject: { fr: 'Le CV', en: 'The résumé' },
     text: [
       {
-        fr: 'Le CV, en pied et à jour — la version papier dort dans la commode.',
-        en: 'The résumé, full-length and current — the paper copy sleeps in the cabinet.',
+        // PAS de consigne ici, et c'est une décision : la phrase promettait
+        // « un **clic** pour le télécharger » alors qu'il n'existe aucun
+        // fichier à télécharger. Le bouton est #159, dont la definition of
+        // done repose la consigne le jour où il arrive.
+        fr: 'Mon CV, à jour (promis). Le parcours, les langues, et ce que je cherche : tout est à l’écran.',
+        en: "My CV, up to date (I promise). The track record, the languages, and what I'm after: it's all on screen.",
       },
     ],
     tick: 'right',
@@ -169,13 +182,17 @@ export const BUBBLES: BubbleContent[] = [
     // La commode est modélisée en pièces détachées : la coque suffit à situer
     // sa profondeur, les tiroirs et poignées ne la déplaceraient pas.
     objects: ['Cabinet_Back', 'Cabinet_Top', 'Cabinet_Bottom', 'Cabinet_LSide', 'Cabinet_RSide'],
-    center: { x: 0.1602, y: 0.8404 },
+    // Descendue d'une demi-ligne (0,0198 de cadre) : la copy de #32 fait passer
+    // cette bulle de deux à trois lignes, et c'est le COIN HAUT-GAUCHE que la
+    // table de placement fixe — la boîte grandit donc vers le bas, et son
+    // centre avec. Mesuré sur la maquette à jour, à 1280×720.
+    center: { x: 0.1602, y: 0.8602 },
     maxWidth: 300,
     subject: { fr: 'La commode', en: 'The cabinet' },
     text: [
       {
-        fr: 'Les archives : diplômes, contrats, et quelques idées classées trop tôt.',
-        en: 'The archive: diplomas, contracts, and a few ideas filed away too early.',
+        fr: 'La commode des projets persos : **ouvrez un dossier**, chacun est une idée poussée un peu trop loin.',
+        en: 'The side-projects dresser: **open a folder**, each one is an idea I took a little too far.',
       },
     ],
     tick: 'right',
@@ -188,8 +205,8 @@ export const BUBBLES: BubbleContent[] = [
     subject: { fr: 'L’étagère', en: 'The shelf' },
     text: [
       {
-        fr: 'Des classeurs de partitions et de méthodes — toute la théorie que je promets encore de finir un jour.',
-        en: 'Binders of sheet music and method books — all the theory I still promise to finish.',
+        fr: 'Orwell, Asimov, Poe, Horowitz : la bibliothèque qui m’a formé l’esprit. Et parfois gâché des nuits 😅.',
+        en: "Orwell, Asimov, Poe, Horowitz: the bookshelf that shaped my mind. And ruined a few nights' sleep 😅.",
       },
     ],
     tick: 'right',
@@ -197,13 +214,21 @@ export const BUBBLES: BubbleContent[] = [
   {
     stop: 'Cat',
     objects: ['Cat_Merged'],
-    center: { x: 0.1908, y: 0.1504 },
+    // Descendue d'une demi-ligne (0,0198 de cadre) : la copy de #32 fait passer
+    // cette bulle de deux à trois lignes, et c'est le COIN HAUT-GAUCHE que la
+    // table de placement fixe — la boîte grandit donc vers le bas, et son
+    // centre avec. Mesuré sur la maquette à jour, à 1280×720.
+    center: { x: 0.1908, y: 0.1702 },
     maxWidth: 340,
     subject: { fr: 'Le chat', en: 'The cat' },
     text: [
       {
-        fr: 'Pixel, contrôle qualité. Rien ne sort d’ici sans son regard vert.',
-        en: 'Pixel, quality control. Nothing leaves this room without his green stare.',
+        fr: 'Pixel, contrôle qualité. Surveillance constante : rien n’est poussé en prod sans son approbation.',
+        en: 'Pixel, quality control. Constant surveillance: nothing gets pushed to prod without his approval.',
+      },
+      {
+        fr: 'Et il ne vous lâchera jamais des yeux. Si si, je vous jure. **Bougez votre souris**, vous verrez.',
+        en: "And he'll never take his eyes off you. No really, I swear. **Move your mouse**, you'll see.",
       },
     ],
     tick: 'right',
@@ -216,8 +241,8 @@ export const BUBBLES: BubbleContent[] = [
     subject: { fr: 'La guitare', en: 'The guitar' },
     text: [
       {
-        fr: 'Le soir, c’est elle qui parle — une Les Paul branchée sur un vieux Sharmall.',
-        en: 'At night she does the talking — a Les Paul through an old Sharmall.',
+        fr: 'Le soir, c’est elle qui parle : une LTD branchée sur un vieux Sharmall. Les voisins adorent…',
+        en: 'In the evening, she does the talking: an LTD plugged into an old Sharmall. The neighbours love it…',
       },
     ],
     // Parallèle au bord de l'ampli, mesuré au pixel pendant la session design.
@@ -227,13 +252,21 @@ export const BUBBLES: BubbleContent[] = [
   {
     stop: 'Posters',
     objects: ['Poster_Expanse_Merged'],
-    center: { x: 0.1719, y: 0.4607 },
+    // Descendue d'une demi-ligne (0,0198 de cadre) : la copy de #32 fait passer
+    // cette bulle de deux à trois lignes, et c'est le COIN HAUT-GAUCHE que la
+    // table de placement fixe — la boîte grandit donc vers le bas, et son
+    // centre avec. Mesuré sur la maquette à jour, à 1280×720.
+    center: { x: 0.1719, y: 0.4805 },
     maxWidth: 330,
     subject: { fr: 'Les posters', en: 'The posters' },
     text: [
       {
-        fr: 'The Expanse au mur — le rappel quotidien de viser un peu plus loin.',
-        en: 'The Expanse on the wall — a daily reminder to aim a little further.',
+        fr: 'The Expanse au mur. Ma série préférée, point. Complexe, réaliste, la physique y est respectée.',
+        en: 'The Expanse on the wall. My favourite show, full stop. Complex, realistic, and the physics holds up.',
+      },
+      {
+        fr: 'Si vous ne l’avez pas vue, on peut en discuter. Si vous l’avez vue, on peut en discuter longtemps.',
+        en: "Haven't seen it? We can talk about it. Have seen it? We can talk about it for hours.",
       },
     ],
     tick: 'right',
@@ -241,13 +274,21 @@ export const BUBBLES: BubbleContent[] = [
   {
     stop: 'Telescope',
     objects: ['Telescope_Merged'],
-    center: { x: 0.7708, y: 0.1154 },
+    // Descendue d'une demi-ligne (0,0198 de cadre) : la copy de #32 fait passer
+    // cette bulle de deux à trois lignes, et c'est le COIN HAUT-GAUCHE que la
+    // table de placement fixe — la boîte grandit donc vers le bas, et son
+    // centre avec. Mesuré sur la maquette à jour, à 1280×720.
+    center: { x: 0.7708, y: 0.1352 },
     maxWidth: 340,
     subject: { fr: 'Le télescope', en: 'The telescope' },
     text: [
       {
-        fr: 'Le télescope pointe la fenêtre, approchez l’œil pour voir la lune.',
-        en: 'The telescope is aimed at the window, lean in to see the moon.',
+        fr: 'Montagnes, nuit claire, silence : mon coin calme. Et un télescope qui ne demande qu’un **clic**.',
+        en: 'Mountains, clear night, silence: my quiet spot. And a telescope that only asks for one **click**.',
+      },
+      {
+        fr: 'Approchez l’œil du télescope, la Lune pose ce soir.',
+        en: 'Lean in, the Moon is posing tonight.',
       },
     ],
     tick: 'left',
@@ -255,13 +296,19 @@ export const BUBBLES: BubbleContent[] = [
   {
     stop: 'Scoreboard',
     objects: ['Map_Sheet'],
-    center: { x: 0.1628, y: 0.9004 },
+    // Remontée d'une demi-ligne (0,0198 de cadre), à l'inverse des quatre
+    // au-dessus : le design avait posé cette bulle BORD À BORD avec la marge de
+    // sécurité du bas (bas mesuré à 703 px pour 708). La troisième ligne que
+    // demande la copy de #32 la poussait 29 px hors du cadre, où
+    // `clampToSafeArea` l'aurait remontée de force — en la décrochant de son
+    // ancre. C'est donc son BAS qui est tenu, pas son coin haut-gauche.
+    center: { x: 0.1628, y: 0.8806 },
     maxWidth: 340,
     subject: { fr: 'La mappemonde', en: 'The world map' },
     text: [
       {
-        fr: 'Punaises et fils rouges : chaque voyage part de la maison.',
-        en: 'Pins and red thread: every journey starts from home.',
+        fr: 'Chaque fil, une culture découverte, un plat testé, une langue massacrée avec enthousiasme.',
+        en: 'Every thread: a culture discovered, a dish tried, a language butchered with enthusiasm.',
       },
     ],
     tick: 'right',
