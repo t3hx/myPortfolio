@@ -24,6 +24,7 @@
  * `onError` — une icône cassée est pire qu'un vide assumé, et c'est la donnée
  * qui décide, pas le réseau. Même règle que la couverture d'une fiche projet.
  */
+import { MARKS } from '@/config/icons'
 import { tm, type Locale, type Localized, type MaybeLocalized } from '@/lib/locale'
 
 export interface CvGlyph {
@@ -63,6 +64,26 @@ export interface CvGlyph {
    * plus pourquoi il serait le seul à l'être.
    */
   icon?: string
+  /**
+   * La marque est un PAVÉ : un glyphe détouré dans un carré plein, qui peint
+   * la moitié ou plus de sa boîte.
+   *
+   * **L'encre DÉPISTE, l'œil décide, et c'est la leçon de la planche** (#169).
+   * L'encre — la part du carré réellement peinte, mesurée entre 14,9 % et
+   * 86,4 % dans `src/config/icons.ts` — signale les candidats : au-delà de
+   * 50 %, une marque risque de lire comme un bloc clair plutôt que comme un
+   * pictogramme. Mais elle ne distingue pas un GLYPHE DÉTOURÉ DANS UN CARRÉ
+   * PLEIN d'un DESSIN DENSE. Postgres est à 52,9 % parce que son éléphant est
+   * finement tracé : réduit, il devient une tache, et on perd de la lisibilité
+   * sans corriger de poids. TypeScript à 85,9 % et Node.js à 65,1 % sont de
+   * vrais blocs, eux, et un cran plus petit les remet dans la famille des
+   * silhouettes.
+   *
+   * L'encre ne se normalise pas dans les deux sens — une silhouette ne peut
+   * pas en gagner sans qu'on redessine la marque — donc c'est un plafond, pas
+   * une cible, et il se pose marque par marque, sur capture.
+   */
+  slab?: true
 }
 
 /**
@@ -250,13 +271,16 @@ export const CV: Cv = {
    * Jira) est vrai et reste dans le PDF, qui n'a pas la même économie de place.
    */
   skills: [
-    { name: 'TypeScript', initial: 'Ts' },
-    { name: 'React.js', initial: 'R' },
-    { name: 'Vue.js', initial: 'V' },
-    { name: 'Three.js', initial: 'Th' },
-    { name: 'Node.js', initial: 'N' },
-    { name: 'Postgres', initial: 'Pg' },
-    { name: 'Docker', initial: 'Dk' },
+    // `initial` reste, et ce n'est pas redondant : c'est le repli si un jour
+    // une marque manque, et c'est ce que le test d'unicité vérifie.
+    // `slab` est mesuré, pas choisi — voir l'encre dans `src/config/icons.ts`.
+    { name: 'TypeScript', initial: 'Ts', icon: MARKS.typescript, slab: true },
+    { name: 'React.js', initial: 'R', icon: MARKS.react },
+    { name: 'Vue.js', initial: 'V', icon: MARKS.vuejs },
+    { name: 'Three.js', initial: 'Th', icon: MARKS.threejs },
+    { name: 'Node.js', initial: 'N', icon: MARKS.nodejs, slab: true },
+    { name: 'Postgres', initial: 'Pg', icon: MARKS.postgresql },
+    { name: 'Docker', initial: 'Dk', icon: MARKS.docker },
   ],
   outlookTitle: { fr: 'Le cap', en: 'The heading' },
   /**

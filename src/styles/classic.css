@@ -759,12 +759,13 @@
   box-shadow: 0 0 18px rgba(var(--glow-rgb), 0.18);
 }
 
-/* En couleur, contrairement au repli : une marque monochrome ne ressemble pas à
-   la marque. Même asymétrie assumée que les vignettes du CV de la scène. */
-.classic-tile__mark img {
-  width: 60%;
-  height: 60%;
-  object-fit: contain;
+/* La tuile est bien plus grande que la vignette de la scène — 54 px contre 26
+   — donc elle donne sa propre taille de marque. La recette du masque, elle,
+   vit dans `tokens.css` : une seule (#169). L'ancienne règle affichait une
+   `<img>` en couleur ; la décision est datée dans `cv.ts` et dans CLAUDE.md. */
+.classic-tile__mark {
+  --mark-size: 32px;
+  --mark-slab: 26px;
 }
 
 .classic-tile__label {
