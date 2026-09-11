@@ -1,10 +1,18 @@
 import { Fragment } from 'react'
+import { FLAGS } from '@/config/icons'
 import { UI } from '@/content/ui'
 import { LOCALES, t } from '@/lib/locale'
 import { useLocale } from '@/state/locale'
 
 /**
  * La bascule FR/EN — **les deux langues affichées, les deux cliquables**.
+ *
+ * **Chaque langue porte son drapeau depuis #165, et le signal a changé de
+ * nature** : les deux lettres se distinguaient par leur teinte, accent contre
+ * crème ; les drapeaux se distinguent par la saturation — l'actif garde ses
+ * couleurs, l'autre passe en gris. Un drapeau se reconnaît sans être lu, ce qui
+ * compte à cette taille et pour qui ne parle pas encore la langue de la page.
+ * Un seul fichier par langue : le gris est un filtre CSS sur la même image.
  *
  * Elle a d'abord montré une seule étiquette, celle de l'autre langue : en
  * français, un bouton marqué « EN ». Illisible, et pour deux raisons qui se
@@ -46,10 +54,17 @@ export function LangToggle({ className }: { className?: string }) {
             type="button"
             className={code === locale ? 'lang__on' : 'lang__off'}
             aria-current={code === locale ? 'true' : undefined}
+            // Le nom accessible est du TEXTE, et il nomme la LANGUE — pas un
+            // pays. Un drapeau n'est pas une langue : l'anglais n'en a pas, et
+            // le fichier en choisit un. Sans ce nom, une image décorative dans
+            // un bouton laisse un bouton que les technologies d'assistance
+            // annoncent « bouton ». `title` reste pour l'infobulle souris, il
+            // n'est ni lu de façon fiable ni visible ailleurs.
+            aria-label={t(UI.menu.switchTo, code)}
             title={t(UI.menu.switchTo, code)}
             onClick={() => setLocale(code)}
           >
-            {code.toUpperCase()}
+            <img src={FLAGS[code]} alt="" />
           </button>
         </Fragment>
       ))}

@@ -26,10 +26,9 @@ describe('menu sections', () => {
 })
 
 const tokens = readFileSync('src/styles/tokens.css', 'utf8')
+const menu = readFileSync('src/ui/Menu.tsx', 'utf8')
 
 describe('menu socials', () => {
-  const menu = readFileSync('src/ui/Menu.tsx', 'utf8')
-
   it('never ships a link that goes nowhere', () => {
     // Une entrée sans href est filtrée à l'affichage ; celles qui en ont une
     // doivent être absolues (elles ouvrent un autre site).
@@ -81,9 +80,17 @@ describe('la bascule de langue', () => {
     )
     .replace(/\/\*[\s\S]*?\*\//g, '')
 
-  it("dit quelle langue est active, en couleur d'accent", () => {
-    expect(tokens).toMatch(/\.menu__lang-on\s*\{[^}]*color:\s*var\(--glow\)/)
-    expect(tokens).toMatch(/\.menu__lang-off\s*\{[^}]*color:\s*rgba\(var\(--cream-rgb\)/)
+  it('dit quelle langue est active par la COULEUR du drapeau', () => {
+    // **Le signal a changé de nature avec #164** : les deux lettres se
+    // distinguaient par leur teinte, accent contre crème. Les drapeaux se
+    // distinguent par la saturation — celui de la langue active garde ses
+    // couleurs, l'autre passe en gris. C'est le même rôle, joué autrement, et
+    // il reste le seul indicateur de « dans quelle langue suis-je ».
+    expect(tokens).toMatch(/\.menu__lang-off[^{]*\{[^}]*grayscale\(1\)/)
+    // Le drapeau vient de `FLAGS`, donc d'un fichier dont `tests/icons.test.ts`
+    // garantit l'existence : une image absente ne dit rien, elle ne s'affiche
+    // simplement pas.
+    expect(menu).toContain('FLAGS[code]')
   })
 
   it("ne laisse pas la remise à zéro des boutons manger l'accent", () => {
@@ -97,6 +104,16 @@ describe('la bascule de langue', () => {
     // un `<button>` n'hérite pas de `font-family`.
     expect(reset).toContain('appearance: none')
     expect(reset).toContain('font: inherit')
+  })
+
+  it('nomme la langue en TEXTE, et jamais un pays', () => {
+    // Un drapeau n'est pas une langue — l'anglais n'en a pas, et le fichier en
+    // choisit un. Le nom accessible dit donc la langue, et il doit exister :
+    // une image décorative dans un bouton laisse un bouton sans nom, que les
+    // technologies d'assistance annoncent « bouton ». `title` ne suffit pas,
+    // il n'est ni lu de façon fiable ni visible hors survol souris.
+    expect(menu).toContain('aria-label={t(UI.menu.switchTo, code)}')
+    expect(menu).toContain('alt=""')
   })
 })
 

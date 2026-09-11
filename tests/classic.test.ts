@@ -9,6 +9,7 @@ import {
   NAME_DECRYPT_MS,
   REVEAL_ROOT_MARGIN,
 } from '@/config/classic'
+import { FLAGS } from '@/config/icons'
 import { CV, glyphMark } from '@/content/cv'
 import { UI } from '@/content/ui'
 import { approach, cubeSpeed, haloOffset, scrollProgress, spinStep } from '@/lib/classic'
@@ -333,6 +334,26 @@ describe('la bascule de langue', () => {
     // ne dit pas quelles langues existent. La paire EST la liste.
     expect(toggle).toContain('LOCALES.map')
     expect(toggle).toContain("aria-current={code === locale ? 'true' : undefined}")
+  })
+
+  it('porte le drapeau de chaque langue, et le gris pour l’inactive', () => {
+    // **Un seul fichier par drapeau** (#164) : le gris est un filtre CSS sur le
+    // même image. Deux fichiers par langue seraient deux choses à garder
+    // synchrones pour un effet que le navigateur calcule.
+    expect(toggle).toContain('FLAGS[code]')
+    expect(tokens).toMatch(/\.lang__off[^{]*\{[^}]*grayscale\(1\)/)
+    // Une seule déclaration de drapeau dans tout le projet, et elle est typée
+    // par `Locale` : ajouter une langue ne compile pas tant qu'elle n'a pas le
+    // sien.
+    expect(Object.keys(FLAGS).sort()).toEqual(['en', 'fr'])
+  })
+
+  it('nomme la langue en TEXTE, et jamais un pays', () => {
+    // Un drapeau n'est pas une langue. Le nom accessible dit « Passer en
+    // français », pas un pays, et il doit exister : une image décorative dans
+    // un bouton laisse un bouton sans nom.
+    expect(toggle).toContain('aria-label={t(UI.menu.switchTo, code)}')
+    expect(toggle).toContain('alt=""')
   })
 
   it('garde le côté actif cliquable', () => {
