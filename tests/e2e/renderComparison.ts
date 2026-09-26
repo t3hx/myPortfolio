@@ -32,9 +32,9 @@ export const ACTUAL_DIR = 'test-results/renders'
  *
  * `overview.png` n'est PAS un arrêt et n'a rien à faire ici — c'est un rendu de
  * la pièce entière, que la boucle ignore (voir `design/renders/README.md`).
- * `moon.png` l'a rejoint avec #113 : la lune n'est plus une étape du tour, sa
- * référence reste versionnée parce qu'elle est le fond de la maquette
- * `design/screens/10-moon.html`, mais plus rien ne la compare.
+ * `moon.png` est redevenue comparée avec #97 : la lune n'est plus une étape du
+ * tour depuis #113, mais `?stop=moon` pose sa vue de façon déterministe (lune
+ * détaillée, champ authoré) et `renders.spec.ts` la vérifie comme un arrêt.
  */
 export const REF_FILE: Record<string, string> = {
   CV: 'vertical_monitor',
@@ -110,17 +110,22 @@ export interface KnownDeviation {
 }
 
 export const KNOWN_DEVIATIONS: Record<string, KnownDeviation> = {
-  // Mesuré à 5,417 % sur la référence 1920 × 1080 du 2026-08-20. Le diff dessine littéralement le tiroir
-  // sorti et les dossiers étiquetés : la référence a été rendue avant que
-  // l'arrivée à cet arrêt ne l'ouvre (#76) et n'y clone un dossier par projet
-  // (#79). Le reste de l'image est comparé normalement, et 7 % laisse peu de
-  // place à autre chose que le tiroir : l'arrêt continue de se surveiller.
+  // Mesuré à 5,868 % le 2026-09-26 (5,417 % avant que #181 ne réordonne les
+  // dossiers). L'écart est STRUCTUREL, pas périmé (#97) : la référence montre
+  // bien le tiroir ouvert, mais avec l'unique dossier du `.glb` — l'app en
+  // clone un par projet (#79), étiquettes écrites au runtime depuis `PROJECTS`.
+  // Blender ne peut PAS rendre ces clones, donc aucune re-prise de référence ne
+  // fermera cet écart ; on l'assume et on le cape. Le reste de l'image est
+  // comparé normalement, et 7 % laisse peu de place à autre chose que le
+  // contenu du tiroir : l'arrêt continue de se surveiller. Un 6e projet
+  // bougera le chiffre (les positions dépendent du nombre, `folderZ(i, n)`) —
+  // attendu, le plafond absorbe.
   cabinet: {
     kind: 'tracked',
     maxRatio: 0.07,
     reason:
-      "la référence est antérieure au tiroir qui s'ouvre à l'arrivée (#76) et " +
-      'aux dossiers étiquetés (#79) — à re-rendre depuis Blender, voir #97',
+      'les dossiers du tiroir sont des clones runtime générés depuis PROJECTS ' +
+      '(#79), impossibles à rendre depuis Blender — écart structurel assumé (#97)',
   },
 }
 

@@ -30,10 +30,13 @@ Les dix arrêts du tour, re-rendus le 2026-08-20 en 1920 × 1080 :
 `home`, `desk`, `vertical_monitor`, `cabinet`, `bookshelf`, `cat`, `guitare`,
 `poster`, `telescope`, `scoreboard`.
 
-`moon.png` est versionnée à côté d'eux **sans être comparée**, comme
-`overview.png` : la lune n'est plus une étape du tour depuis #113 — on y accède
-en cliquant le télescope — mais son rendu reste le fond de la maquette
-`design/screens/10-moon.html`.
+`moon.png` est **comparée elle aussi** depuis #97, comme onzième vue : la lune
+n'est plus une étape du tour depuis #113 — on y accède en cliquant le
+télescope — mais son cadrage reste authoré (`CameraStop_TelescopeMoon`) et
+`?stop=moon` le pose de façon déterministe, lune détaillée visible, champ SANS
+le pad du viseur (`TELESCOPE_FOV_PAD` est une décision d'UX, pas un cadrage
+Blender). Son rendu est aussi le fond de la maquette
+`design/screens/10-moon.html`. Seule `overview.png` reste hors boucle.
 
 Re-render every reference whenever the Blender cameras move. Four framings changed between v12 and v13 (bookshelf, cv, scoreboard, home), which silently invalidated the previous set — a stale reference makes the comparison loop report drift that isn't there, or hide drift that is.
 
@@ -88,8 +91,8 @@ aucun sens si la CI crénelait autrement.
 | telescope        |      1,335 % | anticrénelage                   |
 | desk             |      1,503 % | anticrénelage (câbles, clavier) |
 | guitare          |      1,939 % | anticrénelage (cordes, frettes) |
-| cabinet          |      5,417 % | **écart suivi** — tiroir ouvert |
-| moon             |     39,467 % | **non vérifié** — mauvaise lune |
+| moon             |      0,455 % | anticrénelage (limbe, étoiles) — mesuré le 2026-09-26 |
+| cabinet          |      5,868 % | **écart suivi** — dossiers runtime (2026-09-26) |
 
 **Plafond global : 2,5 %** (`MAX_DIFF_RATIO`). Le pire arrêt conforme est la
 guitare à 1,939 % ; la marge couvre une machine dont le rasteriseur crénelle un
@@ -110,30 +113,24 @@ cordes, frettes, feuilles, câbles. Sur les aplats, EEVEE et WebGL sont
 identiques au bit près : c'est ce que l'arrêt Accueil démontre à 0,000 %, et
 c'est la meilleure preuve que le pipeline non éclairé fait bien son travail.
 
-### Les deux références périmées
+### L'écart suivi : cabinet
 
-Ce ne sont pas des tolérances relâchées pour faire passer la CI, et les deux ne
-sont pas traitées pareil (`KNOWN_DEVIATIONS`, `tests/e2e/renderComparison.ts`).
+Ce n'est pas une tolérance relâchée pour faire passer la CI, et ce n'est plus
+une référence « périmée » (`KNOWN_DEVIATIONS`, `tests/e2e/renderComparison.ts`) :
 
-- **cabinet — écart suivi, 5,790 %, plafond 7 %.** La référence est antérieure
-  au tiroir qui s'ouvre à l'arrivée (#76) et aux dossiers étiquetés qu'il
-  contient (#79) ; le diff les dessine littéralement. Le reste de l'image est
-  comparé normalement et 7 % laisse peu de place à autre chose que le tiroir :
-  l'arrêt continue de se surveiller. **La référence est à re-rendre depuis
-  Blender, tiroir ouvert — issue #97.**
-- **moon — non vérifié.** La référence montre `Outside_Moon_Detailed`, la lune
-  photographique ; l'app montre `Outside_Moon`, la lune stylisée. L'échange de
-  visibilité n'a lieu qu'en phase TELESCOPE, alors que l'arrêt se visite aussi
-  à la molette, à 270 mm de focale. Ce ne sont pas deux rendus du même objet :
-  il n'y a rien à comparer. L'arrêt est donc **déclaré non vérifié** — la suite
-  affiche `10 passed, 1 skipped` avec la raison, la capture et le diff partent
-  quand même en artefact. Un plafond assez haut pour absorber 40 % n'attraperait
-  plus rien et rendrait un vert sur un arrêt que personne ne vérifie.
-  **Décision produit du 2026-08-20 : c'est la référence qui a tort**, elle a été
-  rendue avec le mauvais objet visible — à re-rendre avec la lune stylisée,
-  **issue #97**.
+- **cabinet — écart suivi, 5,868 % mesuré le 2026-09-26, plafond 7 %.** La
+  référence montre le tiroir ouvert avec l'unique dossier du `.glb` ; l'app en
+  clone **un par projet** (#79), étiquettes écrites au runtime depuis
+  `PROJECTS` — le diff dessine littéralement « Anima » et « Portfolio ».
+  **Blender ne peut pas rendre ces clones**, donc aucune re-prise de référence
+  ne fermera cet écart : il est structurel, assumé et capé (#97). Le reste de
+  l'image est comparé normalement, et 7 % laisse peu de place à autre chose que
+  le contenu du tiroir : l'arrêt continue de se surveiller. Le chiffre bouge
+  quand les dossiers bougent (5,417 % avant l'inversion d'ordre de #181, un 6ᵉ
+  projet le bougera encore) — attendu, le plafond absorbe.
 
-Les deux entrées disparaissent ensemble le jour où #97 ferme.
+La vue lune, elle, est redevenue une comparaison ordinaire avec #97 : la
+référence HD correspond à ce que `?stop=moon` affiche, 0,455 % mesuré.
 
 ### En CI
 

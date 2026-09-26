@@ -11,27 +11,36 @@ import {
 } from './renderComparison'
 
 /**
- * Chaque arrêt du tour comparé à son rendu Blender (#45, #46).
+ * Chaque arrêt du tour comparé à son rendu Blender (#45, #46) — plus la VUE
+ * LUNE (#97), qui n'est pas un arrêt depuis #113 mais reste un cadrage authoré
+ * avec sa référence : `?stop=moon` la pose de façon déterministe (lune
+ * détaillée, champ sans le pad du viseur), exactement l'état que `moon.png`
+ * décrit.
  *
- * La liste vient de `CAMERA_STOPS` : ajouter un arrêt ajoute son test, et
- * personne n'a à penser à l'écrire. Un arrêt sans référence ÉCHOUE au lieu
- * d'être sauté — un test silencieusement absent couvre exactement autant que
- * pas de test, mais donne l'impression du contraire.
+ * La liste des arrêts vient de `CAMERA_STOPS` : ajouter un arrêt ajoute son
+ * test, et personne n'a à penser à l'écrire. Un arrêt sans référence ÉCHOUE au
+ * lieu d'être sauté — un test silencieusement absent couvre exactement autant
+ * que pas de test, mais donne l'impression du contraire.
  */
-for (const stop of CAMERA_STOPS) {
+const COMPARED_VIEWS: { label: string; noun: string }[] = [
+  ...CAMERA_STOPS.map((stop) => ({ label: stop.label, noun: "l'arrêt" })),
+  { label: 'Moon', noun: 'la vue' },
+]
+
+for (const view of COMPARED_VIEWS) {
   // Le nom du fichier de référence, qui n'est pas toujours celui de l'arrêt —
   // voir `REF_FILE`. Il sert aussi de nom aux captures et aux diffs, pour que
   // l'artefact se rapproche à l'œil de la référence qu'il conteste.
-  const label = refName(stop.label)
+  const label = refName(view.label)
 
-  test(`l'arrêt ${stop.label} rend comme sa référence Blender`, async ({ page }, testInfo) => {
+  test(`${view.noun} ${view.label} rend comme sa référence Blender`, async ({ page }, testInfo) => {
     const refPath = join(REFS_DIR, `${label}.png`)
     expect(
       existsSync(refPath),
       `référence manquante : ${refPath} — re-rendre l'arrêt depuis Blender`,
     ).toBe(true)
 
-    const shot = await captureStop(page, stop.label)
+    const shot = await captureStop(page, view.label)
     const result = diffAgainstReference(shot, label)
 
     // L'image de différence part avec le rapport : un taux tout seul ne dit pas
