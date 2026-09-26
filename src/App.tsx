@@ -1,6 +1,7 @@
 import { Suspense, lazy, useEffect, useLayoutEffect, useState } from 'react'
 import {
   clearStoredChoice,
+  isCoarsePointer,
   isWebGLAvailable,
   readStoredChoice,
   resolveExperience,
@@ -35,6 +36,7 @@ function resolveFromBrowser(): ExperienceResolution {
     search: new URLSearchParams(window.location.search),
     stored: readStoredChoice(),
     probeWebGL: isWebGLAvailable,
+    probeCoarsePointer: isCoarsePointer,
   })
 }
 
@@ -97,7 +99,7 @@ export default function App() {
   }
 
   if (resolution.kind === 'ask') {
-    return <Preselection onChoose={choose} />
+    return <Preselection onChoose={choose} threeDisabled={resolution.coarsePointer} />
   }
 
   if (resolution.choice === 'classic') {

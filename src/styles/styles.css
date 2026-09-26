@@ -703,6 +703,24 @@ body,
   }
 }
 
+/* La carte 3D sur un appareil à pointeur coarse (#186) : désactivée, jamais
+   cachée — l'écran explique les deux expériences, et la promesse « il y a une
+   3D, venez la voir sur grand écran » vaut d'être lue. Éteinte mais lisible :
+   le corps s'assourdit, l'explication (dans `.presel-card__meta`) remonte d'un
+   cran au-dessus du gris technique, parce qu'elle est le contenu utile. */
+.presel-card--off {
+  cursor: default;
+  border-color: rgba(var(--cream-rgb), 0.08);
+}
+
+.presel-card--off .bubble__text {
+  color: rgba(var(--cream-rgb), 0.45);
+}
+
+.presel-card--off .presel-card__meta {
+  color: rgba(var(--cream-rgb), 0.65);
+}
+
 .presel-card .bubble__kicker {
   margin-bottom: 10px;
 }
