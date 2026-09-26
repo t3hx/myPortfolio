@@ -69,32 +69,65 @@ export const captureMode: boolean =
   typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('capture')
 
 /**
- * Optional `?stop=<label>` deep-link — snaps the camera to that stop on load.
+ * Optional `?stop=<label>` deep-link — snaps the camera to that view on load.
  * Used by the Playwright render-comparison loop (deterministic framing vs
  * design/renders/refs/) and shareable URLs. Matches the friendly label,
  * case-insensitive, prefix allowed ('bookshelf' → 'BookshelfPlant').
- * Returns the stop index, or null.
+ *
+ * Deux familles de cibles depuis #97 : les arrêts du tour, et la VUE LUNE.
+ * Elle n'est pas un arrêt (#113 l'a sortie du tour — on la découvre en
+ * cliquant le télescope), mais elle reste adressable : la boucle de
+ * comparaison a besoin d'un chemin déterministe vers elle pour vérifier
+ * `moon.png`, et `?stop=Moon` était un lien valide et partageable avant #113 —
+ * un ancien lien qui atterrit ailleurs en silence ne dit pas au visiteur
+ * qu'il a raté quelque chose. Un arrêt du tour prime à préfixe égal : le tour
+ * d'abord, l'excursion ensuite.
+ *
+ * Le parseur est PUR (la valeur en entrée, jamais `window`) pour que
+ * `tests/stopParam.test.ts` verrouille ces règles en Node.
  */
-export function stopParamIndex(): number | null {
-  if (typeof window === 'undefined') return null
-  const value = new URLSearchParams(window.location.search).get('stop')?.toLowerCase()
-  if (!value) return null
+export type StopParam =
+  | { kind: 'none' }
+  | { kind: 'stop'; index: number }
+  | { kind: 'moon' }
+  | { kind: 'unknown'; value: string }
+
+export function parseStopParam(raw: string | null): StopParam {
+  const value = raw?.toLowerCase()
+  if (!value) return { kind: 'none' }
   const index = CAMERA_STOPS.findIndex(
     (s) => s.label.toLowerCase() === value || s.label.toLowerCase().startsWith(value),
   )
-  if (index === -1) {
+  if (index !== -1) return { kind: 'stop', index }
+  // `moon`, ou le nom complet du nœud caméra pour les liens historiques.
+  if ('moon'.startsWith(value) || 'telescopemoon'.startsWith(value)) return { kind: 'moon' }
+  return { kind: 'unknown', value }
+}
+
+function readStopParam(): StopParam {
+  if (typeof window === 'undefined') return { kind: 'none' }
+  return parseStopParam(new URLSearchParams(window.location.search).get('stop'))
+}
+
+/** L'index d'arrêt demandé par `?stop=`, ou null (absent, inconnu, ou vue lune). */
+export function stopParamIndex(): number | null {
+  const parsed = readStopParam()
+  if (parsed.kind === 'unknown') {
     // Même discipline que le menu et `extractStops` : un `?stop=` qui ne
-    // correspond à rien retombait sur l'accueil sans un mot. C'est le mode de
-    // panne exact que #113 rend probable — `?stop=Moon` était un lien valide
-    // et partageable jusqu'à ce que la lune quitte le tour, et un ancien lien
-    // qui atterrit ailleurs en silence ne dit pas au visiteur qu'il a raté
-    // quelque chose.
+    // correspond à rien retombait sur l'accueil sans un mot — le mode de panne
+    // exact que #113 avait rendu réel avant que la vue lune ne redevienne
+    // adressable.
     console.warn(
-      `[stops] "?stop=${value}" ne correspond à aucun arrêt de CAMERA_STOPS — accueil par défaut.`,
+      `[stops] "?stop=${parsed.value}" ne correspond à aucun arrêt de CAMERA_STOPS — accueil par défaut.`,
     )
     return null
   }
-  return index
+  return parsed.kind === 'stop' ? parsed.index : null
+}
+
+/** `?stop=moon` — la vue lune, posée d'emblée (#97). */
+export function moonViewRequested(): boolean {
+  return readStopParam().kind === 'moon'
 }
 
 /**

@@ -13,7 +13,8 @@ import {
   verticalFov,
   type StopTransform,
 } from '@/lib/stops'
-import { stopParamIndex } from '@/lib/viewMode'
+import { moonViewRequested, stopParamIndex } from '@/lib/viewMode'
+import { CAMERA_STOPS } from '@/config/cameraStops'
 import { useInteraction } from '@/state/interaction'
 import { LOOK_EPSILON_DEG } from '@/config/lookAround'
 import { approachYaw, lookYaw, orbitPose } from '@/lib/lookAround'
@@ -425,6 +426,26 @@ export function CameraRig({ stops, moon, pivots }: CameraRigProps) {
   // est de n'annoncer la découverte qu'une fois cette image DESSINÉE.
   useLayoutEffect(() => {
     if (stops.length === 0) return
+    // La VUE LUNE (#97) : `?stop=moon` pose la caméra sur le transform authoré
+    // de `CameraStop_TelescopeMoon`, lune détaillée visible — l'état que la
+    // référence `moon.png` décrit. SANS `TELESCOPE_FOV_PAD` : le pad est une
+    // décision d'UX du viseur (du ciel autour, de la place pour le masque), la
+    // référence est le cadrage Blender, lune bord à bord. Le tour est garé sur
+    // Telescope, dont la lune est une feature (#113) : un défilement en repart.
+    if (moonViewRequested() && moon) {
+      const telescopeIndex = Math.max(
+        CAMERA_STOPS.findIndex((s) => s.label === 'Telescope'),
+        0,
+      )
+      targetIndex.current = telescopeIndex
+      copyPose(pose, moon)
+      applyPose(camera, pose, glDom.clientWidth)
+      const store = useInteraction.getState()
+      store.setStopIndex(telescopeIndex)
+      store.setPhase('parked')
+      store.showDetailedMoon(true)
+      return
+    }
     const target = stopParamIndex()
     const clamped = Math.min(Math.max(target ?? 0, 0), stops.length - 1)
     targetIndex.current = clamped
@@ -438,7 +459,7 @@ export function CameraRig({ stops, moon, pivots }: CameraRigProps) {
     useInteraction.getState().setStopIndex(clamped)
     useInteraction.getState().setPhase('parked')
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stops, camera])
+  }, [stops, moon, camera])
 
   // --- TELESCOPE phase: imperative camera excursion off the tour path -----------------
   const excursion = useRef<gsap.core.Tween | null>(null)
