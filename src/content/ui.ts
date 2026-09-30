@@ -54,6 +54,16 @@ export const UI = {
       fr: 'WebGL · ~3 Mo · souris, tactile ou clavier',
       en: 'WebGL · ~3 MB · mouse, touch or keyboard',
     } as Localized,
+    /**
+     * La carte 3D sur un appareil à pointeur coarse (#186) : elle remplace la
+     * ligne technique, qui promettait « tactile » — exactement ce que la carte
+     * vient de refuser. La phrase est une explication ET une invitation : la
+     * 3D existe, elle attend un grand écran.
+     */
+    threeOff: {
+      fr: "Pensée pour un grand écran — revenez d'un ordinateur pour l'essayer.",
+      en: 'Made for a large screen — come back on a computer to try it.',
+    } as Localized,
     classic: { fr: 'Expérience classique', en: 'Classic experience' } as Localized,
     classicBody: {
       fr: "La même histoire, en une page légère — idéale en déplacement ou au lecteur d'écran.",
