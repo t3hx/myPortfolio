@@ -562,16 +562,28 @@ body,
 
 /* --- Écran 0a : pré-sélection 3D / classique (issue #24) --------------------------- */
 /* Porté depuis design/screens/0a-preselection.html — la maquette de référence.
-   Tokens et composants .bubble__* : src/styles/tokens.css. */
+   Tokens et composants .bubble__* : src/styles/tokens.css.
+
+   `overflow-y: auto` + `safe center`, et les deux vont ensemble (#188) : le
+   document ne défilera JAMAIS — `html, body, #root` sont `overflow: hidden`,
+   il le faut pour la scène — donc quand cet écran dépasse le viewport (~700 px
+   de contenu en colonne contre ~660 px sur un téléphone en portrait, ~390 px
+   en paysage), c'est lui qui doit porter son propre défilement, sinon la
+   seconde carte et la note sont coupées sans recours ni indice. Et un `center`
+   nu sur un conteneur qui défile est la leçon du CV : il déborde des DEUX
+   côtés, un conteneur ne défile jamais en négatif, le haut — logo, question —
+   devient inatteignable. `safe` retombe sur `flex-start` exactement là, et un
+   navigateur qui ignore le mot-clé retombe au même endroit. */
 .presel {
   position: absolute;
   inset: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  justify-content: safe center;
   gap: 40px;
   padding: 24px;
+  overflow-y: auto;
   pointer-events: auto;
   background: radial-gradient(1100px 750px at 50% 115%, #26190f, var(--ink) 70%);
 }
@@ -750,6 +762,42 @@ body,
   margin: 0;
   color: rgba(var(--cream-rgb), 0.4);
   text-align: center;
+}
+
+/* --- Pré-sélection, petit écran (≤ 720 px — #188) ---------------------------------- */
+/* Le seuil de la maison : `classic.css` et `tokens.css` cassent au même point,
+   un troisième chiffre ferait trois définitions de « petit écran » pour un
+   seul site. La maquette `design/screens/0a-preselection.html` reste l'oracle
+   du desktop — elle ne bouge pas, ces règles s'ajoutent ici seulement.
+
+   Le rembourrage du haut n'est pas du goût : le LangToggle est FIXE en haut à
+   droite (habitude partagée avec le site classique), et sur un téléphone en
+   portrait le contenu dépasse le viewport — `safe center` le fait donc partir
+   du haut, où l'accroche passait sous le toggle. 64 px le dégagent. */
+@media (max-width: 720px) {
+  .presel {
+    gap: 28px;
+    padding: 64px 16px 28px;
+  }
+
+  /* 30 px sur ~360 px de large casse la question en trois lignes ; 26 px la
+     tient en deux sans perdre la voix italique. */
+  .presel__title {
+    font-size: 26px;
+  }
+
+  /* Le `max-width: 100%` de la carte se réfère à `.presel__cards`, qui suit
+     son CONTENU et non le viewport : à 360 px de large, la carte de 340 px
+     débordait du cadre (mesuré, `scrollWidth` 372 > 360). Élargir la rangée au
+     viewport rend ce max-width effectif — en dessous de 372 px la carte
+     rétrécit, au-dessus elle garde ses 340 px composés. */
+  .presel__cards {
+    width: 100%;
+  }
+
+  .presel-card {
+    padding: 22px 22px 18px;
+  }
 }
 
 /* --- Version classique (échafaudage — la vraie page 2D est une autre issue) -------- */
