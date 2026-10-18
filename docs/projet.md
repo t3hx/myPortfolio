@@ -42,7 +42,7 @@ Inspiration principale : <https://guillaumegouessan.com/>
 
 ### Mobile
 
-- Les cadrages caméra sont pensés paysage, incompatibles avec un affichage portrait. Cible : utilisation plein écran en mode paysage sur mobile. Gros chantier, **pour la fin**.
+- **Le mobile, c'est le classic** (décision du 2026-09-26, spec : `docs/SPEC_MOBILE_CLASSIC.md`, EPIC #185). La scène 3D n'est pas servie aux appareils à pointeur « coarse » — téléphones **et** tablettes, iPad Pro compris : ils sont routés vers le site classic (#190), qui doit être pleinement responsive (#187). L'ancienne cible « plein écran en mode paysage sur mobile » est abandonnée : tout le 3D est composé paysage 16:9 (cadrages Blender, table de placement des bulles, écran CV, viseur), et les ~162 Mo de VRAM texture étaient le seul risque identifié qui fasse _planter_ un appareil — précisément le téléphone. La présélection reste affichée sur ces appareils, carte 3D désactivée avec une phrase honnête — jamais de repli silencieux.
 
 ## Direction artistique
 
