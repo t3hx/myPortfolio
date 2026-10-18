@@ -55,7 +55,7 @@ The lint rules are deliberately **not** type-aware (`tseslint.configs.recommende
 
 This is a **React 19 + react-three-fiber v9** single-page portfolio that renders a Blender-authored room and runs a stop-to-stop camera tour. It began as the "scroll spike" of the rebuild (branch `feat/spike-scroll-r3f`) and is the skeleton the full product grows from. The previous Vue 3 + TresJS prototype lives in git history only (`git show 8a9e9a2` and earlier).
 
-The reference design doc (product decisions, review reports, spike verdicts) lives at `~/.gstack/projects/t3hx-myPortfolio/tehx-fix-rendering-design-20260804-174239.md`. The interaction spec for the scene is `docs/PORTFOLIO_3D_INTERACTIONS.md` — **read it before touching scene behavior**; it lists every animation/interaction with exact object names.
+The reference design doc (product decisions, review reports, spike verdicts) lived in `~/.gstack` (tooling removed, September 2026) and is **no longer available**; `docs/DESIGN.md` and git history are the remaining sources of truth. The interaction spec for the scene is `docs/PORTFOLIO_3D_INTERACTIONS.md` — **read it before touching scene behavior**; it lists every animation/interaction with exact object names.
 
 ### Where things live (#111)
 
@@ -95,7 +95,7 @@ The UI is **two components only** — a vertical menu bar on the right edge and 
 - **11 `CameraStop_*` cameras**, each carrying its own focal length — the tour's single source of truth (see below). v13 also declares `aspectRatio: 16/9`, which v12 did not.
 - Compression: **Draco geometry + webp textures** (`KHR_draco_mesh_compression`, `EXT_texture_webp`). 90 MB of PNG/raw → 7.6 MB webp → 3.0 MB with Draco; geometry was ~5.4 MB of that. Draco needs the decoder in `public/draco/` (see `DRACO_DECODER_PATH`).
 - **No `runtime` tags** (dropped in v10). `RoomModel` therefore _derives_ each material's treatment from the glTF itself — see below. Tags are still read first if a future export restores them.
-- Texture VRAM is the real mobile risk and compression does **not** reduce it: KTX2 in CI is still required.
+- Texture VRAM was the one risk that crashed a device — a phone, precisely — and compression does **not** reduce it. Since the mobile decision (2026-09-26, `docs/SPEC_MOBILE_CLASSIC.md`), coarse-pointer devices never load the scene, so KTX2 in CI is an **optimisation** for integrated-GPU laptops (#39, downgraded), no longer a mobile prerequisite.
 
 ### Render pipeline (`src/config/renderPipeline.ts` + `src/scene/RoomModel.tsx`)
 
@@ -257,7 +257,7 @@ Material names are matched in FULL, never by substring: `Mat_Poster_Expanse` mus
 
 `tests/e2e/renderComparison.ts` requests `&outline=off` explicitly: the references in `design/renders/refs/` are bare Blender renders with no Line Art, and that loop's job is to prove the _bake_ arrives intact. Ink is art direction laid on top at runtime; letting it in would diverge all ten stops at once and drown the only signal the comparison can produce.
 
-**The cost is fill, not draw calls, and it is only half-measured.** On Desk: 120 draws/frame at `off`, 239 at `hull`, 237 at `edges` (2.2 px), 473 at `both` — yet over the same window `hull` renders 46 frames and `edges` renders 9. Nearly identical draw counts, wildly different frame times: the fat lines are instanced quads and the bill is fragments. That measurement is **SwiftShader**, a software rasterizer that exaggerates precisely that cost, so it is a relative signal and not an fps prediction — and it was taken at 2.2 px, before the width dropped. **`edges` has not been profiled on a real GPU, and fill-bound is exactly what kills mobile** — do that before this reaches main (relevant to the KTX2 work, #39/#50/#51/#52). The load-time cost of building 146 `EdgesGeometry` is likewise **unmeasured**: the probe only isolated shader compilation.
+**The cost is fill, not draw calls, and it is only half-measured.** On Desk: 120 draws/frame at `off`, 239 at `hull`, 237 at `edges` (2.2 px), 473 at `both` — yet over the same window `hull` renders 46 frames and `edges` renders 9. Nearly identical draw counts, wildly different frame times: the fat lines are instanced quads and the bill is fragments. That measurement is **SwiftShader**, a software rasterizer that exaggerates precisely that cost, so it is a relative signal and not an fps prediction — and it was taken at 2.2 px, before the width dropped. **`edges` has not been profiled on a real GPU, and fill-bound is exactly what kills a weak GPU** — since the mobile decision (2026-09-26) the weakest device that gets the scene is an integrated-GPU laptop, not a phone, which lowers the stakes without settling them; the debt is recorded as a comment on #39 (#42 was closed by that same decision). The load-time cost of building 146 `EdgesGeometry` is likewise **unmeasured**: the probe only isolated shader compilation.
 
 ### Le regard autour du sujet (`src/lib/lookAround.ts` + `src/config/lookAround.ts`)
 
@@ -404,7 +404,7 @@ Issue #29, and the branch of the preselection gate that is **not** the room. It 
 - **The hero carries the bubble's cue laser** (#131): the tagline gets **one slow pass** (`classic-cue-pass`, the crossing occupies the whole duration — the bubble's keyframes cross in 22 % then wait, which only makes sense in a loop), and « défiler » — the one word on the page that _asks_ for something — keeps the accent and loops the bubble's own `cue-laser` on a shorter cycle. The gradient recipe is duplicated in `classic.css`; the **motion** is not, and a test asserts the two gradients have not drifted. Reduced motion drops the sweep and keeps the colour, as in the bubble.
 - **Section numbers (`01 —`, `02 —`…) are written, unlike the tour's bubbles**, which `bubbleKicker()` computes. The tour reorders — `cameraStops.ts` invites it — while a one-page site has the order of its own scroll, and only a rewrite of the page can change it.
 
-The mobile breakpoint (720 px) is implemented as specced even though the mobile batch is deferred: it is layout, and retrofitting it later would mean rewriting whatever was validated on desktop meanwhile.
+The mobile breakpoint (720 px) was implemented as specced while the mobile batch was still deferred — it is layout, and retrofitting it later would have meant rewriting whatever was validated on desktop meanwhile. That batch is deferred no longer: **the classic site IS the mobile experience** (decision of 2026-09-26, `docs/SPEC_MOBILE_CLASSIC.md`, EPIC #185) — coarse-pointer devices are routed to it (#190), the 3D scene is not served to them at all, and making this site fully responsive, verified on real engines (Safari iOS and an Android, never just a narrowed Chromium viewport), is the current work (#187).
 
 ### URL parameters (dev tooling — keep working)
 
@@ -421,7 +421,7 @@ The mobile breakpoint (720 px) is implemented as specced even though the mobile 
 - Path alias `@/` → `src/` (in `vite.config.ts` and `tsconfig.json`).
 - No initial camera pose is seeded in `App3D.tsx`: `<Suspense>` holds the first frame until the .glb is parsed, and `CameraRig` places the camera from the glb's own cameras on the frame after. Nothing ever renders at the origin, so there is no pose to hardcode.
 - All positions in `docs/PORTFOLIO_3D_INTERACTIONS.md` are **Blender Z-up** coordinates: convert with `(x, z, -y)` before runtime use.
-- Loading budget (measured 2026-08-05): the 90 MB export compresses to **6.8 MB with webp alone, 2.0 MB with draco+webp** (`pnpm dlx @gltf-transform/cli webp` then `draco`) — verify webp banding on the baked lightmaps before shipping. Texture VRAM stays ~192 MB regardless: KTX2 (CI-side, needs KTX-Software) is mandatory for mobile.
+- Loading budget (measured 2026-08-05): the 90 MB export compresses to **6.8 MB with webp alone, 2.0 MB with draco+webp** (`pnpm dlx @gltf-transform/cli webp` then `draco`) — verify webp banding on the baked lightmaps before shipping. Texture VRAM stays ~192 MB regardless: KTX2 (CI-side, needs KTX-Software) is an optimisation for integrated-GPU laptops since the mobile decision of 2026-09-26 (#39, downgraded) — phones get the classic site and never pay it.
 
 ## The backlog is the plan (not the design doc)
 

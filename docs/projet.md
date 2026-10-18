@@ -42,7 +42,7 @@ Inspiration principale : <https://guillaumegouessan.com/>
 
 ### Mobile
 
-- Les cadrages caméra sont pensés paysage, incompatibles avec un affichage portrait. Cible : utilisation plein écran en mode paysage sur mobile. Gros chantier, **pour la fin**.
+- **Le mobile, c'est le classic** (décision du 2026-09-26, spec : `docs/SPEC_MOBILE_CLASSIC.md`, EPIC #185). La scène 3D n'est pas servie aux appareils à pointeur « coarse » — téléphones **et** tablettes, iPad Pro compris : ils sont routés vers le site classic (#190), qui doit être pleinement responsive (#187). L'ancienne cible « plein écran en mode paysage sur mobile » est abandonnée : tout le 3D est composé paysage 16:9 (cadrages Blender, table de placement des bulles, écran CV, viseur), et les ~162 Mo de VRAM texture étaient le seul risque identifié qui fasse _planter_ un appareil — précisément le téléphone. La présélection reste affichée sur ces appareils, carte 3D désactivée avec une phrase honnête — jamais de repli silencieux.
 
 ## Direction artistique
 
@@ -77,7 +77,6 @@ Les acquis du prototype à transposer : extraction des transforms des caméras `
 
 ### Outillage IA
 
-- Framework **Gstack + Gbrain** (garry-tan) : `/office-hours` pour discuter, reviews croisées, sous-agents pour tâches spécifiques. <https://github.com/garrytan/gstack>
 - **Claude Design** interviendra sur la partie visuelle (UI hors 3D) une fois le topo produit ; l'UI est minimale, le clou du spectacle étant la 3D interactive. → **La session a eu lieu ; son rendu est réparti par nature depuis #111** — `docs/DESIGN.md` (la direction), `src/styles/tokens.css` (le code servi au visiteur), `design/screens/` (15 maquettes). Le brief d'entrée qui l'avait alimentée a été retiré une fois son rendu livré : deux fichiers revendiquant l'autorité design, c'est la panne à deux sources de vérité. Il reste consultable dans l'historique git.
 
 ## Guidelines de coding
