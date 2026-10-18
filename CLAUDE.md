@@ -55,7 +55,7 @@ The lint rules are deliberately **not** type-aware (`tseslint.configs.recommende
 
 This is a **React 19 + react-three-fiber v9** single-page portfolio that renders a Blender-authored room and runs a stop-to-stop camera tour. It began as the "scroll spike" of the rebuild (branch `feat/spike-scroll-r3f`) and is the skeleton the full product grows from. The previous Vue 3 + TresJS prototype lives in git history only (`git show 8a9e9a2` and earlier).
 
-The reference design doc (product decisions, review reports, spike verdicts) lives at `~/.gstack/projects/t3hx-myPortfolio/tehx-fix-rendering-design-20260804-174239.md`. The interaction spec for the scene is `docs/PORTFOLIO_3D_INTERACTIONS.md` — **read it before touching scene behavior**; it lists every animation/interaction with exact object names.
+The reference design doc (product decisions, review reports, spike verdicts) lived in `~/.gstack` (tooling removed, September 2026) and is **no longer available**; `docs/DESIGN.md` and git history are the remaining sources of truth. The interaction spec for the scene is `docs/PORTFOLIO_3D_INTERACTIONS.md` — **read it before touching scene behavior**; it lists every animation/interaction with exact object names.
 
 ### Where things live (#111)
 

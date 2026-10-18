@@ -77,7 +77,6 @@ Les acquis du prototype à transposer : extraction des transforms des caméras `
 
 ### Outillage IA
 
-- Framework **Gstack + Gbrain** (garry-tan) : `/office-hours` pour discuter, reviews croisées, sous-agents pour tâches spécifiques. <https://github.com/garrytan/gstack>
 - **Claude Design** interviendra sur la partie visuelle (UI hors 3D) une fois le topo produit ; l'UI est minimale, le clou du spectacle étant la 3D interactive. → **La session a eu lieu ; son rendu est réparti par nature depuis #111** — `docs/DESIGN.md` (la direction), `src/styles/tokens.css` (le code servi au visiteur), `design/screens/` (15 maquettes). Le brief d'entrée qui l'avait alimentée a été retiré une fois son rendu livré : deux fichiers revendiquant l'autorité design, c'est la panne à deux sources de vérité. Il reste consultable dans l'historique git.
 
 ## Guidelines de coding
