@@ -3,7 +3,7 @@ import { CAMERA_STOPS } from '@/config/cameraStops'
 import { INTRO_BUBBLE_DELAY_MS, INTRO_DELAY_MS, INTRO_HOME_STOP } from '@/config/intro'
 import { reducedMotion } from '@/lib/clock'
 import { INTRO_DURATION_S, introOpening, introTime, isSkipGesture } from '@/lib/intro'
-import { stopParamIndex } from '@/lib/viewMode'
+import { moonViewRequested, stopParamIndex } from '@/lib/viewMode'
 import { useInteraction } from '@/state/interaction'
 
 /**
@@ -39,7 +39,11 @@ export function IntroClock() {
   useEffect(() => {
     if (!ready || startedAt !== null || done) return
     const initial = stopParamIndex()
-    const startsAtHome = initial === null || CAMERA_STOPS[initial]?.label === INTRO_HOME_STOP
+    // La vue lune (#97) n'est pas l'accueil : l'intro s'y poserait par-dessus
+    // une capture de la boucle de comparaison, comme sur n'importe quel autre
+    // lien profond.
+    const startsAtHome =
+      !moonViewRequested() && (initial === null || CAMERA_STOPS[initial]?.label === INTRO_HOME_STOP)
     if (introOpening({ reducedMotion: reducedMotion(), startsAtHome }) === 'settle') {
       const { finishIntro, releaseIntro } = useInteraction.getState()
       finishIntro()
