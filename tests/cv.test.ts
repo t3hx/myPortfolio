@@ -139,12 +139,16 @@ describe('le CV ne bouge pas quand un accordéon s’ouvre', () => {
     // (`0 1 auto`) tient tant que rien ne déborde, puis cède — mesuré 9 px à
     // 1512 × 945, où le CV déborde déjà au repos. Incompressible, le haut est
     // figé à toute hauteur : 0 px sur les huit cartouches, aux trois tailles.
+    //
+    // Depuis #194 elle est COURTE : le CV s'aligne en haut de l'écran, et
+    // l'air au-dessus du nom vaut l'air latéral entre la colonne et le bezel
+    // (16u + les 24u de `padding-block` = 40u, contre 39,6u mesurés de côté).
     const before = tokens.slice(
       tokens.indexOf('.cv::before {'),
       tokens.indexOf('}', tokens.indexOf('.cv::before {')),
     )
     expect(before).toContain('flex: 0 0 auto')
-    expect(before).toMatch(/height: min\(\d+vh/)
+    expect(before).toContain('height: calc(16 * var(--cv-u, 1px))')
   })
 
   it('ne centre plus, et ne réagit plus au survol par la mise en page', () => {
@@ -370,27 +374,23 @@ describe('les réglettes de vignettes', () => {
     }
   })
 
-  it('ne montre jamais deux fois la même marque, dans aucune langue', () => {
-    // Le piège est TRADUIT (#173) : les six qualités réelles donnent S, A, O,
-    // P, C, E en français — toutes distinctes — mais « Efficiency-driven » et
-    // « Empathetic » partagent leur E en anglais. Deux vignettes identiques
-    // côte à côte n'ont l'air de rien, juste de deux tuiles qui se répètent.
-    // C'est pour ça que `initial` est traduisible.
-    for (const [strip, items] of strips) {
-      for (const locale of LOCALES) {
-        const marques = items.map((i) => glyphMark(i, locale))
-        expect(new Set(marques).size, `${strip} (${locale}) : ${marques.join(' ')}`).toBe(
-          marques.length,
-        )
-      }
+  it('ne montre jamais deux fois la même marque du savoir-faire, dans aucune langue', () => {
+    // Seul le savoir-faire montre encore des marques : les traits sont des
+    // étiquettes texte depuis #194, et le mot entier ne peut pas se confondre
+    // avec son voisin comme deux initiales le faisaient.
+    for (const locale of LOCALES) {
+      const marques = CV.skills.map((i) => glyphMark(i, locale))
+      expect(new Set(marques).size, `savoir-faire (${locale}) : ${marques.join(' ')}`).toBe(
+        marques.length,
+      )
     }
   })
 
   it('garde le savoir-être à six, ni plus ni moins', () => {
-    // La carte les range en 3 × 2 pour tenir à la hauteur de la photo. Cinq
-    // laissent un trou ; sept ouvrent une troisième rangée, qui rallonge toute
-    // la rangée du haut et pousse le CV hors de l'écran quand un accordéon
-    // s'ouvre (mesuré à 1000 × 720).
+    // La carte tient à la hauteur de la photo, dans la rangée du haut. Six
+    // étiquettes remplissent ses rangées ; une septième en ouvre une de plus,
+    // qui rallonge toute la rangée et pousse le CV hors de l'écran quand un
+    // accordéon s'ouvre (mesuré à 1000 × 720, du temps de la grille 3 × 2).
     expect(CV.traits.length).toBe(6)
   })
 })
@@ -430,6 +430,32 @@ describe("l'âge", () => {
     // Le point cyan PRÉCÈDE chaque fait, donc c'est l'âge qui ouvre la ligne.
     // Sans âge, la ligne commencerait par un séparateur orphelin.
     expect(heros).toContain('ageAffiché')
+  })
+})
+
+describe('la localisation (#194)', () => {
+  it("s'affiche comme un fait : un libellé traduit, le lieu en valeur", () => {
+    // Décision utilisateur (2026-10-21) : la ligne dit « Basé à » puis
+    // « Lille, France », sans mention de mode — « remote » posé seul à droite
+    // ne voulait rien dire, et « Localisation » était trop long. Le lieu est
+    // un nom propre, neutre entre les langues ; le libellé, lui, se traduit.
+    expect(CV.location.trim()).not.toBe('')
+    for (const locale of LOCALES) {
+      expect(t(CV.locationLabel, locale).trim(), locale).not.toBe('')
+    }
+    expect(component).toContain('CV.locationLabel')
+  })
+})
+
+describe('le savoir-être en étiquettes (#194)', () => {
+  it('range les traits en puces texte, plus en vignettes à initiales', () => {
+    // Décision utilisateur (2026-10-21) : une initiale de qualité humaine
+    // n'identifie rien — « S » ne dit pas « Stratège » comme « Pg » dit
+    // Postgres — et la grille 3 × 2 coupait ou faisait déborder les mots
+    // longs. Le site classique range déjà les mêmes six mots en puces
+    // (`.classic-chip`) ; l'écran vertical adopte la même lecture.
+    expect(component).toContain('cv__traits')
+    expect(component).not.toContain('variant="traits"')
   })
 })
 
@@ -479,6 +505,8 @@ describe("l'anatomie du CV", () => {
       '.cv {',
       '.cv__card',
       '.cv__card--traits',
+      '.cv__traits',
+      '.cv__trait {',
       '.cv__fact',
       '.cv__empty',
       '.cv__tiles',

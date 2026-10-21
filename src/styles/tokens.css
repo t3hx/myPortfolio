@@ -945,6 +945,9 @@
    laquelle on est entré, elle reste la porte de sortie. Il ne porte pas non
    plus la classe `panel` : il n'a rien à faire défiler, la molette continue
    donc de commander le tour. */
+:root {
+  --cv-column: max(44.8vw, min(573px, 100vw - 48px));
+}
 .cv {
   /* LA COLONNE SUIT LE CADRAGE, et les deux disent la même chose deux fois.
      `lib/stops.ts` resserre le champ de l'arrêt CV jusqu'à ce que l'écran
@@ -964,8 +967,11 @@
 
      Elle est CENTRÉE plutôt qu'écrite à 27,5 % : les deux nombres du design
      donnaient un centre à 49,95 %, soit un centrage à un dixième de pour cent
-     près — et deux nombres pour une chose qui n'en demande qu'un. */
-  --cv-column: max(44.8vw, min(573px, 100vw - 48px));
+     près — et deux nombres pour une chose qui n'en demande qu'un.
+
+     Déclarée sur `:root` et non ici depuis #194 : le rail de défilement est un
+     FRÈRE de `.cv` — dans le conteneur qui défile, il défilerait avec le
+     contenu — et une propriété posée ici ne l'atteindrait pas. */
   position: absolute; left: calc(50% - var(--cv-column) / 2); width: var(--cv-column);
   top: 0; bottom: 0;
   z-index: var(--z-bubble);
@@ -985,18 +991,20 @@
      commentaire du passe-plat là-bas. */
   pointer-events: auto;
   overflow-y: auto; overscroll-behavior: contain;
-  scrollbar-width: thin; scrollbar-color: rgba(var(--cream-rgb), .18) transparent;
-  /* `safe center` : centré tant que ça rentre, ancré en haut dès que ça
-     déborde. Le mot-clé `safe` n'est pas décoratif — un `center` seul rend le
-     DÉBUT du contenu inatteignable quand il dépasse : le débordement se produit
-     alors des deux côtés, et un conteneur ne défile jamais vers le négatif. La
-     moitié haute du CV serait perdue sur une fenêtre étroite.
-     Un navigateur qui ignore `safe` jette la déclaration entière et retombe sur
-     `flex-start` : la dégradation va dans le bon sens, elle aussi.
-     Le `padding-block` est l'encastrement dans l'écran, comme les 27,5 % le
-     sont latéralement. */
-  display: flex; flex-direction: column; justify-content: flex-start; gap: 9px;
-  padding-block: 24px;
+  /* La barre NATIVE est masquée depuis #194 : Gecko ne la style qu'en largeur
+     et en couleur, et elle collait au bord des cartouches. C'est le rail
+     `.cv-rail` qui indique la position, posé dans l'air latéral. */
+  scrollbar-width: none;
+  /* Ancré en HAUT depuis #194 : c'est l'entretoise du `::before` plus bas qui
+     porte le placement vertical, dimensionnée sur l'air latéral — voir son
+     commentaire.
+     Le `safe center` qui a vécu ici protégeait un centrage apparent que #194
+     retire ; `flex-start` est ce sur quoi il retombait déjà dès que le contenu
+     débordait. Le `padding-block` est l'encastrement dans l'écran, comme les
+     27,5 % le sont latéralement. */
+  display: flex; flex-direction: column; justify-content: flex-start;
+  gap: calc(9 * var(--cv-u, 1px));
+  padding-block: calc(24 * var(--cv-u, 1px));
   animation: cv-in var(--t-cv-in) var(--ease-out) both;
 }
 /* L'ENTRETOISE, et c'est elle qui tient la promesse « le haut ne bouge jamais ».
@@ -1015,9 +1023,13 @@
    une entretoise qui reste en place quand ça défile : on défile un peu plus
    longtemps, mais rien ne saute sous le curseur.
 
-   Le plafond en pixels évite qu'un très grand écran ne pousse le bloc trop bas. */
+   COURTE depuis #194 (décision du 2026-10-21) : le CV s'aligne en haut de
+   l'écran, et l'air au-dessus du nom vaut l'air LATÉRAL entre la colonne et le
+   bezel — (50,99 % de slab − 44,8 % de colonne) / 2, soit 39,6u, dont 24u
+   sont déjà le `padding-block` de `.cv`. Elle valait `min(13vh, 220px)`, un
+   faux centrage qui gaspillait le haut de l'écran à toute taille. */
 .cv::before {
-  content: ''; flex: 0 0 auto; height: min(13vh, 220px);
+  content: ''; flex: 0 0 auto; height: calc(16 * var(--cv-u, 1px));
 }
 
 /* Déclaré APRÈS `.cv` : à spécificité égale, le dernier gagne — c'est ce qui
@@ -1034,31 +1046,33 @@
    en 12 px, donc elle tient dans l'interligne déjà réservé et n'ajoute pas un
    pixel de hauteur. Une rangée à elle aurait poussé tout le CV vers le bas, et
    le haut du CV ne bouge jamais — voir l'entretoise incompressible. */
-.cv__head { display: flex; align-items: baseline; gap: 16px; }
+.cv__head { display: flex; align-items: baseline; gap: calc(16 * var(--cv-u, 1px)); }
 .cv__head .cv__name { flex: 1 1 auto; min-width: 0; }
 /* Même recette que `.sheet__link` de la fiche projet, et c'est voulu : dans ce
    système, une chose qu'on clique et qui emmène ailleurs a cette forme-là. Les
    mesures sont resserrées parce que la ligne est partagée avec un titre. */
 .cv__download {
-  flex: none; font-family: var(--font-ui); font-size: 11px; font-weight: 500;
+  flex: none; font-family: var(--font-ui); font-size: calc(11 * var(--cv-u, 1px)); font-weight: 500;
   letter-spacing: .04em; color: var(--cream); text-decoration: none;
-  background: rgba(var(--cream-rgb), .07); border: 1px solid rgba(var(--cream-rgb), .14);
-  border-radius: 7px; padding: 6px 12px;
+  background: rgba(var(--cream-rgb), .07);
+  border: calc(1 * var(--cv-u, 1px)) solid rgba(var(--cream-rgb), .14);
+  border-radius: calc(7 * var(--cv-u, 1px)); padding: calc(6 * var(--cv-u, 1px)) calc(12 * var(--cv-u, 1px));
   transition: background var(--t-item), border-color var(--t-item), box-shadow var(--t-halo);
 }
 .cv__download:hover, .cv__download:focus-visible {
   background: rgba(var(--cream-rgb), .11); border-color: rgba(var(--glow-deep-rgb), .6);
-  box-shadow: 0 0 0 1.5px rgba(var(--glow-deep-rgb), .35), 0 0 40px 5px rgba(var(--glow-deep-rgb), .42);
+  box-shadow: 0 0 0 calc(1.5 * var(--cv-u, 1px)) rgba(var(--glow-deep-rgb), .35),
+    0 0 calc(40 * var(--cv-u, 1px)) calc(5 * var(--cv-u, 1px)) rgba(var(--glow-deep-rgb), .42);
   outline: none;
 }
 
 .cv__name {
-  margin: 0 0 4px 2px; font-family: ui-monospace, monospace;
-  font-size: 30px; font-weight: 500; letter-spacing: .05em; color: var(--cream);
+  margin: 0 0 calc(4 * var(--cv-u, 1px)) calc(2 * var(--cv-u, 1px)); font-family: ui-monospace, monospace;
+  font-size: calc(30 * var(--cv-u, 1px)); font-weight: 500; letter-spacing: .05em; color: var(--cream);
   /* Une lueur portée SANS décalage ni flou du glyphe lui-même : elle rayonne
      autour, elle n'épaissit pas le trait. C'est la seule ligne assez grande
      pour l'encaisser — sur du 9 px elle mangerait le contre-poinçon. */
-  text-shadow: 0 0 16px rgba(var(--glow-rgb), .26);
+  text-shadow: 0 0 calc(16 * var(--cv-u, 1px)) rgba(var(--glow-rgb), .26);
 }
 /* Le caret de bloc, pendant le déchiffrement seulement. C'est lui qui fait
    lire « console » plutôt que « titre animé » ; le laisser après coup en
@@ -1067,37 +1081,43 @@
 .cv__caret {
   display: inline-block; width: .55em; height: .95em; margin-left: .12em;
   vertical-align: -.1em; background: var(--glow);
-  box-shadow: 0 0 10px rgba(var(--glow-rgb), .5);
+  box-shadow: 0 0 calc(10 * var(--cv-u, 1px)) rgba(var(--glow-rgb), .5);
   animation: cv-caret 620ms steps(1, end) infinite;
 }
 @keyframes cv-caret { 0%, 49% { opacity: 1; } 50%, 100% { opacity: .1; } }
 
-.cv__row { display: flex; gap: 11px; }
+.cv__row { display: flex; gap: calc(11 * var(--cv-u, 1px)); }
 /* 148 × 180 depuis le 2026-08-20 : à 104 × 126 le cadre ne pesait plus rien
    face aux cinq blocs qui l'entourent. Les deux cartes de la rangée y perdent
    en largeur, ce qui est assumé — c'est la photo qui donne la hauteur, et
    l'agrandir ne coûte donc que 54 px au budget vertical. */
 .cv__photo {
-  flex: none; width: 148px; height: 180px;
-  border: 1px dashed rgba(var(--cream-rgb), .35); border-radius: 8px;
-  background: repeating-linear-gradient(45deg, rgba(var(--cream-rgb), .05) 0 8px, transparent 8px 16px);
+  flex: none; width: calc(148 * var(--cv-u, 1px)); height: calc(180 * var(--cv-u, 1px));
+  border: calc(1 * var(--cv-u, 1px)) dashed rgba(var(--cream-rgb), .35);
+  border-radius: calc(8 * var(--cv-u, 1px));
+  background: repeating-linear-gradient(45deg, rgba(var(--cream-rgb), .05) 0 calc(8 * var(--cv-u, 1px)),
+    transparent calc(8 * var(--cv-u, 1px)) calc(16 * var(--cv-u, 1px)));
   display: flex; align-items: center; justify-content: center;
-  font-family: ui-monospace, monospace; font-size: 10px; color: rgba(var(--cream-rgb), .55);
+  font-family: ui-monospace, monospace; font-size: calc(10 * var(--cv-u, 1px)); color: rgba(var(--cream-rgb), .55);
 }
-.cv__photo img { width: 100%; height: 100%; object-fit: cover; border-radius: 7px; }
+.cv__photo img { width: 100%; height: 100%; object-fit: cover; border-radius: calc(7 * var(--cv-u, 1px)); }
 .cv__card {
   background: rgba(var(--cream-rgb), .07);
-  border: 1px solid rgba(var(--cream-rgb), .12); border-radius: 8px;
-  padding: 11px 14px; display: flex; flex-direction: column; gap: 7px;
+  border: calc(1 * var(--cv-u, 1px)) solid rgba(var(--cream-rgb), .12);
+  border-radius: calc(8 * var(--cv-u, 1px));
+  padding: calc(11 * var(--cv-u, 1px)) calc(14 * var(--cv-u, 1px));
+  display: flex; flex-direction: column; gap: calc(7 * var(--cv-u, 1px));
 }
 /* `flex: 1` ne vaut QUE dans la rangée du haut. `.cv` est une colonne flex :
    posé sur la carte elle-même, il ferait grandir en HAUTEUR les cartes du bas
    jusqu'à remplir l'écran.
 
    Le savoir-être prend 1,4 part contre 1 aux faits, et ce n'est pas de
-   l'esthétique : trois colonnes de vignettes ont besoin de place, deux paires
-   « intitulé / valeur » n'en ont pas. À parts égales, mesuré à 1000 px de
-   large, « Curiosité » et « Autonomie » se coupaient en plein mot.
+   l'esthétique : six mots ont besoin de place, des paires « intitulé /
+   valeur » n'en ont pas. À parts égales, mesuré à 1000 px de large du temps
+   de la grille de vignettes, « Curiosité » et « Autonomie » se coupaient en
+   plein mot ; les étiquettes de #194 passent à la ligne au lieu de se couper,
+   mais une carte plus étroite les empilerait une par rangée.
 
    1,4 et pas plus, et gouttière de 6 px : élargir davantage la carte rétrécit
    celle des faits, dont les lignes passent alors à deux et rallongent toute la
@@ -1108,22 +1128,42 @@
 .cv__row .cv__card { flex: 1; }
 .cv__card--traits { flex: 1.4; }
 .cv__card-title {
-  font-size: 10px; font-weight: 500; letter-spacing: .2em; text-transform: uppercase;
-  color: rgba(var(--cream-rgb), .5); margin: 0 0 2px;
+  font-size: calc(10 * var(--cv-u, 1px)); font-weight: 500; letter-spacing: .2em; text-transform: uppercase;
+  color: rgba(var(--cream-rgb), .5); margin: 0 0 calc(2 * var(--cv-u, 1px));
 }
-.cv__fact { display: flex; align-items: baseline; gap: 8px; font-size: 12.5px; }
+.cv__fact { display: flex; align-items: baseline; gap: calc(8 * var(--cv-u, 1px)); font-size: calc(12.5 * var(--cv-u, 1px)); }
 .cv__fact b { font-weight: 400; color: var(--cream); }
 .cv__fact span {
-  margin-left: auto; font-size: 11.5px; font-family: ui-monospace, monospace;
+  margin-left: auto; font-size: calc(11.5 * var(--cv-u, 1px)); font-family: ui-monospace, monospace;
   color: rgba(var(--cream-rgb), .55);
 }
-/* Réglette de vignettes — savoir-être et savoir-faire (2026-08-20).
-   UNE seule anatomie pour les deux : marque au-dessus, nom en dessous. Elles
-   ne diffèrent que par la répartition des colonnes, d'où le seul modificateur.
-
-   Le savoir-être est figé à 3 × 2 parce qu'il doit tenir à la HAUTEUR de la
-   photo, dans la rangée du haut ; le savoir-faire se répartit tout seul et
-   passe à la ligne, parce que rien ne le contraint latéralement.
+/* LE SAVOIR-ÊTRE EN ÉTIQUETTES TEXTE (#194, décision utilisateur du
+   2026-10-21). Les vignettes à initiales disaient moins que les mots — « S »
+   n'identifie pas « Stratège » comme « Pg » identifie Postgres — et la grille
+   3 × 2 coupait ou faisait déborder les mots longs. Le site classique range
+   déjà les mêmes six mots en puces (`.classic-chip`) ; voici la même lecture,
+   aux unités du CV : mono, bord crème, pas de fond — une étiquette se lit,
+   elle ne promet rien. Les marges `auto` centrent le bloc dans la hauteur que
+   la photo donne à la carte, et `flex-wrap` répartit les mots tout seul :
+   aucun n'a de voisin de colonne à recouvrir, quelle que soit la langue. */
+.cv__traits {
+  list-style: none; margin: auto 0; padding: 0;
+  display: flex; flex-wrap: wrap; gap: calc(6 * var(--cv-u, 1px));
+}
+.cv__trait {
+  padding: calc(3.5 * var(--cv-u, 1px)) calc(9 * var(--cv-u, 1px));
+  border: calc(1 * var(--cv-u, 1px)) solid rgba(var(--cream-rgb), .16);
+  /* Une demi-hauteur suffit à fermer la gélule ; 999 u ne fait que la garantir
+     à toute taille, comme le 999px de `.classic-chip`. */
+  border-radius: calc(999 * var(--cv-u, 1px));
+  font-family: ui-monospace, monospace;
+  font-size: calc(10 * var(--cv-u, 1px)); line-height: 1.3;
+  color: rgba(var(--cream-rgb), .78);
+  white-space: nowrap;
+}
+/* Réglette de vignettes — le savoir-faire (2026-08-20). Le savoir-être l'a
+   partagée jusqu'à #194, d'où le modificateur `--skills` resté seul dans
+   l'app ; `--traits` survit plus bas pour la maquette, voir sa note.
 
    La vignette sans SVG affiche l'INITIALE du nom, en crème monochrome : c'est
    le glyphe neutre en attendant les vraies icônes, et pas un état d'erreur —
@@ -1146,15 +1186,24 @@
   .cv__row .cv__card, .cv__card--traits { flex: 0 0 auto; }
 }
 
-.cv__tiles { display: grid; gap: 8px 6px; }
+.cv__tiles { display: grid; gap: calc(8 * var(--cv-u, 1px)) calc(6 * var(--cv-u, 1px)); }
+/* MAQUETTE SEULEMENT depuis #194 : `design/screens/02-cv.html` range encore
+   son savoir-être en vignettes 3 × 2, et il ne charge que cette feuille.
+   Dérive assumée, comme son titre « Langues & permis » — supprimer la règle
+   casserait la maquette sans rien alléger dans l'app. */
 .cv__tiles--traits { grid-template-columns: repeat(3, 1fr); }
-.cv__tiles--skills { grid-template-columns: repeat(auto-fit, minmax(46px, 1fr)); }
-.cv__tile { display: flex; flex-direction: column; align-items: center; gap: 5px; min-width: 0; }
+.cv__tiles--skills { grid-template-columns: repeat(auto-fit, minmax(calc(46 * var(--cv-u, 1px)), 1fr)); }
+.cv__tile { display: flex; flex-direction: column; align-items: center; gap: calc(5 * var(--cv-u, 1px)); min-width: 0; }
 .cv__tile-mark {
-  width: 26px; height: 26px; flex: none; border-radius: 7px;
-  border: 1px solid rgba(var(--cream-rgb), .16); background: rgba(var(--cream-rgb), .06);
+  width: calc(26 * var(--cv-u, 1px)); height: calc(26 * var(--cv-u, 1px)); flex: none;
+  border-radius: calc(7 * var(--cv-u, 1px));
+  border: calc(1 * var(--cv-u, 1px)) solid rgba(var(--cream-rgb), .16); background: rgba(var(--cream-rgb), .06);
   display: flex; align-items: center; justify-content: center;
-  font-size: 12px; font-weight: 500; color: rgba(var(--cream-rgb), .8);
+  font-size: calc(12 * var(--cv-u, 1px)); font-weight: 500; color: rgba(var(--cream-rgb), .8);
+  /* La marque suit l'unité ICI, et pas dans `.glyph-mark` : la recette du
+     masque sert aussi la barre de menu, qui garde ses 16 px. */
+  --mark-size: calc(16 * var(--cv-u, 1px));
+  --mark-slab: calc(13 * var(--cv-u, 1px));
 }
 /* LA MARQUE D'UNE VIGNETTE (#169). Un masque, pas une image : les fichiers
    portent `fill="currentColor"`, qui dans une balise `<img>` n'a aucun contexte
@@ -1183,7 +1232,7 @@
 .glyph-mark--slab { width: var(--mark-slab, 13px); height: var(--mark-slab, 13px); }
 
 .cv__tile-label {
-  font-size: 9px; line-height: 1.25; text-align: center; max-width: 100%;
+  font-size: calc(9 * var(--cv-u, 1px)); line-height: 1.25; text-align: center; max-width: 100%;
   /* Surtout PAS d'`overflow-wrap: anywhere` : mesuré à 1000 px, il coupait
      « Curiosité » en « Curiosit / é ». Un nom trop long doit déborder — on le
      voit, on le raccourcit — plutôt que se briser en silence. */
@@ -1196,7 +1245,7 @@
    La marge du haut compense le `gap` de la colonne pour attacher le titre à ce
    qu'il annonce plutôt qu'à ce qui le précède. */
 .cv__section-title {
-  font-size: 10px; font-weight: 500; letter-spacing: .2em; text-transform: uppercase;
+  font-size: calc(10 * var(--cv-u, 1px)); font-weight: 500; letter-spacing: .2em; text-transform: uppercase;
   /* Accent froid, alors que les titres de CARTE restent crème sourd : c'est ce
      qui distingue les trois sections des cartes qu'elles contiennent, sans
      ajouter ni corps ni graisse. La couleur porte la hiérarchie. */
@@ -1204,7 +1253,7 @@
   /* La marge du haut s'ajoute au `gap` de la colonne : elle creuse la césure
      AVANT la section, celle du bas rattache le titre à ce qu'il annonce. C'est
      ce couple qui fait lire trois sections plutôt qu'une pile de cartes. */
-  margin: 12px 0 -1px 2px;
+  margin: calc(12 * var(--cv-u, 1px)) 0 calc(-1 * var(--cv-u, 1px)) calc(2 * var(--cv-u, 1px));
 }
 
 /* « Le cap » — la vision, dans la police de la VOIX, celle des bulles. C'est
@@ -1212,14 +1261,14 @@
    italique qu'à la narration du tour est ce qui la distingue d'une rubrique. */
 .cv__outlook-text {
   font-family: var(--font-voice); font-style: italic;
-  font-size: 13px; line-height: 1.5; color: rgba(var(--cream-rgb), .78); margin: 0;
+  font-size: calc(13 * var(--cv-u, 1px)); line-height: 1.5; color: rgba(var(--cream-rgb), .78); margin: 0;
 }
 
 /* Le repli quand aucun poste n'est renseigné : une phrase, jamais un trou.
    Même discipline que le tiroir vide (#78). */
 .cv__empty {
-  font-family: var(--font-voice); font-style: italic; font-size: 13px;
-  line-height: 1.5; color: rgba(var(--cream-rgb), .6); margin: 0; padding: 0 2px;
+  font-family: var(--font-voice); font-style: italic; font-size: calc(13 * var(--cv-u, 1px));
+  line-height: 1.5; color: rgba(var(--cream-rgb), .6); margin: 0; padding: 0 calc(2 * var(--cv-u, 1px));
 }
 .job {
   pointer-events: auto;
@@ -1233,8 +1282,9 @@
      tassé est COUPÉ, pas reflué : c'est pire qu'un débordement, qui se voit et
      se défile. `.cv` porte déjà `overflow-y: auto` pour ça. */
   flex: none;
-  background: rgba(var(--cream-rgb), .07); border: 1px solid rgba(var(--cream-rgb), .12);
-  border-radius: 8px; padding: 11px 16px;
+  background: rgba(var(--cream-rgb), .07);
+  border: calc(1 * var(--cv-u, 1px)) solid rgba(var(--cream-rgb), .12);
+  border-radius: calc(8 * var(--cv-u, 1px)); padding: calc(11 * var(--cv-u, 1px)) calc(16 * var(--cv-u, 1px));
   transition: background var(--t-item), border-color var(--t-item);
 }
 .job:hover, .job:focus-visible { background: rgba(var(--cream-rgb), .1); border-color: rgba(var(--cream-rgb), .2); outline: none; }
@@ -1263,11 +1313,11 @@
    fond qui s'éclaircit sur quelque chose qui n'ouvre rien promet une
    interaction qui n'existe pas. */
 .job--static:hover { background: rgba(var(--cream-rgb), .07); border-color: rgba(var(--cream-rgb), .12); }
-.job__head { display: flex; align-items: baseline; gap: 10px; }
-.job__title { font-size: 13px; font-weight: 500; color: var(--cream); }
-.job__company { font-size: 11px; color: rgba(var(--cream-rgb), .55); }
+.job__head { display: flex; align-items: baseline; gap: calc(10 * var(--cv-u, 1px)); }
+.job__title { font-size: calc(13 * var(--cv-u, 1px)); font-weight: 500; color: var(--cream); }
+.job__company { font-size: calc(11 * var(--cv-u, 1px)); color: rgba(var(--cream-rgb), .55); }
 .job__period {
-  margin-left: auto; flex: none; font-size: 11px; font-family: ui-monospace, monospace;
+  margin-left: auto; flex: none; font-size: calc(11 * var(--cv-u, 1px)); font-family: ui-monospace, monospace;
   color: rgba(var(--cream-rgb), .5);
 }
 /* Les clients d'un poste (#173). Une LIGNE, sous l'intitulé, hors de
@@ -1278,12 +1328,12 @@
    dit ce que la liste EST, et sans lui une suite de noms propres ressemble à
    une énumération sans cause. */
 .job__clients {
-  margin: 6px 0 0; font-size: 10.5px; line-height: 1.45;
+  margin: calc(6 * var(--cv-u, 1px)) 0 0; font-size: calc(10.5 * var(--cv-u, 1px)); line-height: 1.45;
   color: rgba(var(--cream-rgb), .5);
 }
 .job__clients-key {
   color: var(--glow); letter-spacing: .06em; text-transform: uppercase;
-  font-size: 9px; margin-right: 6px;
+  font-size: calc(9 * var(--cv-u, 1px)); margin-right: calc(6 * var(--cv-u, 1px));
 }
 
 /* L'accordéon interpole `grid-template-rows` de 0fr à 1fr plutôt qu'une
@@ -1299,10 +1349,51 @@
 }
 .job:hover .job__missions, .job:focus-within .job__missions { grid-template-rows: 1fr; }
 .job__missions ul {
-  overflow: hidden; margin: 0; padding: 9px 0 2px 15px;
-  display: flex; flex-direction: column; gap: 4px;
+  overflow: hidden; margin: 0;
+  padding: calc(9 * var(--cv-u, 1px)) 0 calc(2 * var(--cv-u, 1px)) calc(15 * var(--cv-u, 1px));
+  display: flex; flex-direction: column; gap: calc(4 * var(--cv-u, 1px));
 }
-.job__missions li { font-size: 12px; line-height: 1.45; color: rgba(var(--cream-rgb), .75); }
+.job__missions li { font-size: calc(12 * var(--cv-u, 1px)); line-height: 1.45; color: rgba(var(--cream-rgb), .75); }
+
+/* ===== Le rail de défilement du CV (#194) =====
+   Remplace la barre native (masquée sur `.cv` — Gecko ne la style qu'en
+   largeur et couleur, ni rayon ni décalage) : un élément dessiné aux jetons,
+   posé dans l'air latéral entre la colonne et le bezel du moniteur.
+
+   PUR INDICATEUR : `pointer-events: none`. Le CV ne possède aucun routage
+   d'entrée (« pas une phase ») et un rail saisissable en exigerait un ; la
+   molette garde le passe-plat de `CvScreen`.
+
+   Il est FRÈRE de `.cv`, pas enfant : dans le conteneur qui défile, il
+   défilerait avec le contenu. Sa géométrie (haut/hauteur du curseur, en %)
+   est écrite en ligne par `CvScreen` depuis `lib/scrollRail.ts` — fonction
+   pure, jamais un état React. Le haut s'aligne sur le contenu (40u au total,
+   comme l'air latéral), le bas sur le `padding-block`.
+
+   À 26u de la colonne, PAS au ras : l'air latéral fait ~40u, et collé au
+   contenu le rail se lisait comme un liseré des cartouches. Poussé vers le
+   bezel (~11u restants), il se lit comme le bord de l'écran — là où un
+   moniteur met sa barre. */
+.cv-rail {
+  position: absolute;
+  left: calc(50% + var(--cv-column) / 2 + 26 * var(--cv-u, 1px));
+  top: calc(40 * var(--cv-u, 1px)); bottom: calc(24 * var(--cv-u, 1px));
+  width: calc(3 * var(--cv-u, 1px));
+  border-radius: calc(2 * var(--cv-u, 1px));
+  background: rgba(var(--cream-rgb), .08);
+  z-index: var(--z-bubble);
+  pointer-events: none;
+  animation: cv-in var(--t-cv-in) var(--ease-out) both;
+}
+/* Même règle d'ordre que `.cv--out` : déclaré après, pour gagner à spécificité
+   égale. Le rail entre et sort avec le CV. */
+.cv-rail--out { animation: cv-out var(--t-cv-out) linear both; }
+.cv-rail__thumb {
+  position: absolute; left: 0; right: 0;
+  border-radius: inherit;
+  background: rgba(var(--glow-rgb), .55);
+  box-shadow: 0 0 calc(8 * var(--cv-u, 1px)) rgba(var(--glow-rgb), .3);
+}
 
 @keyframes cv-in { from { opacity: 0; } to { opacity: 1; } }
 @keyframes cv-out { from { opacity: 1; } to { opacity: 0; } }

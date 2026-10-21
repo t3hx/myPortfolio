@@ -527,6 +527,28 @@ body,
   font-size: calc(11 * var(--u));
 }
 
+/* L'UNITÉ du CV (#194) — « un pixel du design du CV, redimensionné ».
+
+   Même idée que `--u` pour la bulle (#137), mais SANS plafond, et la différence
+   est le sujet : la bulle est posée sur la scène et son plafond protège la
+   table de placement ; le CV, lui, est affiché PAR le moniteur vertical, dont
+   la part de la fenêtre est constante — le cadrage caméra ne bouge pas. Pour
+   que l'écran CV d'un visiteur en 2560 soit trait pour trait celui d'un
+   visiteur en 1280, le contenu doit suivre le moniteur, sans borne.
+
+   Plancher à 1 px : sous les 1280 du cadre du design rien ne change — là c'est
+   `columnHfov` (lib/stops.ts) qui resserre la caméra pour garantir la colonne.
+   Toute l'anatomie `.cv`/`.job` de `tokens.css` est écrite en multiples de
+   cette unité ; `tests/cvScale.test.ts` échoue si un pixel nu y revient.
+
+   Elle vit sur `:root` — `.cv` n'est pas un descendant de `.bubble-layer` — et
+   dans CE fichier : les maquettes de `design/screens/` ne chargent que
+   `tokens.css` et retombent sur le repli `var(--cv-u, 1px)`, c'est-à-dire sur
+   les tailles que la session design a validées. */
+:root {
+  --cv-u: max(1px, calc(100vw / 1280));
+}
+
 .bubble-layer .bubble__dot {
   width: calc(7 * var(--u));
   height: calc(7 * var(--u));
