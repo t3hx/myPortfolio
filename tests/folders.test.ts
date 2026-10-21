@@ -100,15 +100,27 @@ describe('folderZ', () => {
     expect(folderZ(4, 5)).toBeCloseTo(FOLDER_Z_BACK, 6)
   })
 
-  it('dérive le pas du nombre de projets', () => {
+  it('dérive le pas du nombre de projets, sans jamais dépasser le plafond', () => {
     // Coder le pas en dur ferait traverser la façade au dossier de devant dès
     // qu'on ajoute une fiche — c'est ce que le spike a montré à 0.09.
     //
     // Mesuré en VALEUR ABSOLUE : c'est l'écartement qui est dérivé, et son
     // signe ne dit que la direction. Un test signé aurait échoué à la
     // correction du sens (#180) pour une raison qui n'est pas la sienne.
+    //
+    // Le pas est PLAFONNÉ depuis le 2026-10-21 (retour utilisateur : à trois
+    // dossiers étalés sur toute la course, l'écart lisait comme trois objets
+    // sans rapport). Sous la capacité pleine, la rangée garde le pas de la
+    // rangée pleine et se centre entre les bornes.
     expect(Math.abs(folderZ(1, 5) - folderZ(0, 5))).toBeCloseTo(0.055, 6)
-    expect(Math.abs(folderZ(1, 3) - folderZ(0, 3))).toBeCloseTo(0.11, 6)
+    expect(Math.abs(folderZ(1, 3) - folderZ(0, 3))).toBeCloseTo(0.055, 6)
+  })
+
+  it('centre la rangée plafonnée entre les bornes', () => {
+    // Même point d'équilibre que le dossier unique : une rangée qui ne remplit
+    // plus la course ne colle ni à la poignée ni au fond.
+    const milieu = (FOLDER_Z_BACK + FOLDER_Z_FRONT) / 2
+    expect((folderZ(0, 3) + folderZ(2, 3)) / 2).toBeCloseTo(milieu, 6)
   })
 
   it('enfonce chaque dossier un peu plus que le précédent', () => {

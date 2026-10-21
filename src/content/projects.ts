@@ -19,12 +19,22 @@
  * leur auteur. Ce qui est vérifié par les tests, c'est la FORME — pas la prose.
  */
 
+import { MARKS } from '@/config/icons'
 import type { Localized } from '@/lib/locale'
 
 export interface ProjectLink {
-  /** Ce qui s'affiche : « Code », « Voir le site »… */
+  /** Ce qui s'affiche : « GitHub », « En ligne »… */
   label: Localized
   href: string
+  /**
+   * Une marque de `MARKS`, posée devant le libellé (décision utilisateur,
+   * 2026-10-21 : « Code ↗ » disait le geste, « [logo] GitHub » dit la
+   * destination). Un lien AVEC marque ne porte pas la flèche ↗ — le logo
+   * identifie déjà la sortie ; le lien sans marque, celui qui ouvre le site
+   * en ligne, la garde. Même procédé que partout : le masque monochrome de
+   * `Mark`, jamais une image.
+   */
+  icon?: string
 }
 
 /**
@@ -132,13 +142,15 @@ export interface Project {
 export const SHOTS_MAX = 5
 
 /**
- * **L'ORDRE EST CELUI DU TIROIR** (décision de l'auteur, 2026-09-07) :
- * Portfolio, Owlog, Solarsys, **de la poignée vers le fond**. Le tableau EST
- * la rangée de dossiers — `buildFolders` place le dossier n° i à
- * `folderZ(i, n)` et ne lit rien d'autre —, exactement comme `CAMERA_STOPS`
- * EST le parcours. Réordonner ici réordonne la commode, sans qu'aucune
- * position ne soit écrite nulle part. Le pas entre dossiers est DÉRIVÉ du
- * compte, donc retirer une fiche réespace le tiroir tout seul.
+ * **L'ORDRE EST CELUI DU TIROIR** : Portfolio, Solarsys, Owlog, **de la
+ * poignée vers le fond** (réordonné le 2026-10-21, décision de l'auteur —
+ * c'est l'ordre du CV papier, « Projets web construits : Portfolio, Solarsys,
+ * Owlog »). Le tableau EST la rangée de dossiers — `buildFolders` place le
+ * dossier n° i à `folderZ(i, n)` et ne lit rien d'autre —, exactement comme
+ * `CAMERA_STOPS` EST le parcours. Réordonner ici réordonne la commode, sans
+ * qu'aucune position ne soit écrite nulle part. Le pas entre dossiers est
+ * DÉRIVÉ du compte (et plafonné — voir `FOLDER_Z_STEP_MAX`), donc retirer une
+ * fiche resserre le tiroir tout seul.
  *
  * **Anima et Odysong sont retirés depuis le 2026-10-21** (décision de
  * l'auteur) : le CV papier ne retient que Portfolio, Solarsys et Owlog, et la
@@ -176,7 +188,41 @@ export const PROJECTS: Project[] = [
         'The camera follows ten framings composed in Blender, never rewritten in code.',
       ],
     },
-    links: [{ label: { fr: 'Code', en: 'Code' }, href: 'https://github.com/t3hx/myPortfolio' }],
+    links: [
+      {
+        label: { fr: 'GitHub', en: 'GitHub' },
+        icon: MARKS.github,
+        href: 'https://github.com/t3hx/myPortfolio',
+      },
+      // Oui, le lien pointe sur le site où l'on se trouve peut-être déjà :
+      // la carte est aussi lue depuis l'expérience classique, et la fiche
+      // doit dire où la chose vit, pas deviner d'où on la regarde.
+      { label: { fr: 'En ligne', en: 'Live' }, href: 'https://tdbs.nspace.link' },
+    ],
+  },
+  {
+    slug: 'solarsys',
+    name: 'Solarsys',
+    tabLabel: 'Solarsys',
+    tagline: {
+      fr: "Une visite du système solaire, à l'échelle, dans le navigateur.",
+      en: 'A tour of the solar system, to scale, in the browser.',
+    },
+    year: '2026',
+    role: { fr: 'Développement', en: 'Development' },
+    stack: ['Nuxt', 'TypeScript', 'Three.js'],
+    highlights: {
+      fr: ['Architecture documentée en composables, factories et stores.'],
+      en: ['Architecture documented as composables, factories and stores.'],
+    },
+    links: [
+      {
+        label: { fr: 'GitHub', en: 'GitHub' },
+        icon: MARKS.github,
+        href: 'https://github.com/t3hx/celestial-walker-nuxt',
+      },
+      { label: { fr: 'En ligne', en: 'Live' }, href: 'https://solarsys.nspace.link' },
+    ],
   },
   {
     slug: 'owlog',
@@ -199,25 +245,6 @@ export const PROJECTS: Project[] = [
         'Works offline: logging often happens far from a network.',
       ],
     },
-  },
-  {
-    slug: 'solarsys',
-    name: 'Solarsys',
-    tabLabel: 'Solarsys',
-    tagline: {
-      fr: "Une visite du système solaire, à l'échelle, dans le navigateur.",
-      en: 'A tour of the solar system, to scale, in the browser.',
-    },
-    year: '2026',
-    role: { fr: 'Développement', en: 'Development' },
-    stack: ['Nuxt', 'TypeScript', 'Three.js'],
-    highlights: {
-      fr: ['Architecture documentée en composables, factories et stores.'],
-      en: ['Architecture documented as composables, factories and stores.'],
-    },
-    links: [
-      { label: { fr: 'Code', en: 'Code' }, href: 'https://github.com/t3hx/celestial-walker-nuxt' },
-    ],
   },
 ]
 

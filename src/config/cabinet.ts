@@ -96,6 +96,18 @@ export const FOLDER_Z_BACK = -2.21
 export const FOLDER_Z_FRONT = -1.99
 
 /**
+ * Le pas MAXIMAL entre deux dossiers (retour utilisateur, 2026-10-21 : à
+ * trois dossiers répartis sur toute la course, « l'écart est trop
+ * important » — trois objets sans rapport, plus une rangée).
+ *
+ * 0.055 est le pas d'une rangée PLEINE — cinq dossiers d'une borne à
+ * l'autre —, c'est-à-dire la densité sous laquelle le tiroir a été composé
+ * et validé. Moins de dossiers ne s'étalent plus pour remplir la course :
+ * ils gardent ce pas et la rangée se centre (voir `folderZ`).
+ */
+export const FOLDER_Z_STEP_MAX = 0.055
+
+/**
  * L'étiquette : un plan de texte posé devant la face de `Folder_Tab`.
  *
  * Peindre dans la texture existante supposerait des UV faits pour ça — ceux de

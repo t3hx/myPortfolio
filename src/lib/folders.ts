@@ -3,6 +3,7 @@ import {
   DRAWER_CONTENT_NAMES,
   FOLDER_Z_BACK,
   FOLDER_Z_FRONT,
+  FOLDER_Z_STEP_MAX,
   LABEL_HEIGHT,
   LABEL_OFFSET_Z,
   LABEL_WIDTH,
@@ -44,13 +45,24 @@ export interface FolderHandle {
  * (#81) — et elles restent justes. C'est leur rôle dans l'interpolation qui
  * s'échange.
  *
- * Le pas se DÉRIVE du nombre de projets : à cinq il vaut 0.055, à trois 0.11.
- * Le coder en dur ferait sortir le dossier de devant à travers la façade dès
- * qu'on ajoute une fiche — c'est exactement ce qu'a montré le spike.
+ * Le pas se DÉRIVE du nombre de projets, et il est PLAFONNÉ (2026-10-21) :
+ * dériver seul voulait dire « remplir la course quoi qu'il arrive », et à
+ * trois dossiers l'écart doublait (0.11) — mesuré à l'œil par l'auteur comme
+ * trop important. Le plafond est le pas d'une rangée pleine (0.055), et une
+ * rangée plafonnée se CENTRE entre les bornes — même point d'équilibre que le
+ * dossier unique — plutôt que de coller à la poignée ou au fond. Coder le pas
+ * en dur ferait sortir le dossier de devant à travers la façade dès qu'on
+ * ajoute une fiche — c'est exactement ce qu'a montré le spike ; le plafond ne
+ * réintroduit pas ce risque, puisqu'il ne joue qu'en dessous de la rangée
+ * pleine.
  */
 export function folderZ(index: number, count: number): number {
-  if (count <= 1) return (FOLDER_Z_BACK + FOLDER_Z_FRONT) / 2
-  return FOLDER_Z_FRONT + (index * (FOLDER_Z_BACK - FOLDER_Z_FRONT)) / (count - 1)
+  const centre = (FOLDER_Z_BACK + FOLDER_Z_FRONT) / 2
+  if (count <= 1) return centre
+  const pas = Math.min(Math.abs(FOLDER_Z_BACK - FOLDER_Z_FRONT) / (count - 1), FOLDER_Z_STEP_MAX)
+  // Le fond est plus négatif que l'avant : l'index croissant s'enfonce.
+  const sens = Math.sign(FOLDER_Z_BACK - FOLDER_Z_FRONT)
+  return centre + sens * (index - (count - 1) / 2) * pas
 }
 
 /**
