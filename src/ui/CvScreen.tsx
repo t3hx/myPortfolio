@@ -370,7 +370,7 @@ export function CvScreen() {
                 // formation : pas d'accordéon, donc pas de `tabIndex` non plus.
                 // Un arrêt de tabulation qui n'ouvre rien est un faux bouton.
                 className={missions ? 'job' : 'job job--static'}
-                key={`${job.company}-${job.period}`}
+                key={`${tm(job.company, 'fr')}-${job.period}`}
                 tabIndex={missions ? 0 : undefined}
               >
                 <div className="job__head">
@@ -381,7 +381,7 @@ export function CvScreen() {
                       delay={cue(6 + i)}
                     />
                   </span>
-                  <span className="job__company">{job.company}</span>
+                  <span className="job__company">{tm(job.company, locale)}</span>
                   <span className="job__period">{job.period}</span>
                 </div>
                 {job.clients && (

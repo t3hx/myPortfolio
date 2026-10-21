@@ -134,6 +134,11 @@
   font-size: 12px;
   letter-spacing: 0.06em;
   text-shadow: 0 1px 10px rgba(0, 0, 0, 0.7);
+  /* La marque a remplacé les deux lettres (2026-10-21) : le lien centre son
+     masque et lui donne sa taille — le repli texte, lui, garde la recette. */
+  display: inline-flex;
+  align-items: center;
+  --mark-size: 15px;
 }
 
 /* --- Le mini-nom (spec §8) --------------------------------------------------------- */
@@ -920,6 +925,15 @@
   margin-top: 14px;
   font-family: var(--font-mono);
   font-size: 11.5px;
+}
+/* Le lien GitHub porte une marque devant son libellé (2026-10-21) : chaque
+   lien aligne donc son contenu en ligne, la marque prenant la hauteur d'une
+   capitale pour ne pas faire gonfler la rangée. */
+.classic-project__links a {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  --mark-size: 13px;
 }
 
 /* --- Le pied de page --------------------------------------------------------------- */

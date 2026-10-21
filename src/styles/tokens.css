@@ -878,6 +878,9 @@
   color: var(--cream); text-decoration: none;
   background: rgba(var(--cream-rgb), .07); border: 1px solid rgba(var(--cream-rgb), .14);
   border-radius: 8px; padding: 9px 16px;
+  /* Le lien GitHub pose une marque devant son libellé (2026-10-21), même
+     lecture que les cartes du site classique. */
+  display: inline-flex; align-items: center; gap: 7px; --mark-size: 14px;
   transition: background var(--t-item), border-color var(--t-item), box-shadow var(--t-halo);
 }
 .sheet__link:hover, .sheet__link:focus-visible {

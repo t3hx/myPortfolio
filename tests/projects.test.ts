@@ -59,7 +59,7 @@ describe('PROJECTS', () => {
   })
 
   it("n'affiche jamais de lien mort", () => {
-    // Trois des dépôts sont privés. Même discipline que `MENU_SOCIALS` : une
+    // Le dépôt d'Owlog est privé. Même discipline que `MENU_SOCIALS` : une
     // entrée sans href n'est pas rendue, plutôt qu'un lien qui mène à un 404.
     // Le champ est donc absent, jamais vide et jamais rempli d'un placeholder.
     for (const p of PROJECTS) {
@@ -113,21 +113,26 @@ describe('les replis', () => {
  */
 describe("l'ordre de la commode", () => {
   it('range les dossiers dans l’ordre décidé', () => {
-    expect(PROJECTS.map((p) => p.slug)).toEqual([
-      'portfolio',
-      'owlog',
-      'solarsys',
-      'anima',
-      'odysong',
-    ])
+    // Anima et Odysong sont retirés et l'ordre suit le CV papier — « Projets
+    // web construits : Portfolio, Solarsys, Owlog » (décisions de l'auteur,
+    // 2026-10-21) : la commode dit la même chose que lui, et les cartes du
+    // site classique aussi, puisqu'elles lisent le même tableau.
+    expect(PROJECTS.map((p) => p.slug)).toEqual(['portfolio', 'solarsys', 'owlog'])
   })
 
   it('garde les vraies adresses des dépôts malgré les renommages', () => {
     // Un projet renommé dans le portfolio ne renomme pas son dépôt : les liens
     // pointent vers ce qui existe, pas vers ce qu'on aimerait qui existe.
-    const links = PROJECTS.flatMap((p) => p.links ?? []).map((l) => l.href)
-    expect(links.every((href) => href.startsWith('https://github.com/'))).toBe(true)
-    expect(links).toContain('https://github.com/t3hx/celestial-walker-nuxt')
+    // Depuis le 2026-10-21 une fiche porte DEUX sortes de liens : le dépôt
+    // (marqué du logo GitHub) et le site en ligne (sans marque, avec la
+    // flèche). Seul le premier doit viser github.com.
+    const links = PROJECTS.flatMap((p) => p.links ?? [])
+    for (const link of links) {
+      if (link.icon !== undefined) {
+        expect(link.href, t(link.label, 'fr')).toMatch(/^https:\/\/github\.com\//)
+      }
+    }
+    expect(links.map((l) => l.href)).toContain('https://github.com/t3hx/celestial-walker-nuxt')
   })
 })
 

@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { CAMERA_STOPS } from '@/config/cameraStops'
 import { CV, CV_JOBS_EMPTY, glyphMark, type CvGlyph } from '@/content/cv'
@@ -227,12 +227,16 @@ describe('le contenu du CV', () => {
     // Le composant lit ces champs sans garde : un poste incomplet laisserait un
     // blanc dans la composition plutôt qu'une erreur.
     for (const job of CV.jobs) {
-      expect(job.company, job.company).toBeTruthy()
-      expect(job.period, job.company).toBeTruthy()
+      const société = tm(job.company, 'fr')
+      expect(société, société).toBeTruthy()
+      expect(job.period, société).toBeTruthy()
       // Les DEUX langues (#33) : une traduction oubliée laisse un blanc dans
-      // la composition, exactement comme un champ vide.
+      // la composition, exactement comme un champ vide. `company` est
+      // `MaybeLocalized` depuis le 2026-10-21 — la cartouche de reconversion
+      // porte un cadre traduit, pas un nom propre.
       for (const locale of LOCALES) {
-        const where = `${job.company} (${locale})`
+        const where = `${société} (${locale})`
+        expect(tm(job.company, locale).trim(), where).not.toBe('')
         expect(t(job.title, locale).trim(), where).not.toBe('')
         // **La règle « quatre missions au minimum » est retirée** (#173). Elle
         // datait du 2026-08-20, quand la donnée était inventée et pouvait donc
@@ -248,7 +252,7 @@ describe('le contenu du CV', () => {
       // qui en perd une la fait disparaître de l'écran anglais, et rien ne le
       // signale — c'est le même piège que les pages de bulle (#32).
       if (job.missions !== undefined) {
-        expect(t(job.missions, 'en').length, job.company).toBe(t(job.missions, 'fr').length)
+        expect(t(job.missions, 'en').length, société).toBe(t(job.missions, 'fr').length)
       }
     }
   })
@@ -275,7 +279,10 @@ describe('le contenu du CV', () => {
     // Studio Nova, Atelier K, Freelance, Coopérative Lumen — posés par #93 pour
     // que l'écran ait une forme. À l'écran ça ne ressemblait pas à un trou, ça
     // ressemblait à un CV. La liste est donc verrouillée par son contenu.
-    expect(CV.jobs.map((j) => j.company)).toEqual([
+    // La reconversion ouvre le parcours depuis le 2026-10-21 : son « entreprise »
+    // est le cadre que le CV papier écrit sous l'intitulé, pas un nom propre.
+    expect(CV.jobs.map((j) => tm(j.company, 'fr'))).toEqual([
+      'Formation autodidacte & projets perso',
       'Optimal Ways',
       'IDKIDS Group',
       'Web Transition',
@@ -288,7 +295,7 @@ describe('le contenu du CV', () => {
     for (const job of CV.jobs) {
       if (job.clients === undefined) continue
       for (const locale of LOCALES) {
-        expect(tm(job.clients, locale).trim(), `${job.company} (${locale})`).not.toBe('')
+        expect(tm(job.clients, locale).trim(), `${tm(job.company, 'fr')} (${locale})`).not.toBe('')
       }
     }
     // Le libellé est dans la donnée, pas dans les deux composants qui l'affichent.
@@ -297,8 +304,9 @@ describe('le contenu du CV', () => {
 
   it('identifie chaque poste de façon unique', () => {
     // `entreprise-période` sert de clé React : deux postes identiques feraient
-    // disparaître une cartouche silencieusement.
-    const keys = CV.jobs.map((j) => `${j.company}-${j.period}`)
+    // disparaître une cartouche silencieusement. La clé dérive de la forme
+    // FRANÇAISE — stable quand la langue bascule, comme dans les composants.
+    const keys = CV.jobs.map((j) => `${tm(j.company, 'fr')}-${j.period}`)
     expect(new Set(keys).size).toBe(keys.length)
   })
 
@@ -413,12 +421,24 @@ describe('une cartouche ne se laisse pas écraser', () => {
   })
 })
 
+describe('la photo', () => {
+  it('pointe un fichier qui existe', () => {
+    // Un `src` mort n'affiche rien et ne lève rien — aucun `onError` n'est
+    // câblé nulle part, c'est la donnée qui décide (même règle que les icônes,
+    // #168, et que les médias d'une fiche projet). L'absence de `photo` serait
+    // un repli légitime (le cadre hachuré) ; un chemin déclaré, lui, doit
+    // exister.
+    expect(CV.identity.photo).toBeDefined()
+    expect(existsSync(`public${CV.identity.photo}`)).toBe(true)
+  })
+})
+
 describe("l'âge", () => {
   it('est dit en français et volontairement absent en anglais', () => {
     // Un CV anglophone ne porte pas l'âge, et le mentionner ouvre un biais que
     // la version française n'ouvre pas de la même façon (décision de l'auteur,
-    // 2026-09-11). Le PDF anglais l'a retiré aussi : les quatre surfaces
-    // racontent la même chose.
+    // 2026-09-11). L'export anglais du 2026-10-21 l'affiche pourtant —
+    // divergence signalée à l'auteur ; le site garde la règle.
     //
     // `null` et non `''` : une chaîne vide se lit comme un oubli, `null` dit
     // qu'il n'y a rien à dire. Le composant saute la mention.

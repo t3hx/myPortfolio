@@ -5,12 +5,12 @@
  * **aucun appel réseau en v1** (décision de revue technique reprise de #31).
  * Le déploiement est le bouton « enregistrer ».
  *
- * ⚠️ **Les textes ci-dessous sont les placeholders de la maquette**
- * (`design/screens/02-cv.html`, session design 2026-08-10) : Studio Nova,
- * Atelier K, Freelance. Ils tiennent la FORME, pas les faits. Un parcours
- * professionnel inventé sur le portfolio d'une personne réelle serait pire
- * qu'un écran vide — c'est à l'auteur de les remplacer, comme pour `PROJECTS`.
- * Ce qui est vérifié par `tests/cv.test.ts`, c'est la forme, jamais la prose.
+ * **Les textes sont le vrai parcours depuis #173** (les placeholders de la
+ * maquette — Studio Nova, Atelier K, Freelance — sont partis avec), aligné sur
+ * le CV papier le 2026-10-21 : la reconversion ouvre les expériences, Optimal
+ * Ways court jusqu'à 2025, « Le cap » dit l'IA. Ce qui est vérifié par
+ * `tests/cv.test.ts`, c'est la forme, jamais la prose — à une exception près :
+ * la liste des entreprises y est verrouillée par son contenu.
  */
 
 /**
@@ -110,8 +110,16 @@ export interface CvFact {
 export interface CvJob {
   /** L'intitulé du poste. */
   title: Localized
-  /** Nom propre : jamais traduit. */
-  company: string
+  /**
+   * Presque toujours un nom propre, donc une chaîne nue. `MaybeLocalized`
+   * depuis le 2026-10-21 : la cartouche de reconversion porte ici un CADRE
+   * (« Formation autodidacte & projets perso »), pas un nom, et le PDF anglais
+   * lui donne sa formulation (« Self-directed training & personal projects »).
+   * Le servir en français aux anglophones était la dernière fuite de langue.
+   * Les clés React dérivent de la forme française — `tm(company, 'fr')` —
+   * stable quand la langue bascule.
+   */
+  company: MaybeLocalized
   /** « 2023 — 2026 ». Du texte : ce n'est pas une date qu'on trie. */
   period: string
   /**
@@ -179,10 +187,12 @@ export interface Cv {
      *
      * **`null` dans une langue veut dire « rien à dire », et l'anglais est
      * dans ce cas** (décision de l'auteur, 2026-09-11) : un CV anglophone ne
-     * porte pas l'âge, et le PDF anglais l'a retiré aussi. `null` plutôt
-     * qu'une chaîne vide, parce qu'une chaîne vide se lit comme un oubli — et
-     * parce que la ligne de méta doit alors sauter la mention ET son
-     * séparateur, ce qu'un blanc ne lui dirait pas.
+     * porte pas l'âge. L'export anglais du 2026-10-21 l'affiche pourtant
+     * (« 36 years old ») — divergence signalée à l'auteur, qui tranche côté
+     * PDF ; le site, lui, garde la règle. `null` plutôt qu'une chaîne vide,
+     * parce qu'une chaîne vide se lit comme un oubli — et parce que la ligne
+     * de méta doit alors sauter la mention ET son séparateur, ce qu'un blanc
+     * ne lui dirait pas.
      */
     age: Localized<string | null>
     /** Le texte alternatif de la photo, quand il y en a une. */
@@ -261,6 +271,21 @@ export const CV_JOBS_EMPTY: Localized = {
 export const CV: Cv = {
   identity: {
     name: 'Thibault Dubois',
+    /**
+     * Le portrait traité aux tons du site (validation utilisateur, 2026-10-21,
+     * variante « grille HUD » choisie sur planche). La recette, pour le jour où
+     * la photo change : sujet isolé par la carte de profondeur du HEIC
+     * d'origine (portrait iPhone), netteté légèrement réduite, duotone sur les
+     * jetons du design — encre #0D0A07, gris chaud, bronze braise, crème
+     * rabattue — puis fond encre portant une grille bronze discrète et quatre
+     * coches d'angle, écho du réticule du télescope. PAS de vignettage : jugé
+     * « affiche de western », à rebours de la tendance tech voulue. Le fond
+     * encre est ce qui fond le cadre dans les deux surfaces (anthracite de la
+     * scène, noir/braise du classique). 592 × 720 : 4 × le cadre de 148 × 180,
+     * assez pour un Retina à 2560 ; l'original (2800 × 3713) ne vit pas dans
+     * le dépôt.
+     */
+    photo: '/images/cv/portrait.webp',
     age: { fr: '36 ans', en: null },
     alt: { fr: 'Photo de Thibault', en: 'Photograph of Thibault' },
   },
@@ -271,14 +296,15 @@ export const CV: Cv = {
   // Des étiquettes texte sur les deux surfaces depuis #194 — plus aucune
   // marque : l'`initial` traduit que portait « Optimiseur » (O/Ef, pour la
   // collision anglaise des E) est parti avec les vignettes, et l'ordre est
-  // celui du CV papier, que la grille 3 × 2 avait forcé à réarranger.
+  // celui du CV papier (réaligné le 2026-10-21 : le papier ouvre sur
+  // Empathique, et cette liste le lisait à l'envers).
   traits: [
-    { name: { fr: 'Stratège', en: 'Strategist' } },
-    { name: { fr: 'Agile', en: 'Agile' } },
-    { name: { fr: 'Optimiseur', en: 'Efficiency-driven' } },
-    { name: { fr: 'Persévérant', en: 'Persistent' } },
-    { name: { fr: 'Communiquant', en: 'Communicative' } },
     { name: { fr: 'Empathique', en: 'Empathetic' } },
+    { name: { fr: 'Communiquant', en: 'Communicative' } },
+    { name: { fr: 'Persévérant', en: 'Persistent' } },
+    { name: { fr: 'Optimiseur', en: 'Efficiency-driven' } },
+    { name: { fr: 'Agile', en: 'Agile' } },
+    { name: { fr: 'Stratège', en: 'Strategist' } },
   ],
   // « L'essentiel » depuis #194 : la carte dit aussi l'âge et la localisation,
   // « Langues & permis » ne couvrait plus son contenu. La maquette
@@ -312,22 +338,27 @@ export const CV: Cv = {
   ],
   outlookTitle: { fr: 'Le cap', en: 'The heading' },
   /**
-   * Le paragraphe « projet » du CV papier, mot pour mot. Le texte qui vivait
-   * ici avant était une invention de #93 : il disait une intention plausible
-   * que personne n'avait écrite.
+   * Le paragraphe « projet » du CV papier — CONDENSÉ, plus mot pour mot
+   * (validation utilisateur, 2026-10-21). Le papier ajoute la mention de l'IA
+   * et atteint 431 caractères, or le plafond de cet écran est 400 — quatre
+   * lignes, au-delà le CV déborde dès qu'un accordéon s'ouvre (voir le test).
+   * « à chaque étape de la création d'applications web » est la proposition
+   * sacrifiée : « du prototype à la mise en production » dit la même étendue.
    */
   outlook: {
     fr:
       'Explorateur du code issu du monde du digital analytics, je me reconvertis ' +
       'en développeur web avec une passion sincère pour le JavaScript, côté front ' +
       "comme côté back. Polyvalent, j'associe ma rigueur d'analyste à ma " +
-      'créativité afin de construire des applications qui répondent précisément ' +
-      'aux besoins métier ou utilisateur.',
+      "créativité et je m'appuie sur l'IA du prototype à la mise en production, " +
+      'afin de construire des produits qui répondent précisément aux besoins ' +
+      'métier ou utilisateur.',
     en:
-      'A code explorer from the digital analytics world, I am moving into web ' +
-      'development with a genuine passion for JavaScript, front end and back end ' +
-      "alike. Versatile, I pair an analyst's rigour with creativity to build " +
-      'applications that answer business and user needs precisely.',
+      'Coming from the digital analytics world, I have transitioned into web ' +
+      'development with a genuine passion for JavaScript, on both the front and ' +
+      "back end. Versatile by nature, I combine an analyst's rigour with " +
+      'creativity and leverage AI from prototype to production, to deliver ' +
+      'products that precisely meet business and user needs.',
   },
   jobsTitle: { fr: 'Expériences', en: 'Experience' },
   clientsLabel: { fr: 'Clients', en: 'Clients' },
@@ -342,19 +373,56 @@ export const CV: Cv = {
    */
   jobs: [
     {
+      // La reconversion ouvre le parcours (CV papier, validé 2026-10-21).
+      // `company` porte le cadre que le papier écrit sous l'intitulé — ce
+      // n'est pas un nom propre, et c'est le cas qui a rendu le champ
+      // traduisible. La période reste « 2026 » seul : le papier écrit
+      // « 2026 — aujourd'hui », et « aujourd'hui » ne se traduit pas —
+      // même raison que les mois, absents des autres cartouches.
+      // L'anglais est celui du PDF anglais (2026-10-21), mot pour mot.
+      title: {
+        fr: 'Reconversion développeur web',
+        en: 'Career transition to web development',
+      },
+      company: {
+        fr: 'Formation autodidacte & projets perso',
+        en: 'Self-directed training & personal projects',
+      },
+      period: '2026',
+      missions: {
+        fr: [
+          'Formation Vue.js (Composition API, Pinia, Nuxt) — certifications vueschool.io',
+          'Formation React (hooks, state management, écosystème)',
+          "IA appliquée au développement : Claude Code, Codex, agents et intégration d'API",
+          "Harness engineering : outillage et environnements d'évaluation pour agents IA",
+          'Projets web construits : Portfolio, Solarsys, Owlog',
+        ],
+        en: [
+          'Vue.js training (Composition API, Pinia, Nuxt) — vueschool.io certifications',
+          'React training (hooks, state management, ecosystem)',
+          'AI-assisted development: Claude Code, Codex, agents and API integration',
+          'Harness engineering: tooling and evaluation environments for AI agents',
+          'Web projects built: Portfolio, Solarsys, Owlog',
+        ],
+      },
+    },
+    {
       title: {
         fr: 'Consultant technique senior, digital analytics',
         en: 'Senior technical consultant, digital analytics',
       },
       company: 'Optimal Ways',
-      period: '2020 — 2024',
+      // 2025, pas 2024 : le CV papier court d'août 2020 à décembre 2025
+      // (corrigé le 2026-10-21 — l'année de fin était périmée ici).
+      period: '2020 — 2025',
+      // L'ordre des clients est celui du CV papier : Decathlon d'abord.
       clients: {
         fr:
-          'Midas, Cyrillus, Armand Thiery, Brady Seton, Mobalpa, Brico-Dépôt, ' +
-          'Decathlon France/Suisse/Singapour/PRO',
+          'Decathlon France/Suisse/Singapour/PRO, Brico-Dépôt, Midas, ' +
+          'Cyrillus, Armand Thiery, Brady Seton, Mobalpa',
         en:
-          'Midas, Cyrillus, Armand Thiery, Brady Seton, Mobalpa, Brico-Dépôt, ' +
-          'Decathlon France/Switzerland/Singapore/PRO',
+          'Decathlon France/Switzerland/Singapore/PRO, Brico-Dépôt, Midas, ' +
+          'Cyrillus, Armand Thiery, Brady Seton, Mobalpa',
       },
       missions: {
         fr: [
@@ -367,20 +435,20 @@ export const CV: Cv = {
           "Management d'équipe : planification, formation interne et externe, intégration",
         ],
         en: [
-          'End-to-end project ownership, autonomy on contract renewals',
+          'End-to-end project management (full ownership of contract renewals)',
           'Data analysis, quality assurance, analytics strategy and UX consulting',
-          'Tooling for data integration and processing (JS, Node.js)',
+          'Built tools for data integration and processing (JS, Node.js)',
           'Processing of collected data in BigQuery (GCP) and Azure Cloud',
-          'Analytics tool integration and migration: GA, Piano, Adobe',
-          "Built the agency's internal information system",
-          'Team management: planning, internal and external training, onboarding',
+          'Integration and migration of analytics tools: GA, Piano, Adobe',
+          "Designed and built the agency's internal information system",
+          'Team management: planning, internal/external training and onboarding of new hires',
         ],
       },
     },
     {
       title: {
         fr: "Responsable d'application (MCO)",
-        en: 'Application manager (run & maintenance)',
+        en: 'Application manager (maintenance & operations)',
       },
       company: 'IDKIDS Group',
       period: '2019 — 2020',
@@ -393,11 +461,11 @@ export const CV: Cv = {
           'Astreinte technique et assurance qualité lors des mises en production',
         ],
         en: [
-          'Requirements gathering with the e-commerce business teams, use-case writing',
-          'Sprint planning and task prioritisation with the development teams',
-          'Database extractions for the management control team',
-          'Handling of priority customer-service issues (run, L2 support)',
-          'On-call duty and quality assurance during production releases',
+          'Gathered requirements from e-commerce business teams and wrote use cases',
+          'Organised sprints and prioritised tasks with development teams',
+          'Database extractions for management control',
+          'Handled priority customer-service issues (run / L2 support)',
+          'Technical on-call duty and quality assurance during production releases',
         ],
       },
     },
@@ -412,7 +480,7 @@ export const CV: Cv = {
     {
       title: {
         fr: 'Technicien support N2, serveurs BareMetal et Cloud',
-        en: 'Support technician L2, BareMetal and Cloud servers',
+        en: 'L2 support technician, Bare Metal and Cloud servers',
       },
       company: 'OVHcloud',
       period: '2015 — 2018',
@@ -423,9 +491,9 @@ export const CV: Cv = {
           'Dépannage téléphonique des clients non hébergés',
         ],
         en: [
-          'Triage and prioritisation of critical incidents with DevOps and SysAdmin teams',
-          'Remote work on servers (Proxmox, VMware, SSH)',
-          'Phone troubleshooting for non-hosted customers',
+          'Handled and prioritised critical incidents with DevOps and SysAdmin teams',
+          'Remote server interventions (Proxmox, VMware, SSH)',
+          'Phone troubleshooting for unmanaged customers',
         ],
       },
     },
@@ -438,7 +506,8 @@ export const CV: Cv = {
         en: 'Vue.js certification (beginner + masterclass)',
       },
       school: 'vueschool.io',
-      period: '2024',
+      // 2026, comme le CV papier (corrigé le 2026-10-21 — il disait 2024 ici).
+      period: '2026',
     },
     {
       title: {

@@ -13,6 +13,7 @@ import { MENU_SOCIALS } from '@/content/menu'
 import { PROJECTS } from '@/content/projects'
 import { UI } from '@/content/ui'
 import { CvMark } from '@/ui/CvMark'
+import { Mark } from '@/ui/Mark'
 import { ResumeDownload } from '@/ui/ResumeDownload'
 import { t, tm, type Locale } from '@/lib/locale'
 import { useLocale } from '@/state/locale'
@@ -103,7 +104,7 @@ function ExperienceCards({ locale }: { locale: Locale }) {
     <div className="classic-cards classic-cards--exp" ref={ref} data-revealed={revealed}>
       {CV.jobs.map((job, i) => (
         <article
-          key={`${job.company}-${job.period}`}
+          key={`${tm(job.company, 'fr')}-${job.period}`}
           className={`classic-glass classic-card classic-card--exp classic-reveal${
             open === i ? ' classic-card--open' : ''
           }`}
@@ -116,7 +117,7 @@ function ExperienceCards({ locale }: { locale: Locale }) {
           <div className="classic-card__head">
             <div>
               <div className="classic-card__title">{t(job.title, locale)}</div>
-              <div className="classic-card__org">{job.company}</div>
+              <div className="classic-card__org">{tm(job.company, locale)}</div>
             </div>
             <div className="classic-card__period">{job.period}</div>
           </div>
@@ -282,9 +283,18 @@ function Projects({ locale }: { locale: Locale }) {
                 <div className="classic-project__stack">{project.stack.join(' · ')}</div>
                 {project.links && (
                   <div className="classic-project__links">
+                    {/* Un lien AVEC marque dit sa destination par le logo et ne
+                        porte pas la flèche ; le lien nu — la sortie vers le
+                        site en ligne — la garde (décision du 2026-10-21). */}
                     {project.links.map((link) => (
                       <a key={link.href} href={link.href} target="_blank" rel="noopener noreferrer">
-                        {t(link.label, locale)} ↗
+                        {link.icon ? (
+                          <>
+                            <Mark icon={link.icon} fallback="" /> {t(link.label, locale)}
+                          </>
+                        ) : (
+                          <>{t(link.label, locale)} ↗</>
+                        )}
                       </a>
                     ))}
                   </div>
@@ -377,10 +387,14 @@ export function ClassicApp({
             className="classic-top__link"
             href={social.href}
             title={social.title}
+            aria-label={social.title}
             target="_blank"
             rel="noopener noreferrer"
           >
-            {social.label}
+            {/* La marque plutôt que les deux lettres (décision utilisateur,
+                2026-10-21) — même masque que la barre verticale de la scène,
+                et le même repli : sans fichier, les lettres reviennent. */}
+            <Mark icon={social.icon} fallback={social.label} />
           </a>
         ))}
         <LangToggle />

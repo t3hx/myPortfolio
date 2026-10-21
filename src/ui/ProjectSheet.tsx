@@ -5,6 +5,7 @@ import { t } from '@/lib/locale'
 import { projectMedia, showsStrip, thumbSrc } from '@/lib/projectMedia'
 import { useLocale } from '@/state/locale'
 import { useInteraction } from '@/state/interaction'
+import { Mark } from '@/ui/Mark'
 
 /**
  * La fiche projet plein écran (issue #83, réagencée par #126).
@@ -235,6 +236,9 @@ export function ProjectSheet() {
               fermée à clé — même discipline que MENU_SOCIALS. */}
           {project.links && project.links.length > 0 && (
             <div className="sheet__links">
+              {/* Même lecture que les cartes du site classique (2026-10-21) :
+                  la marque dit la destination et retient la flèche, le lien
+                  nu — la sortie vers le site en ligne — la porte. */}
               {project.links.map((link) => (
                 <a
                   className="sheet__link"
@@ -243,7 +247,13 @@ export function ProjectSheet() {
                   target="_blank"
                   rel="noreferrer"
                 >
-                  {t(link.label, locale)}
+                  {link.icon ? (
+                    <>
+                      <Mark icon={link.icon} fallback="" /> {t(link.label, locale)}
+                    </>
+                  ) : (
+                    <>{t(link.label, locale)} ↗</>
+                  )}
                 </a>
               ))}
             </div>
