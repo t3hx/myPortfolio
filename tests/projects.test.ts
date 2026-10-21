@@ -59,7 +59,7 @@ describe('PROJECTS', () => {
   })
 
   it("n'affiche jamais de lien mort", () => {
-    // Trois des dépôts sont privés. Même discipline que `MENU_SOCIALS` : une
+    // Le dépôt d'Owlog est privé. Même discipline que `MENU_SOCIALS` : une
     // entrée sans href n'est pas rendue, plutôt qu'un lien qui mène à un 404.
     // Le champ est donc absent, jamais vide et jamais rempli d'un placeholder.
     for (const p of PROJECTS) {
@@ -113,13 +113,9 @@ describe('les replis', () => {
  */
 describe("l'ordre de la commode", () => {
   it('range les dossiers dans l’ordre décidé', () => {
-    expect(PROJECTS.map((p) => p.slug)).toEqual([
-      'portfolio',
-      'owlog',
-      'solarsys',
-      'anima',
-      'odysong',
-    ])
+    // Anima et Odysong sont retirés depuis le 2026-10-21 (décision de
+    // l'auteur) : la commode dit la même chose que le CV papier.
+    expect(PROJECTS.map((p) => p.slug)).toEqual(['portfolio', 'owlog', 'solarsys'])
   })
 
   it('garde les vraies adresses des dépôts malgré les renommages', () => {

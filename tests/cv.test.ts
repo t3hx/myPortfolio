@@ -275,7 +275,10 @@ describe('le contenu du CV', () => {
     // Studio Nova, Atelier K, Freelance, Coopérative Lumen — posés par #93 pour
     // que l'écran ait une forme. À l'écran ça ne ressemblait pas à un trou, ça
     // ressemblait à un CV. La liste est donc verrouillée par son contenu.
+    // La reconversion ouvre le parcours depuis le 2026-10-21 : son « entreprise »
+    // est le cadre que le CV papier écrit sous l'intitulé, pas un nom propre.
     expect(CV.jobs.map((j) => j.company)).toEqual([
+      'Formation autodidacte & projets perso',
       'Optimal Ways',
       'IDKIDS Group',
       'Web Transition',

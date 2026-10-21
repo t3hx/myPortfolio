@@ -5,12 +5,12 @@
  * **aucun appel réseau en v1** (décision de revue technique reprise de #31).
  * Le déploiement est le bouton « enregistrer ».
  *
- * ⚠️ **Les textes ci-dessous sont les placeholders de la maquette**
- * (`design/screens/02-cv.html`, session design 2026-08-10) : Studio Nova,
- * Atelier K, Freelance. Ils tiennent la FORME, pas les faits. Un parcours
- * professionnel inventé sur le portfolio d'une personne réelle serait pire
- * qu'un écran vide — c'est à l'auteur de les remplacer, comme pour `PROJECTS`.
- * Ce qui est vérifié par `tests/cv.test.ts`, c'est la forme, jamais la prose.
+ * **Les textes sont le vrai parcours depuis #173** (les placeholders de la
+ * maquette — Studio Nova, Atelier K, Freelance — sont partis avec), aligné sur
+ * le CV papier le 2026-10-21 : la reconversion ouvre les expériences, Optimal
+ * Ways court jusqu'à 2025, « Le cap » dit l'IA. Ce qui est vérifié par
+ * `tests/cv.test.ts`, c'est la forme, jamais la prose — à une exception près :
+ * la liste des entreprises y est verrouillée par son contenu.
  */
 
 /**
@@ -271,14 +271,15 @@ export const CV: Cv = {
   // Des étiquettes texte sur les deux surfaces depuis #194 — plus aucune
   // marque : l'`initial` traduit que portait « Optimiseur » (O/Ef, pour la
   // collision anglaise des E) est parti avec les vignettes, et l'ordre est
-  // celui du CV papier, que la grille 3 × 2 avait forcé à réarranger.
+  // celui du CV papier (réaligné le 2026-10-21 : le papier ouvre sur
+  // Empathique, et cette liste le lisait à l'envers).
   traits: [
-    { name: { fr: 'Stratège', en: 'Strategist' } },
-    { name: { fr: 'Agile', en: 'Agile' } },
-    { name: { fr: 'Optimiseur', en: 'Efficiency-driven' } },
-    { name: { fr: 'Persévérant', en: 'Persistent' } },
-    { name: { fr: 'Communiquant', en: 'Communicative' } },
     { name: { fr: 'Empathique', en: 'Empathetic' } },
+    { name: { fr: 'Communiquant', en: 'Communicative' } },
+    { name: { fr: 'Persévérant', en: 'Persistent' } },
+    { name: { fr: 'Optimiseur', en: 'Efficiency-driven' } },
+    { name: { fr: 'Agile', en: 'Agile' } },
+    { name: { fr: 'Stratège', en: 'Strategist' } },
   ],
   // « L'essentiel » depuis #194 : la carte dit aussi l'âge et la localisation,
   // « Langues & permis » ne couvrait plus son contenu. La maquette
@@ -312,22 +313,27 @@ export const CV: Cv = {
   ],
   outlookTitle: { fr: 'Le cap', en: 'The heading' },
   /**
-   * Le paragraphe « projet » du CV papier, mot pour mot. Le texte qui vivait
-   * ici avant était une invention de #93 : il disait une intention plausible
-   * que personne n'avait écrite.
+   * Le paragraphe « projet » du CV papier — CONDENSÉ, plus mot pour mot
+   * (validation utilisateur, 2026-10-21). Le papier ajoute la mention de l'IA
+   * et atteint 431 caractères, or le plafond de cet écran est 400 — quatre
+   * lignes, au-delà le CV déborde dès qu'un accordéon s'ouvre (voir le test).
+   * « à chaque étape de la création d'applications web » est la proposition
+   * sacrifiée : « du prototype à la mise en production » dit la même étendue.
    */
   outlook: {
     fr:
       'Explorateur du code issu du monde du digital analytics, je me reconvertis ' +
       'en développeur web avec une passion sincère pour le JavaScript, côté front ' +
       "comme côté back. Polyvalent, j'associe ma rigueur d'analyste à ma " +
-      'créativité afin de construire des applications qui répondent précisément ' +
-      'aux besoins métier ou utilisateur.',
+      "créativité et je m'appuie sur l'IA du prototype à la mise en production, " +
+      'afin de construire des produits qui répondent précisément aux besoins ' +
+      'métier ou utilisateur.',
     en:
       'A code explorer from the digital analytics world, I am moving into web ' +
       'development with a genuine passion for JavaScript, front end and back end ' +
-      "alike. Versatile, I pair an analyst's rigour with creativity to build " +
-      'applications that answer business and user needs precisely.',
+      "alike. Versatile, I pair an analyst's rigour with creativity and lean on " +
+      'AI from prototype to production, to build products that answer business ' +
+      'and user needs precisely.',
   },
   jobsTitle: { fr: 'Expériences', en: 'Experience' },
   clientsLabel: { fr: 'Clients', en: 'Clients' },
@@ -342,19 +348,52 @@ export const CV: Cv = {
    */
   jobs: [
     {
+      // La reconversion ouvre le parcours (CV papier, validé 2026-10-21).
+      // `company` porte le cadre que le papier écrit sous l'intitulé — ce
+      // n'est pas un nom propre, mais c'est la ligne que les deux surfaces
+      // composent à cette place. La période reste « 2026 » seul : le papier
+      // écrit « 2026 — aujourd'hui », et « aujourd'hui » ne se traduit pas —
+      // même raison que les mois, absents des autres cartouches.
+      title: {
+        fr: 'Reconversion développeur web',
+        en: 'Retraining as a web developer',
+      },
+      company: 'Formation autodidacte & projets perso',
+      period: '2026',
+      missions: {
+        fr: [
+          'Formation Vue.js (Composition API, Pinia, Nuxt) — certifications vueschool.io',
+          'Formation React (hooks, state management, écosystème)',
+          "IA appliquée au développement : Claude Code, Codex, agents et intégration d'API",
+          "Harness engineering : outillage et environnements d'évaluation pour agents IA",
+          'Projets web construits : Portfolio, Solarsys, Owlog',
+        ],
+        en: [
+          'Vue.js training (Composition API, Pinia, Nuxt) — vueschool.io certifications',
+          'React training (hooks, state management, ecosystem)',
+          'AI applied to development: Claude Code, Codex, agents and API integration',
+          'Harness engineering: tooling and evaluation environments for AI agents',
+          'Web projects built: Portfolio, Solarsys, Owlog',
+        ],
+      },
+    },
+    {
       title: {
         fr: 'Consultant technique senior, digital analytics',
         en: 'Senior technical consultant, digital analytics',
       },
       company: 'Optimal Ways',
-      period: '2020 — 2024',
+      // 2025, pas 2024 : le CV papier court d'août 2020 à décembre 2025
+      // (corrigé le 2026-10-21 — l'année de fin était périmée ici).
+      period: '2020 — 2025',
+      // L'ordre des clients est celui du CV papier : Decathlon d'abord.
       clients: {
         fr:
-          'Midas, Cyrillus, Armand Thiery, Brady Seton, Mobalpa, Brico-Dépôt, ' +
-          'Decathlon France/Suisse/Singapour/PRO',
+          'Decathlon France/Suisse/Singapour/PRO, Brico-Dépôt, Midas, ' +
+          'Cyrillus, Armand Thiery, Brady Seton, Mobalpa',
         en:
-          'Midas, Cyrillus, Armand Thiery, Brady Seton, Mobalpa, Brico-Dépôt, ' +
-          'Decathlon France/Switzerland/Singapore/PRO',
+          'Decathlon France/Switzerland/Singapore/PRO, Brico-Dépôt, Midas, ' +
+          'Cyrillus, Armand Thiery, Brady Seton, Mobalpa',
       },
       missions: {
         fr: [
@@ -438,7 +477,8 @@ export const CV: Cv = {
         en: 'Vue.js certification (beginner + masterclass)',
       },
       school: 'vueschool.io',
-      period: '2024',
+      // 2026, comme le CV papier (corrigé le 2026-10-21 — il disait 2024 ici).
+      period: '2026',
     },
     {
       title: {
