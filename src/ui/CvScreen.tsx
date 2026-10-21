@@ -5,6 +5,7 @@ import { UI } from '@/content/ui'
 import { CvMark } from '@/ui/CvMark'
 import { ResumeDownload } from '@/ui/ResumeDownload'
 import { type Locale, t, tm } from '@/lib/locale'
+import { railThumb } from '@/lib/scrollRail'
 import { useLocale } from '@/state/locale'
 import { useInteraction } from '@/state/interaction'
 import { useDecryptClock } from '@/lib/decrypt'
@@ -115,28 +116,19 @@ function CvName({
 }
 
 /**
- * Une réglette de vignettes — le savoir-être et le savoir-faire partagent la
- * même, elles ne diffèrent que par la répartition des colonnes.
+ * La réglette de vignettes du savoir-faire. Le savoir-être l'a partagée
+ * jusqu'à #194 ; il s'affiche en étiquettes texte depuis (voir `CvTraits`),
+ * d'où le modificateur `--skills` resté seul.
  *
  * Sans `icon`, la vignette affiche l'INITIALE du nom : c'est le glyphe neutre
  * en attendant les vrais SVG, pas un état d'erreur. Aucun `onError` n'est câblé
  * — une icône cassée est pire qu'un vide assumé, et c'est la donnée qui décide,
  * jamais le réseau. Même discipline que la couverture d'une fiche projet.
  */
-function CvTiles({
-  items,
-  variant,
-  locale,
-}: {
-  items: CvGlyph[]
-  variant: string
-  locale: Locale
-}) {
+function CvTiles({ items, locale }: { items: CvGlyph[]; locale: Locale }) {
   return (
-    <div className={`cv__tiles cv__tiles--${variant}`}>
+    <div className="cv__tiles cv__tiles--skills">
       {items.map((item) => {
-        // `tm` et pas `t` : un savoir-être se traduit, un nom de technologie
-        // non — et c'est le même champ. Voir `MaybeLocalized`.
         const name = tm(item.name, locale)
         return (
           <div className="cv__tile" key={name}>
@@ -151,10 +143,39 @@ function CvTiles({
   )
 }
 
+/**
+ * Le savoir-être en étiquettes texte (#194, décision utilisateur).
+ *
+ * Les vignettes à initiales disaient moins que les mots : « S » n'identifie
+ * pas « Stratège » comme « Pg » identifie Postgres, et la grille 3 × 2 coupait
+ * ou faisait déborder les mots longs. Le site classique range déjà les mêmes
+ * six mots en puces (`.classic-chip`) ; cet écran adopte la même lecture, aux
+ * unités du CV. Les étiquettes passent à la ligne d'elles-mêmes : aucun mot
+ * n'a de voisin à recouvrir, quelle que soit la langue.
+ */
+function CvTraits({ items, locale }: { items: CvGlyph[]; locale: Locale }) {
+  return (
+    <ul className="cv__traits">
+      {items.map((item) => {
+        // `tm` et pas `t` : un savoir-être se traduit — même champ qu'un nom
+        // de technologie, qui ne l'est pas. Voir `MaybeLocalized`.
+        const name = tm(item.name, locale)
+        return (
+          <li className="cv__trait" key={name}>
+            {name}
+          </li>
+        )
+      })}
+    </ul>
+  )
+}
+
 export function CvScreen() {
   const phase = useInteraction((s) => s.phase)
   const stopIndex = useInteraction((s) => s.stopIndex)
   const root = useRef<HTMLElement>(null)
+  const rail = useRef<HTMLDivElement>(null)
+  const thumb = useRef<HTMLElement>(null)
   const locale = useLocale((s) => s.locale)
 
   const visible = phase === 'parked' && CAMERA_STOPS[stopIndex]?.label === CV_STOP_LABEL
@@ -206,59 +227,114 @@ export function CvScreen() {
     return () => el.removeEventListener('wheel', onWheel)
   }, [mounted])
 
+  // --- Le rail de défilement (#194) ----------------------------------------
+  //
+  // Impératif de bout en bout : la géométrie vient de `railThumb` (pure) et
+  // s'écrit en style inline. Un état React repeindrait tout l'écran à chaque
+  // cran de molette, à côté d'une scène 3D qui n'a rien demandé.
+  //
+  // `locale` est une dépendance parce qu'un CV traduit n'a pas la même
+  // hauteur ; les transitions (l'accordéon interpole `grid-template-rows`)
+  // notifient les changements de hauteur que ni `scroll` ni `resize` ne voient.
+  useEffect(() => {
+    const el = root.current
+    const track = rail.current
+    const bar = thumb.current
+    if (!el || !track || !bar) return
+    const paint = () => {
+      const pos = railThumb({
+        scrollTop: el.scrollTop,
+        scrollHeight: el.scrollHeight,
+        clientHeight: el.clientHeight,
+      })
+      track.style.visibility = pos ? '' : 'hidden'
+      if (!pos) return
+      bar.style.top = `${pos.offset * 100}%`
+      bar.style.height = `${pos.size * 100}%`
+    }
+    paint()
+    el.addEventListener('scroll', paint, { passive: true })
+    el.addEventListener('transitionrun', paint, true)
+    el.addEventListener('transitionend', paint, true)
+    window.addEventListener('resize', paint)
+    return () => {
+      el.removeEventListener('scroll', paint)
+      el.removeEventListener('transitionrun', paint, true)
+      el.removeEventListener('transitionend', paint, true)
+      window.removeEventListener('resize', paint)
+    }
+  }, [mounted, locale])
+
   if (!mounted) return null
 
   return (
-    <section
-      ref={root}
-      className={visible ? 'cv' : 'cv cv--out'}
-      aria-label={t(UI.cv.region, locale)}
-    >
-      <CvName text={CV.identity.name} elapsed={elapsed} locale={locale} />
+    <>
+      <section
+        ref={root}
+        className={visible ? 'cv' : 'cv cv--out'}
+        aria-label={t(UI.cv.region, locale)}
+      >
+        <CvName text={CV.identity.name} elapsed={elapsed} locale={locale} />
 
-      <div className="cv__row">
-        {/* Sans photo, le cadre hachuré EST l'illustration — même parti que la
+        <div className="cv__row">
+          {/* Sans photo, le cadre hachuré EST l'illustration — même parti que la
             couverture générique d'une fiche projet. Une <img> pointée sur un
             fichier absent afficherait une icône cassée, ce qui est pire qu'un
             vide assumé. */}
-        <div className="cv__photo">
-          {CV.identity.photo ? (
-            <img src={CV.identity.photo} alt={t(CV.identity.alt, locale)} />
-          ) : (
-            t(UI.cv.photo, locale)
-          )}
-        </div>
+          <div className="cv__photo">
+            {CV.identity.photo ? (
+              <img src={CV.identity.photo} alt={t(CV.identity.alt, locale)} />
+            ) : (
+              t(UI.cv.photo, locale)
+            )}
+          </div>
 
-        {/* Le savoir-être s'intercale entre la photo et les faits (2026-08-20) :
+          {/* Le savoir-être s'intercale entre la photo et les faits (2026-08-20) :
             trois cartes de largeur égale, la photo donnant la hauteur. */}
-        <div className="cv__card cv__card--traits">
-          <h2 className="cv__card-title">
-            <CascadeTitle text={t(CV.traitsTitle, locale)} elapsed={elapsed} delay={cue(1)} />
-          </h2>
-          <CvTiles items={CV.traits} variant="traits" locale={locale} />
+          <div className="cv__card cv__card--traits">
+            <h2 className="cv__card-title">
+              <CascadeTitle text={t(CV.traitsTitle, locale)} elapsed={elapsed} delay={cue(1)} />
+            </h2>
+            <CvTraits items={CV.traits} locale={locale} />
+          </div>
+
+          <div className="cv__card">
+            <h2 className="cv__card-title">
+              <CascadeTitle text={t(CV.factsTitle, locale)} elapsed={elapsed} delay={cue(2)} />
+            </h2>
+            {CV.facts.map((fact) => (
+              <div className="cv__fact" key={fact.label.fr}>
+                <b>{t(fact.label, locale)}</b>
+                <span>{tm(fact.value, locale)}</span>
+              </div>
+            ))}
+            {/* L'âge suit la règle de la ligne de méta classique : `null` en
+                anglais veut dire « rien à dire », et la ligne saute entière. */}
+            {t(CV.identity.age, locale) && (
+              <div className="cv__fact">
+                <b>{t(CV.ageLabel, locale)}</b>
+                <span>{t(CV.identity.age, locale)}</span>
+              </div>
+            )}
+            {/* Composée comme les faits : « Basé à » en libellé, le lieu
+                en valeur (décision utilisateur, 2026-10-21). Hors de `CV.facts`
+                pour la raison de l'âge — la ligne de méta de l'accueil
+                classique rend tous les faits. */}
+            <div className="cv__fact">
+              <b>{t(CV.locationLabel, locale)}</b>
+              <span>{CV.location}</span>
+            </div>
+          </div>
         </div>
 
         <div className="cv__card">
           <h2 className="cv__card-title">
-            <CascadeTitle text={t(CV.factsTitle, locale)} elapsed={elapsed} delay={cue(2)} />
+            <CascadeTitle text={t(CV.skillsTitle, locale)} elapsed={elapsed} delay={cue(3)} />
           </h2>
-          {CV.facts.map((fact) => (
-            <div className="cv__fact" key={fact.label.fr}>
-              <b>{t(fact.label, locale)}</b>
-              <span>{tm(fact.value, locale)}</span>
-            </div>
-          ))}
+          <CvTiles items={CV.skills} locale={locale} />
         </div>
-      </div>
 
-      <div className="cv__card">
-        <h2 className="cv__card-title">
-          <CascadeTitle text={t(CV.skillsTitle, locale)} elapsed={elapsed} delay={cue(3)} />
-        </h2>
-        <CvTiles items={CV.skills} variant="skills" locale={locale} />
-      </div>
-
-      {/* « Le cap » : la seule ligne du CV qui parle à la première personne,
+        {/* « Le cap » : la seule ligne du CV qui parle à la première personne,
           d'où la police de la voix — celle des bulles du tour. Elle est placée
           AVANT les cartouches (décision de l'auteur, 2026-08-20) : l'intention
           se lit d'abord, le parcours la justifie ensuite.
@@ -266,97 +342,109 @@ export function CvScreen() {
           Son titre est un titre de SECTION, pas un titre de carte : c'est une
           section à part entière, au même rang qu'Expériences et Formations, et
           la marge du titre est ce qui la détache du savoir-faire au-dessus. */}
-      <h2 className="cv__section-title">
-        <CascadeTitle text={t(CV.outlookTitle, locale)} elapsed={elapsed} delay={cue(4)} />
-      </h2>
-      <div className="cv__card">
-        <p className="cv__outlook-text">{t(CV.outlook, locale)}</p>
-      </div>
+        <h2 className="cv__section-title">
+          <CascadeTitle text={t(CV.outlookTitle, locale)} elapsed={elapsed} delay={cue(4)} />
+        </h2>
+        <div className="cv__card">
+          <p className="cv__outlook-text">{t(CV.outlook, locale)}</p>
+        </div>
 
-      <h2 className="cv__section-title">
-        <CascadeTitle text={t(CV.jobsTitle, locale)} elapsed={elapsed} delay={cue(5)} />
-      </h2>
+        <h2 className="cv__section-title">
+          <CascadeTitle text={t(CV.jobsTitle, locale)} elapsed={elapsed} delay={cue(5)} />
+        </h2>
 
-      {/* Aucun poste : une phrase, jamais un écran vide. L'identité et les
+        {/* Aucun poste : une phrase, jamais un écran vide. L'identité et les
           langues restent là — seul le parcours manque, et il le dit. */}
-      {CV.jobs.length === 0 ? (
-        <p className="cv__empty">{t(CV_JOBS_EMPTY, locale)}</p>
-      ) : (
-        CV.jobs.map((job, i) => {
-          // Les quatre premières seulement (#173). La donnée en porte jusqu'à
-          // sept — le site classique les affiche toutes —, mais chaque puce
-          // coûte ~21 px de hauteur ouverte ici, et la hauteur est la ressource
-          // rare de cet écran.
-          const missions = job.missions && t(job.missions, locale).slice(0, MISSIONS_ON_SCREEN)
-          return (
-            <div
-              // Un poste sans mission est une cartouche STATIQUE, comme une
-              // formation : pas d'accordéon, donc pas de `tabIndex` non plus.
-              // Un arrêt de tabulation qui n'ouvre rien est un faux bouton.
-              className={missions ? 'job' : 'job job--static'}
-              key={`${job.company}-${job.period}`}
-              tabIndex={missions ? 0 : undefined}
-            >
-              <div className="job__head">
-                <span className="job__title">
-                  <CascadeTitle text={t(job.title, locale)} elapsed={elapsed} delay={cue(6 + i)} />
-                </span>
-                <span className="job__company">{job.company}</span>
-                <span className="job__period">{job.period}</span>
-              </div>
-              {job.clients && (
-                <p className="job__clients">
-                  {/* L'espace est EXPLICITE : sans lui le texte du nœud se lit
+        {CV.jobs.length === 0 ? (
+          <p className="cv__empty">{t(CV_JOBS_EMPTY, locale)}</p>
+        ) : (
+          CV.jobs.map((job, i) => {
+            // Les quatre premières seulement (#173). La donnée en porte jusqu'à
+            // sept — le site classique les affiche toutes —, mais chaque puce
+            // coûte ~21 px de hauteur ouverte ici, et la hauteur est la ressource
+            // rare de cet écran.
+            const missions = job.missions && t(job.missions, locale).slice(0, MISSIONS_ON_SCREEN)
+            return (
+              <div
+                // Un poste sans mission est une cartouche STATIQUE, comme une
+                // formation : pas d'accordéon, donc pas de `tabIndex` non plus.
+                // Un arrêt de tabulation qui n'ouvre rien est un faux bouton.
+                className={missions ? 'job' : 'job job--static'}
+                key={`${job.company}-${job.period}`}
+                tabIndex={missions ? 0 : undefined}
+              >
+                <div className="job__head">
+                  <span className="job__title">
+                    <CascadeTitle
+                      text={t(job.title, locale)}
+                      elapsed={elapsed}
+                      delay={cue(6 + i)}
+                    />
+                  </span>
+                  <span className="job__company">{job.company}</span>
+                  <span className="job__period">{job.period}</span>
+                </div>
+                {job.clients && (
+                  <p className="job__clients">
+                    {/* L'espace est EXPLICITE : sans lui le texte du nœud se lit
                       « ClientsMidas » pour une synthèse vocale, que la marge
                       CSS du libellé ne corrige pas — elle ne sépare que les
                       pixels. */}
-                  <span className="job__clients-key">{t(CV.clientsLabel, locale)}</span>{' '}
-                  {tm(job.clients, locale)}
-                </p>
-              )}
-              {/* L'accordéon est pur CSS (survol / focus-within, --t-accordion) :
+                    <span className="job__clients-key">{t(CV.clientsLabel, locale)}</span>{' '}
+                    {tm(job.clients, locale)}
+                  </p>
+                )}
+                {/* L'accordéon est pur CSS (survol / focus-within, --t-accordion) :
                   un état React ici n'ajouterait qu'un rendu par mouvement de
                   souris pour reproduire ce que le sélecteur fait seul. */}
-              {missions && (
-                <div className="job__missions">
-                  <ul>
-                    {missions.map((mission) => (
-                      <li key={mission}>{mission}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </div>
-          )
-        })
-      )}
+                {missions && (
+                  <div className="job__missions">
+                    <ul>
+                      {missions.map((mission) => (
+                        <li key={mission}>{mission}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            )
+          })
+        )}
 
-      <h2 className="cv__section-title">
-        <CascadeTitle
-          text={t(CV.formationsTitle, locale)}
-          elapsed={elapsed}
-          delay={cue(6 + CV.jobs.length)}
-        />
-      </h2>
-      {/* Mêmes cartouches, MOINS l'accordéon : un diplôme n'a pas de missions à
+        <h2 className="cv__section-title">
+          <CascadeTitle
+            text={t(CV.formationsTitle, locale)}
+            elapsed={elapsed}
+            delay={cue(6 + CV.jobs.length)}
+          />
+        </h2>
+        {/* Mêmes cartouches, MOINS l'accordéon : un diplôme n'a pas de missions à
           dérouler. `--static` retire aussi la réaction au survol — un fond qui
           s'éclaircit sur quelque chose qui n'ouvre rien est une promesse non
           tenue, et il n'y a pas de `tabIndex` pour la même raison. */}
-      {CV.formations.map((formation, i) => (
-        <div className="job job--static" key={`${formation.school}-${formation.period}`}>
-          <div className="job__head">
-            <span className="job__title">
-              <CascadeTitle
-                text={t(formation.title, locale)}
-                elapsed={elapsed}
-                delay={cue(7 + CV.jobs.length + i)}
-              />
-            </span>
-            <span className="job__company">{formation.school}</span>
-            <span className="job__period">{formation.period}</span>
+        {CV.formations.map((formation, i) => (
+          <div className="job job--static" key={`${formation.school}-${formation.period}`}>
+            <div className="job__head">
+              <span className="job__title">
+                <CascadeTitle
+                  text={t(formation.title, locale)}
+                  elapsed={elapsed}
+                  delay={cue(7 + CV.jobs.length + i)}
+                />
+              </span>
+              <span className="job__company">{formation.school}</span>
+              <span className="job__period">{formation.period}</span>
+            </div>
           </div>
-        </div>
-      ))}
-    </section>
+        ))}
+      </section>
+
+      {/* FRÈRE de la section, pas enfant : dans le conteneur qui défile, le
+          rail défilerait avec le contenu. Décoratif pur — `aria-hidden`, la
+          position de lecture n'est pas une information pour une synthèse. */}
+      <div ref={rail} className={visible ? 'cv-rail' : 'cv-rail cv-rail--out'} aria-hidden="true">
+        <i ref={thumb} className="cv-rail__thumb" />
+      </div>
+    </>
   )
 }

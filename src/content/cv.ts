@@ -34,11 +34,10 @@ export interface CvGlyph {
   /**
    * Ce qui s'écrit DANS la vignette quand il n'y a pas d'icône.
    *
-   * **Traduisible, et c'est nécessaire** (#173) : les six qualités donnent
-   * S, A, O, P, C, E en français, toutes distinctes, mais « Efficiency-driven »
-   * et « Empathetic » partagent leur E en anglais. Une marque non traduisible
-   * aurait forcé à choisir entre une collision dans une langue et une initiale
-   * fausse dans l'autre.
+   * **Traduisible** (#173) : la raison historique était les traits — dont les
+   * initiales anglaises entraient en collision — et les traits sont des
+   * étiquettes texte depuis #194. Le type reste `MaybeLocalized` : il ne coûte
+   * rien et la prochaine donnée traduite n'aura pas à le redemander.
    *
    * Sans lui, c'est la première lettre du nom — ce qui suffit tant que les
    * noms se distinguent par elle. Les tuiles du site classique (#29) ne
@@ -189,13 +188,30 @@ export interface Cv {
     /** Le texte alternatif de la photo, quand il y en a une. */
     alt: Localized
   }
+  /**
+   * Où le poste s'exerce (#194) : « Lille, France », un nom propre, neutre
+   * entre les langues. La carte « L'essentiel » le compose comme un fait —
+   * `locationLabel` en libellé, ce champ en valeur. Il ne vit pas dans
+   * `CV.facts` pour la raison de l'âge : la ligne de méta de l'accueil
+   * classique rend TOUS les faits, et la localisation y apparaîtrait sans que
+   * personne l'ait composée là.
+   */
+  location: string
+  /** Le libellé de la ligne de localisation — « Basé à » (décision
+   *  utilisateur, 2026-10-21 : le lieu ne joue pas le libellé, et
+   *  « Localisation » était trop long pour la carte). */
+  locationLabel: Localized
+  /** Le libellé de la ligne d'âge — qui ne s'affiche qu'en français, puisque
+   *  `identity.age` est `null` en anglais et que la ligne saute avec. */
+  ageLabel: Localized
   /** Le titre de la carte de savoir-être. */
   traitsTitle: Localized
   /**
-   * Six vignettes, et six exactement : la carte les range en 3 × 2 pour tenir
-   * à la hauteur de la photo, dans la rangée du haut. Cinq laissent un trou,
-   * sept débordent sur une troisième rangée et repoussent tout le CV vers le
-   * bas de l'écran.
+   * Six étiquettes texte, et six exactement (#194) : la carte tient à la
+   * hauteur de la photo, dans la rangée du haut, et une septième ouvre une
+   * rangée de plus qui repousse tout le CV vers le bas de l'écran. Plus de
+   * vignettes à initiales — une initiale de qualité humaine n'identifie rien,
+   * et le site classique range déjà les mêmes mots en puces.
    */
   traits: CvGlyph[]
   /** Le titre de la carte de faits — « Langues & permis ». */
@@ -248,19 +264,27 @@ export const CV: Cv = {
     age: { fr: '36 ans', en: null },
     alt: { fr: 'Photo de Thibault', en: 'Photograph of Thibault' },
   },
+  location: 'Lille, France',
+  locationLabel: { fr: 'Basé à', en: 'Based in' },
+  ageLabel: { fr: 'Âge', en: 'Age' },
   traitsTitle: { fr: 'Savoir-être', en: 'Soft skills' },
+  // Des étiquettes texte sur les deux surfaces depuis #194 — plus aucune
+  // marque : l'`initial` traduit que portait « Optimiseur » (O/Ef, pour la
+  // collision anglaise des E) est parti avec les vignettes, et l'ordre est
+  // celui du CV papier, que la grille 3 × 2 avait forcé à réarranger.
   traits: [
     { name: { fr: 'Stratège', en: 'Strategist' } },
     { name: { fr: 'Agile', en: 'Agile' } },
-    // Deux marques traduites, parce que « Efficiency-driven » et
-    // « Empathetic » partagent leur E : sans ça, deux vignettes anglaises
-    // identiques côte à côte.
-    { name: { fr: 'Optimiseur', en: 'Efficiency-driven' }, initial: { fr: 'O', en: 'Ef' } },
+    { name: { fr: 'Optimiseur', en: 'Efficiency-driven' } },
     { name: { fr: 'Persévérant', en: 'Persistent' } },
     { name: { fr: 'Communiquant', en: 'Communicative' } },
     { name: { fr: 'Empathique', en: 'Empathetic' } },
   ],
-  factsTitle: { fr: 'Langues & permis', en: 'Languages & licence' },
+  // « L'essentiel » depuis #194 : la carte dit aussi l'âge et la localisation,
+  // « Langues & permis » ne couvrait plus son contenu. La maquette
+  // `design/screens/02-cv.html` garde l'ancien titre — dérive assumée, comme
+  // les initiales des vignettes (voir CLAUDE.md).
+  factsTitle: { fr: "L'essentiel", en: 'The essentials' },
   facts: [
     { label: { fr: 'Français', en: 'French' }, value: { fr: 'natif', en: 'native' } },
     { label: { fr: 'Anglais', en: 'English' }, value: 'C2' },
