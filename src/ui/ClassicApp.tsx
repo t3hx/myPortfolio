@@ -281,7 +281,11 @@ function Projects({ locale }: { locale: Locale }) {
                 <h3 className="classic-project__title">{project.name}</h3>
                 <p className="classic-project__phrase">{t(project.tagline, locale)}</p>
                 <div className="classic-project__stack">{project.stack.join(' · ')}</div>
-                {project.links && (
+                {/* La rangée de liens est poussée au pied de la carte : les
+                    cartes d'une ligne ont la même hauteur, leurs liens tombent
+                    donc sur la même ligne quelle que soit la longueur de la
+                    stack. Sans aucun lien, la même place dit pourquoi. */}
+                {project.links ? (
                   <div className="classic-project__links">
                     {/* Un lien AVEC marque dit sa destination par le logo et ne
                         porte pas la flèche ; le lien nu — la sortie vers le
@@ -298,6 +302,8 @@ function Projects({ locale }: { locale: Locale }) {
                       </a>
                     ))}
                   </div>
+                ) : (
+                  <div className="classic-project__wip">{t(UI.classic.wip, locale)}</div>
                 )}
               </div>
             </article>
@@ -426,11 +432,19 @@ export function ClassicApp({
         <div className="classic-foot__row">
           <span className="classic-foot__note">{t(UI.classic.footNote, locale)}</span>
           <div className="classic-foot__links">
+            {/* Les marques, comme en tête de page (décision utilisateur,
+                2026-10-22) : les adresses nues doublaient ce que les logos
+                disent déjà, en deux fois plus de place. */}
             {SOCIALS.map((social) => (
-              <a key={social.href} href={social.href} target="_blank" rel="noopener noreferrer">
-                {/* L'adresse nue, comme dans la maquette : `www.` est du
-                    protocole, pas du nom — et il déséquilibre la paire. */}
-                {social.href.replace(/^https?:\/\/(www\.)?/, '')}
+              <a
+                key={social.href}
+                href={social.href}
+                title={social.title}
+                aria-label={social.title}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <Mark icon={social.icon} fallback={social.label} />
               </a>
             ))}
           </div>

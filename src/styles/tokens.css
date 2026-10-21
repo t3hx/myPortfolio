@@ -42,6 +42,9 @@
   --fs-display: 44px;  /* titres plein cadre (fiche projet) — voir DESIGN.md */
 
   /* Espacement : 4 8 12 16 24 32 48 */
+  /* La portée d'une lueur de survol (flou 40 + étalement 5), arrondie à la
+     gouttière : la place qu'un conteneur défilant doit lui laisser. */
+  --halo-room: 48px;
   --s-1: 4px; --s-2: 8px; --s-3: 12px; --s-4: 16px; --s-5: 24px; --s-6: 32px; --s-7: 48px;
 
   /* Rayons */
@@ -818,8 +821,20 @@
 
 /* Elle défile pour elle seule quand elle déborde. La fiche porte `panel`, donc
    `CameraRig` ignore déjà toute molette qui la vise : ce conteneur n'a rien à
-   câbler, contrairement au CV qui, lui, arbitre cran par cran. */
-.sheet__body { min-height: 0; overflow-y: auto; padding-right: 6px; }
+   câbler, contrairement au CV qui, lui, arbitre cran par cran.
+
+   LA RÉSERVE DE HALO. `overflow-y: auto` force aussi `overflow-x` : la colonne
+   rognait la lueur de survol de ses liens (40 px de flou + 5 d'étalement) au
+   ras de son bord gauche et de son bas. Elle s'élargit donc de `--halo-room`
+   de ces deux côtés et le rend en `padding` — le texte ne bouge pas d'un
+   pixel, la lueur a la place de s'éteindre avant le bord. À gauche, la
+   réserve tient exactement dans la gouttière de la grille (`--s-7`) : elle
+   ne recouvre jamais la colonne des médias, donc n'y vole aucun clic. */
+.sheet__body {
+  min-height: 0; overflow-y: auto; padding-right: 6px;
+  padding-inline-start: var(--halo-room); margin-inline-start: calc(-1 * var(--halo-room));
+  padding-bottom: var(--halo-room); margin-bottom: calc(-1 * var(--halo-room));
+}
 
 .sheet__kicker { display: flex; align-items: center; gap: 9px; margin-bottom: 14px; }
 .sheet__dot {
@@ -974,8 +989,18 @@
 
      Déclarée sur `:root` et non ici depuis #194 : le rail de défilement est un
      FRÈRE de `.cv` — dans le conteneur qui défile, il défilerait avec le
-     contenu — et une propriété posée ici ne l'atteindrait pas. */
-  position: absolute; left: calc(50% - var(--cv-column) / 2); width: var(--cv-column);
+     contenu — et une propriété posée ici ne l'atteindrait pas.
+
+     LA RÉSERVE DE HALO : la boîte déborde la colonne de `--cv-halo-room` de
+     chaque côté et le rend en `padding-inline`. Le contenu garde exactement
+     la largeur de la colonne, mais la lueur de survol du lien de
+     téléchargement, posé contre le bord droit, n'est plus rognée par
+     l'`overflow` — elle coupait net au ras de la colonne. */
+  --cv-halo-room: calc(48 * var(--cv-u, 1px));
+  position: absolute;
+  left: calc(50% - var(--cv-column) / 2 - var(--cv-halo-room));
+  width: calc(var(--cv-column) + 2 * var(--cv-halo-room));
+  padding-inline: var(--cv-halo-room);
   top: 0; bottom: 0;
   z-index: var(--z-bubble);
   /* Le CV DÉFILE dans l'écran depuis le 2026-08-20, parce qu'il ne tient plus :

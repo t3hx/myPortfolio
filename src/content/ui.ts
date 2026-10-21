@@ -133,7 +133,13 @@ export const UI = {
       fr: "WebGL n'est pas disponible sur cet appareil — vous avez été orienté ici automatiquement.",
       en: 'WebGL is unavailable on this device — you were routed here automatically.',
     } as Localized,
-    switch: { fr: "changer d'expérience", en: 'change experience' } as Localized,
+    switch: { fr: 'Essayer l’expérience 3D', en: 'Try the 3D experience' } as Localized,
+    /**
+     * Ce qu'une carte projet dit quand elle n'a aucun lien à offrir. En
+     * anglais dans les deux langues, par choix de l'auteur : c'est la mention
+     * que le métier écrit telle quelle.
+     */
+    wip: { fr: 'Work in progress', en: 'Work in progress' } as Localized,
   },
   sheet: {
     kicker: { fr: 'Projet', en: 'Project' } as Localized,
