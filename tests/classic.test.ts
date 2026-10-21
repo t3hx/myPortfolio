@@ -13,7 +13,7 @@ import { FLAGS } from '@/config/icons'
 import { CV, glyphMark } from '@/content/cv'
 import { UI } from '@/content/ui'
 import { approach, cubeSpeed, haloOffset, scrollProgress, spinStep } from '@/lib/classic'
-import { LOCALES, t } from '@/lib/locale'
+import { LOCALES, t, tm } from '@/lib/locale'
 import { DECRYPT_CHARSET_CODE } from '@/ui/Scrambled'
 
 /**
@@ -449,7 +449,9 @@ describe('le contenu', () => {
     // Le repère est concret : si un nom d'entreprise ou d'école apparaissait
     // dans les libellés de la page, c'est qu'on aurait recommencé à recopier.
     const labels = JSON.stringify(UI.classic)
-    for (const job of CV.jobs) expect(labels).not.toContain(job.company)
+    for (const job of CV.jobs) {
+      for (const locale of LOCALES) expect(labels).not.toContain(tm(job.company, locale))
+    }
     for (const formation of CV.formations) expect(labels).not.toContain(formation.school)
   })
 

@@ -110,8 +110,16 @@ export interface CvFact {
 export interface CvJob {
   /** L'intitulé du poste. */
   title: Localized
-  /** Nom propre : jamais traduit. */
-  company: string
+  /**
+   * Presque toujours un nom propre, donc une chaîne nue. `MaybeLocalized`
+   * depuis le 2026-10-21 : la cartouche de reconversion porte ici un CADRE
+   * (« Formation autodidacte & projets perso »), pas un nom, et le PDF anglais
+   * lui donne sa formulation (« Self-directed training & personal projects »).
+   * Le servir en français aux anglophones était la dernière fuite de langue.
+   * Les clés React dérivent de la forme française — `tm(company, 'fr')` —
+   * stable quand la langue bascule.
+   */
+  company: MaybeLocalized
   /** « 2023 — 2026 ». Du texte : ce n'est pas une date qu'on trie. */
   period: string
   /**
@@ -179,10 +187,12 @@ export interface Cv {
      *
      * **`null` dans une langue veut dire « rien à dire », et l'anglais est
      * dans ce cas** (décision de l'auteur, 2026-09-11) : un CV anglophone ne
-     * porte pas l'âge, et le PDF anglais l'a retiré aussi. `null` plutôt
-     * qu'une chaîne vide, parce qu'une chaîne vide se lit comme un oubli — et
-     * parce que la ligne de méta doit alors sauter la mention ET son
-     * séparateur, ce qu'un blanc ne lui dirait pas.
+     * porte pas l'âge. L'export anglais du 2026-10-21 l'affiche pourtant
+     * (« 36 years old ») — divergence signalée à l'auteur, qui tranche côté
+     * PDF ; le site, lui, garde la règle. `null` plutôt qu'une chaîne vide,
+     * parce qu'une chaîne vide se lit comme un oubli — et parce que la ligne
+     * de méta doit alors sauter la mention ET son séparateur, ce qu'un blanc
+     * ne lui dirait pas.
      */
     age: Localized<string | null>
     /** Le texte alternatif de la photo, quand il y en a une. */
@@ -344,11 +354,11 @@ export const CV: Cv = {
       'afin de construire des produits qui répondent précisément aux besoins ' +
       'métier ou utilisateur.',
     en:
-      'A code explorer from the digital analytics world, I am moving into web ' +
-      'development with a genuine passion for JavaScript, front end and back end ' +
-      "alike. Versatile, I pair an analyst's rigour with creativity and lean on " +
-      'AI from prototype to production, to build products that answer business ' +
-      'and user needs precisely.',
+      'Coming from the digital analytics world, I have transitioned into web ' +
+      'development with a genuine passion for JavaScript, on both the front and ' +
+      "back end. Versatile by nature, I combine an analyst's rigour with " +
+      'creativity and leverage AI from prototype to production, to deliver ' +
+      'products that precisely meet business and user needs.',
   },
   jobsTitle: { fr: 'Expériences', en: 'Experience' },
   clientsLabel: { fr: 'Clients', en: 'Clients' },
@@ -365,15 +375,19 @@ export const CV: Cv = {
     {
       // La reconversion ouvre le parcours (CV papier, validé 2026-10-21).
       // `company` porte le cadre que le papier écrit sous l'intitulé — ce
-      // n'est pas un nom propre, mais c'est la ligne que les deux surfaces
-      // composent à cette place. La période reste « 2026 » seul : le papier
-      // écrit « 2026 — aujourd'hui », et « aujourd'hui » ne se traduit pas —
+      // n'est pas un nom propre, et c'est le cas qui a rendu le champ
+      // traduisible. La période reste « 2026 » seul : le papier écrit
+      // « 2026 — aujourd'hui », et « aujourd'hui » ne se traduit pas —
       // même raison que les mois, absents des autres cartouches.
+      // L'anglais est celui du PDF anglais (2026-10-21), mot pour mot.
       title: {
         fr: 'Reconversion développeur web',
-        en: 'Retraining as a web developer',
+        en: 'Career transition to web development',
       },
-      company: 'Formation autodidacte & projets perso',
+      company: {
+        fr: 'Formation autodidacte & projets perso',
+        en: 'Self-directed training & personal projects',
+      },
       period: '2026',
       missions: {
         fr: [
@@ -386,7 +400,7 @@ export const CV: Cv = {
         en: [
           'Vue.js training (Composition API, Pinia, Nuxt) — vueschool.io certifications',
           'React training (hooks, state management, ecosystem)',
-          'AI applied to development: Claude Code, Codex, agents and API integration',
+          'AI-assisted development: Claude Code, Codex, agents and API integration',
           'Harness engineering: tooling and evaluation environments for AI agents',
           'Web projects built: Portfolio, Solarsys, Owlog',
         ],
@@ -421,20 +435,20 @@ export const CV: Cv = {
           "Management d'équipe : planification, formation interne et externe, intégration",
         ],
         en: [
-          'End-to-end project ownership, autonomy on contract renewals',
+          'End-to-end project management (full ownership of contract renewals)',
           'Data analysis, quality assurance, analytics strategy and UX consulting',
-          'Tooling for data integration and processing (JS, Node.js)',
+          'Built tools for data integration and processing (JS, Node.js)',
           'Processing of collected data in BigQuery (GCP) and Azure Cloud',
-          'Analytics tool integration and migration: GA, Piano, Adobe',
-          "Built the agency's internal information system",
-          'Team management: planning, internal and external training, onboarding',
+          'Integration and migration of analytics tools: GA, Piano, Adobe',
+          "Designed and built the agency's internal information system",
+          'Team management: planning, internal/external training and onboarding of new hires',
         ],
       },
     },
     {
       title: {
         fr: "Responsable d'application (MCO)",
-        en: 'Application manager (run & maintenance)',
+        en: 'Application manager (maintenance & operations)',
       },
       company: 'IDKIDS Group',
       period: '2019 — 2020',
@@ -447,11 +461,11 @@ export const CV: Cv = {
           'Astreinte technique et assurance qualité lors des mises en production',
         ],
         en: [
-          'Requirements gathering with the e-commerce business teams, use-case writing',
-          'Sprint planning and task prioritisation with the development teams',
-          'Database extractions for the management control team',
-          'Handling of priority customer-service issues (run, L2 support)',
-          'On-call duty and quality assurance during production releases',
+          'Gathered requirements from e-commerce business teams and wrote use cases',
+          'Organised sprints and prioritised tasks with development teams',
+          'Database extractions for management control',
+          'Handled priority customer-service issues (run / L2 support)',
+          'Technical on-call duty and quality assurance during production releases',
         ],
       },
     },
@@ -466,7 +480,7 @@ export const CV: Cv = {
     {
       title: {
         fr: 'Technicien support N2, serveurs BareMetal et Cloud',
-        en: 'Support technician L2, BareMetal and Cloud servers',
+        en: 'L2 support technician, Bare Metal and Cloud servers',
       },
       company: 'OVHcloud',
       period: '2015 — 2018',
@@ -477,9 +491,9 @@ export const CV: Cv = {
           'Dépannage téléphonique des clients non hébergés',
         ],
         en: [
-          'Triage and prioritisation of critical incidents with DevOps and SysAdmin teams',
-          'Remote work on servers (Proxmox, VMware, SSH)',
-          'Phone troubleshooting for non-hosted customers',
+          'Handled and prioritised critical incidents with DevOps and SysAdmin teams',
+          'Remote server interventions (Proxmox, VMware, SSH)',
+          'Phone troubleshooting for unmanaged customers',
         ],
       },
     },

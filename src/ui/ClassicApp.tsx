@@ -103,7 +103,7 @@ function ExperienceCards({ locale }: { locale: Locale }) {
     <div className="classic-cards classic-cards--exp" ref={ref} data-revealed={revealed}>
       {CV.jobs.map((job, i) => (
         <article
-          key={`${job.company}-${job.period}`}
+          key={`${tm(job.company, 'fr')}-${job.period}`}
           className={`classic-glass classic-card classic-card--exp classic-reveal${
             open === i ? ' classic-card--open' : ''
           }`}
@@ -116,7 +116,7 @@ function ExperienceCards({ locale }: { locale: Locale }) {
           <div className="classic-card__head">
             <div>
               <div className="classic-card__title">{t(job.title, locale)}</div>
-              <div className="classic-card__org">{job.company}</div>
+              <div className="classic-card__org">{tm(job.company, locale)}</div>
             </div>
             <div className="classic-card__period">{job.period}</div>
           </div>
