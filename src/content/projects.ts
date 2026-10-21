@@ -81,6 +81,9 @@ export interface ProjectVideo {
   alt: Localized
 }
 
+/** Les types d'application qui ouvrent une `stack` — voir `Project.stack`. */
+export const APP_KINDS = ['SPA', 'PWA', 'SSR', 'SSG']
+
 export interface Project {
   /** Clé stable et unique. Destinée à devenir la clé d'un lien profond. */
   slug: string
@@ -94,7 +97,14 @@ export interface Project {
   /** « 2026 » ou « 2025 — 2026 ». Du texte : ce n'est pas une date qu'on trie. */
   year: string
   role: Localized
-  /** Jamais traduit : un nom de technologie n'a pas de version française. */
+  /**
+   * Jamais traduit : un nom de technologie n'a pas de version française.
+   *
+   * **L'ordre se lit, il n'est pas libre** (décision utilisateur, 2026-10-22) :
+   * le type d'application d'abord (`APP_KINDS`), TypeScript ensuite si le
+   * projet l'utilise, puis les frameworks, puis les outils et bibliothèques.
+   * On dit ce que c'est avant de dire avec quoi c'est fait.
+   */
   stack: string[]
   /** Deux ou trois faits saillants. Ni un journal de bord, ni un CV. */
   highlights: Localized<string[]>
@@ -160,8 +170,9 @@ export const SHOTS_MAX = 5
  * « Celestial Walker » s'appelle Solarsys depuis le 2026-09-07. Le `slug` a
  * suivi le nom, et il pouvait : les dossiers du `.glb` n'en portent aucun — il
  * n'y a qu'un exemplaire, cloné par projet, dont les pièces reçoivent le slug
- * en suffixe au montage. Les liens, eux, gardent leurs adresses : ce sont de
- * vrais dépôts, et un dépôt ne se renomme pas depuis un portfolio.
+ * en suffixe au montage. Le dépôt, lui, n'est PAS celui de l'ancien prototype
+ * Nuxt : Solarsys est une réécriture React qui vit dans `solarsys-react-app`
+ * (corrigé le 2026-10-22), et sa stack décrit celle-là.
  */
 export const PROJECTS: Project[] = [
   {
@@ -177,7 +188,7 @@ export const PROJECTS: Project[] = [
       fr: 'Conception, modélisation et développement',
       en: 'Design, modelling and development',
     },
-    stack: ['React', 'react-three-fiber', 'Blender', 'GSAP'],
+    stack: ['SPA', 'TypeScript', 'React', 'R3F', 'GSAP', 'Blender'],
     highlights: {
       fr: [
         'Rendu entièrement pré-cuit : aucune lumière au runtime, tout est dans les textures.',
@@ -210,7 +221,7 @@ export const PROJECTS: Project[] = [
     },
     year: '2026',
     role: { fr: 'Développement', en: 'Development' },
-    stack: ['Nuxt', 'TypeScript', 'Three.js'],
+    stack: ['SPA', 'TypeScript', 'React', 'R3F', 'GSAP'],
     highlights: {
       fr: ['Architecture documentée en composables, factories et stores.'],
       en: ['Architecture documented as composables, factories and stores.'],
@@ -219,7 +230,7 @@ export const PROJECTS: Project[] = [
       {
         label: { fr: 'GitHub', en: 'GitHub' },
         icon: MARKS.github,
-        href: 'https://github.com/t3hx/celestial-walker-nuxt',
+        href: 'https://github.com/t3hx/solarsys-react-app',
       },
       { label: { fr: 'En ligne', en: 'Live' }, href: 'https://solarsys.nspace.link' },
     ],
@@ -234,7 +245,7 @@ export const PROJECTS: Project[] = [
     },
     year: '2026',
     role: { fr: 'Conception et développement', en: 'Design and development' },
-    stack: ['TypeScript', 'PWA', 'Nuxt'],
+    stack: ['PWA', 'TypeScript', 'Nuxt'],
     highlights: {
       fr: [
         'Un même film revu trois fois compte trois entrées, pas une ligne modifiée.',

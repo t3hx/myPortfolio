@@ -514,3 +514,48 @@ describe('les vignettes de savoir-faire', () => {
     expect(tokens).toMatch(/\.glyph-mark\s*\{[^}]*mask:/)
   })
 })
+
+/** Le bloc de déclarations d'une règle CSS, repéré par son sélecteur exact. */
+function rule(sheet: string, selector: string): string {
+  const start = sheet.indexOf(`${selector} {`)
+  expect(start, `${selector} introuvable`).toBeGreaterThanOrEqual(0)
+  return sheet.slice(start, sheet.indexOf('}', start))
+}
+
+describe('« Le cap »', () => {
+  it('remplit la largeur de sa cellule', () => {
+    // Une `max-width` de 760 px laissait un tiers de la cellule vide à droite
+    // (retour utilisateur, 2026-10-22) : le padding de la cellule suffit à
+    // tenir le texte loin des bords.
+    expect(rule(css, '.classic-cap p')).not.toMatch(/max-width/)
+  })
+})
+
+describe('les cartes projet', () => {
+  it('alignent leurs liens sur une même ligne, quelle que soit la stack', () => {
+    // Une stack sur deux lignes descendait les liens de sa carte seule : la
+    // rangée est poussée au pied d'une carte qui s'étire avec ses voisines.
+    expect(rule(css, '.classic-project')).toMatch(/display: flex/)
+    expect(rule(css, '.classic-project__body')).toMatch(/flex: 1/)
+    expect(rule(css, '.classic-project__links')).toMatch(/margin-top: auto/)
+    expect(rule(css, '.classic-project__wip')).toMatch(/margin-top: auto/)
+  })
+
+  it('disent « Work in progress » quand rien ne peut être ouvert', () => {
+    expect(page).toContain('UI.classic.wip')
+    expect(rule(css, '.classic-project__wip')).toContain('var(--wip)')
+  })
+})
+
+describe('le pied de page', () => {
+  it('montre les marques des réseaux, plus leurs adresses', () => {
+    const foot = page.slice(page.indexOf('<footer'))
+    expect(foot).toContain('<Mark icon={social.icon}')
+    expect(foot).not.toContain('social.href.replace')
+  })
+
+  it('invite à essayer la 3D, en or', () => {
+    expect(t(UI.classic.switch, 'fr')).toBe('Essayer l’expérience 3D')
+    expect(rule(css, '.classic-foot__switch')).toContain('var(--gold)')
+  })
+})

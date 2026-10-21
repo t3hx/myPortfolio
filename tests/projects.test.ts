@@ -2,7 +2,13 @@ import { existsSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { DRAWER_CAPACITY, TAB_LABEL_MAX_CHARS } from '@/config/cabinet'
 import type { Project } from '@/content/projects'
-import { GENERIC_COVER_SRC, PROJECTS, PROJECTS_EMPTY, SHOTS_MAX } from '@/content/projects'
+import {
+  APP_KINDS,
+  GENERIC_COVER_SRC,
+  PROJECTS,
+  PROJECTS_EMPTY,
+  SHOTS_MAX,
+} from '@/content/projects'
 import { projectMedia, showsStrip, thumbSrc } from '@/lib/projectMedia'
 import { LOCALES, t } from '@/lib/locale'
 
@@ -132,7 +138,11 @@ describe("l'ordre de la commode", () => {
         expect(link.href, t(link.label, 'fr')).toMatch(/^https:\/\/github\.com\//)
       }
     }
-    expect(links.map((l) => l.href)).toContain('https://github.com/t3hx/celestial-walker-nuxt')
+    // Solarsys n'est PAS le dépôt Nuxt de l'ancien « Celestial Walker » : c'est
+    // une réécriture React, dans son propre dépôt (correction de l'auteur,
+    // 2026-10-22). Le lien et la stack décrivent celle-là.
+    expect(links.map((l) => l.href)).toContain('https://github.com/t3hx/solarsys-react-app')
+    expect(links.map((l) => l.href)).not.toContain('https://github.com/t3hx/celestial-walker-nuxt')
   })
 })
 
@@ -253,6 +263,33 @@ describe('les médias d’une fiche', () => {
         if (src === undefined || !src.startsWith('/')) continue
         expect(existsSync(`public${src}`), `${p.slug} · ${src}`).toBe(true)
       }
+    }
+  })
+})
+
+describe('la stack d’un projet', () => {
+  /**
+   * **L'ordre de la stack est une règle de lecture** (décision utilisateur,
+   * 2026-10-22) : on dit d'abord CE QUE c'est — une SPA, une PWA —, ensuite
+   * TypeScript si le projet l'utilise, puis les frameworks, puis les outils.
+   * Écrit à la main, cet ordre dérive à la première fiche ajoutée sans que
+   * rien ne le signale : la ligne reste lisible, simplement dans le désordre.
+   */
+  it('commence par le type d’application', () => {
+    for (const p of PROJECTS) expect(APP_KINDS, p.slug).toContain(p.stack[0])
+  })
+
+  it('ne cite le type d’application qu’une fois, en tête', () => {
+    for (const p of PROJECTS) {
+      const kinds = p.stack.filter((tech) => APP_KINDS.includes(tech))
+      expect(kinds, p.slug).toEqual([p.stack[0]])
+    }
+  })
+
+  it('place TypeScript juste après, quand le projet l’utilise', () => {
+    for (const p of PROJECTS) {
+      if (!p.stack.includes('TypeScript')) continue
+      expect(p.stack.indexOf('TypeScript'), p.slug).toBe(1)
     }
   })
 })
