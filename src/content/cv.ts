@@ -261,6 +261,21 @@ export const CV_JOBS_EMPTY: Localized = {
 export const CV: Cv = {
   identity: {
     name: 'Thibault Dubois',
+    /**
+     * Le portrait traité aux tons du site (validation utilisateur, 2026-10-21,
+     * variante « grille HUD » choisie sur planche). La recette, pour le jour où
+     * la photo change : sujet isolé par la carte de profondeur du HEIC
+     * d'origine (portrait iPhone), netteté légèrement réduite, duotone sur les
+     * jetons du design — encre #0D0A07, gris chaud, bronze braise, crème
+     * rabattue — puis fond encre portant une grille bronze discrète et quatre
+     * coches d'angle, écho du réticule du télescope. PAS de vignettage : jugé
+     * « affiche de western », à rebours de la tendance tech voulue. Le fond
+     * encre est ce qui fond le cadre dans les deux surfaces (anthracite de la
+     * scène, noir/braise du classique). 592 × 720 : 4 × le cadre de 148 × 180,
+     * assez pour un Retina à 2560 ; l'original (2800 × 3713) ne vit pas dans
+     * le dépôt.
+     */
+    photo: '/images/cv/portrait.webp',
     age: { fr: '36 ans', en: null },
     alt: { fr: 'Photo de Thibault', en: 'Photograph of Thibault' },
   },

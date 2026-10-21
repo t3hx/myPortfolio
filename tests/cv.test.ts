@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { CAMERA_STOPS } from '@/config/cameraStops'
 import { CV, CV_JOBS_EMPTY, glyphMark, type CvGlyph } from '@/content/cv'
@@ -413,6 +413,18 @@ describe('une cartouche ne se laisse pas écraser', () => {
     // reflué : c'est pire qu'un débordement, qui au moins se voit et se défile.
     const règle = tokens.slice(tokens.indexOf('.job {'), tokens.indexOf('.job:hover'))
     expect(règle, '.job doit refuser de grandir ET de se compresser').toMatch(/flex:\s*none/)
+  })
+})
+
+describe('la photo', () => {
+  it('pointe un fichier qui existe', () => {
+    // Un `src` mort n'affiche rien et ne lève rien — aucun `onError` n'est
+    // câblé nulle part, c'est la donnée qui décide (même règle que les icônes,
+    // #168, et que les médias d'une fiche projet). L'absence de `photo` serait
+    // un repli légitime (le cadre hachuré) ; un chemin déclaré, lui, doit
+    // exister.
+    expect(CV.identity.photo).toBeDefined()
+    expect(existsSync(`public${CV.identity.photo}`)).toBe(true)
   })
 })
 
