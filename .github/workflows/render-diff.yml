@@ -1,19 +1,20 @@
 # Comparaison de renders — chaque arrêt du tour contre son rendu Blender (#46).
 #
-# CE FICHIER N'EST PAS COPIABLE d'un projet à l'autre, et c'est voulu. `ci.yml`
-# l'est, lui, à l'octet près : il dit CE QUI tourne, le `package.json` dit
-# COMMENT, et toute particularité d'un dépôt vit ailleurs. Une scène 3D à
-# comparer à des rendus Blender est exactement une particularité de ce dépôt-ci.
+# CE FICHIER N'EST PAS PARTAGÉ d'un projet à l'autre, et c'est voulu. `ci.yml`
+# n'appelle que le pipeline commun de `t3hx/workflows` : il dit CE QUI tourne,
+# le `package.json` dit COMMENT, et toute particularité d'un dépôt vit ailleurs.
+# Une scène 3D à comparer à des rendus Blender est exactement une particularité
+# de ce dépôt-ci.
 #
 # Le job est séparé pour une seconde raison : il télécharge un navigateur et
-# rasterise onze scènes de 3 Mo en logiciel. Le mettre dans `ci.yml` ferait
-# payer ça à chaque lint de chaque dépôt.
+# rasterise onze scènes de 3 Mo en logiciel. Le mettre dans le pipeline commun
+# ferait payer ça à chaque lint de chaque dépôt.
 name: render-diff
 
 on:
   pull_request:
   push:
-    branches: [dev]
+    branches: [main]
 
 concurrency:
   group: render-diff-${{ github.ref }}

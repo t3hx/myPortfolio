@@ -90,17 +90,16 @@ Les acquis du prototype à transposer : extraction des transforms des caméras `
 ## Workflow version control & projet
 
 - **Jujutsu (jj) en priorité**, git seulement quand on n'a pas le choix.
-- Branches :
-  - **`dev`** : branche principale de travail. On peut commit dessus. Les PR vers `dev` déclenchent la CI (verify, tests) mais **jamais de deploy**. **Squash uniquement**.
-  - **`main`** : branche de déploiement. **Commit interdit**, PR uniquement (**merge commit uniquement**). Une PR vers `main` déclenche le pipeline complet : vérif → build de l'image chez GitHub → push GHCR → pull + deploy Dokploy.
+- Branches (**trunk-based** depuis le 2026-10-22) :
+  - **`main`** : seule branche longue, et branche de déploiement. **Commit interdit**, PR uniquement, **squash uniquement** : le titre de la PR devient le commit et fixe la version. Une PR déclenche la CI (verify) ; son merge déclenche le pipeline complet : vérif → version → build de l'image chez GitHub → push GHCR → deploy Dokploy → vérification que la prod sert la version → GitHub Release.
 
 ```
-feat/xxx ──squash──▶ dev ──merge commit──▶ main ──▶ CI ──▶ build ──▶ GHCR ──▶ Dokploy
-            CI            CI, jamais de deploy                                en ligne
+feat/xxx ──PR (CI)──squash──▶ main ──▶ CI ──▶ version ──▶ build ──▶ GHCR ──▶ Dokploy ──▶ Release
+                                                                                 en ligne
 ```
 
 - **Intégration GitHub (Orca IDE) au max** : une **issue** par unité de travail — **epic** / **feature** / **task** — avec **taille** (S à XL) et **priorité** (P0, P1, P2), versées automatiquement dans un projet GitHub suivi et mis à jour au fil de l'eau.
   - Nomenclature : _EPIC_ = `Project_name-EP#x/Titre`, _FEATURE_ = `Project_name-FEAT#x/Titre`, _TASK_ = `Project_name-TK#x/Titre` (x entier).
 - **Une branche par feature, gros fix ou gros refacto**, nommée d'après l'issue. On squash en conservant les branches. Idée : un epic pourrait finir en déploiement (pipeline complet).
-- **Avant tout squash sur `dev`, me faire tester.**
+- **Avant tout squash sur `main`, me faire tester** : le merge met en ligne.
 - Ne pas hésiter à créer des **worktrees via Orca** quand c'est pertinent.

@@ -30,7 +30,7 @@ The render-comparison loop shipped with #44/#45/#46 — see **`design/renders/RE
 - **The capture format must equal the references' format.** They are **1920×1080** since their 2026-08-20 re-shoot; the harness captures at exactly that. The _ratio_ is what fixes the framing (the tour fits its field horizontally), the _resolution_ is what lets the comparison happen at all — a mismatch fails on dimensions instead of comparing. And three references are named after their Blender camera node or in French rather than after the stop's `label`, so the mapping is declared once in `REF_FILE`: `label` owns the `?stop=` deep links, the filename follows the Blender export, and renaming either to "simplify" breaks the other.
 - **Both environments rasterise with SwiftShader** (`--enable-unsafe-swiftshader --use-gl=angle --use-angle=swiftshader`). No GitHub runner has a GPU, and a tolerance measured locally would mean nothing if CI antialiased differently.
 
-CI runs it in its own workflow, `.github/workflows/render-diff.yml`: `ci.yml` is copied byte-for-byte across the three repos and must not learn about a 3D scene.
+CI runs it in its own workflow, `.github/workflows/render-diff.yml`: `ci.yml` only calls the shared pipeline in `t3hx/workflows` (see `docs/DEPLOIEMENT.md`) and must not learn about a 3D scene.
 
 ### Two TypeScripts, on purpose (issue #21)
 
