@@ -8,8 +8,14 @@ dépôt neuf ; ce document explique les décisions qu'il encode.
 
 > Le workflow dit **CE QUI** tourne, le `package.json` dit **COMMENT**.
 
-`.github/workflows/ci.yml` et `project-sync.yml` sont **identiques octet pour
-octet** dans les trois dépôts. Ce qui rend ça possible : chaque étape passe par
+Depuis le 2026-10-22, le pipeline (vérification **et** mise en ligne) vit dans
+un dépôt à part, [`t3hx/workflows`](https://github.com/t3hx/workflows) : chaque
+dépôt l'**appelle** depuis un `ci.yml` de quelques lignes, par le tag `v1`, au
+lieu d'en porter une copie. Les dépôts sont trunk-based : `main` seule, PR en
+squash, chaque fusion part en prod (voir `docs/DEPLOIEMENT.md`).
+`project-sync.yml`, lui, reste copié à l'identique.
+
+Ce qui rend le pipeline commun possible : chaque étape passe par
 `pnpm run --if-present <script>`, donc un script absent n'est pas une erreur —
 l'étape réussit en silence.
 
@@ -24,9 +30,9 @@ jetable à démarrer, un ordre de build — tout cela va dans le script `test` o
 
 **Le revers, à connaître :** `--if-present` signifie qu'un script absent passe
 au **vert**. Une CI verte sur un dépôt sans tests ne prouve rien ; c'est le prix
-de la copie sans condition.
+d'un pipeline sans condition.
 
-### Vérifier l'identité
+### Vérifier l'identité de `project-sync.yml`
 
 Git étant adressé par contenu, deux fichiers ont le même SHA de blob si et
 seulement si leur contenu est identique — preuve plus forte qu'un diff, qui
@@ -34,7 +40,7 @@ laisserait passer une fin de ligne ou un espace insécable :
 
 ```sh
 for r in myPortfolio owlog-app odysong-app; do
-  gh api "repos/t3hx/$r/contents/.github/workflows/ci.yml?ref=dev" --jq .sha
+  gh api "repos/t3hx/$r/contents/.github/workflows/project-sync.yml" --jq .sha
 done
 ```
 
@@ -228,5 +234,6 @@ gh auth refresh -h github.com -s workflow
 **macOS est gelé sur bash 3.2** (Apple refuse la GPLv3) : pas de `declare -A`,
 pas de `${var,,}`, pas de `mapfile`. Les scripts d'outillage s'en passent.
 
-**`main` est absent des déclencheurs `push` de `ci.yml`** : `deploy.yml` appelle
-la CI via `workflow_call`, l'ajouter la ferait tourner deux fois par fusion.
+**Un workflow appelé ne peut pas avoir plus de droits que son appelant** : le job
+`deploy` de `ci.yml` déclare `contents: write` et `packages: write`, sans quoi le
+pipeline commun ne pourrait ni pousser l'image ni publier la Release.

@@ -4,7 +4,7 @@ Spec verrouillée le 2026-08-18. Elle décrit la suite de l'arrêt `Cabinet` :
 comment on passe du menu « Projets » à une fiche projet plein écran.
 
 Elle complète `docs/PORTFOLIO_3D_INTERACTIONS.md` §2.6 (qui ne décrit que le
-tiroir) et `docs/design/DESIGN.md` (qui ne connaît pas encore la fiche projet).
+tiroir) et `docs/DESIGN.md` (qui ne connaît pas encore la fiche projet).
 
 ## Le parcours, du début à la fin
 
@@ -44,7 +44,7 @@ Vérifiés dans le `.glb` et dans l'app, pas déduits.
 | Façade du tiroir en `z = -1.951`, fond en `-2.479`, caméra en `-0.87`           | **axe de coulissement : +Z**, profondeur utile ≈ **0.52 m**   |
 | Les pièces du dossier sont des **boîtes séparées** de 1.5 mm (0.6 pour la page) | aucun rabat articulé : pas de dépliage 3D sans retour Blender |
 | `Folder_Tab` a **son propre matériau** `Mat_FolderTab` (90 × 40 × 1.5 mm)       | l'étiquette s'écrit sans toucher au reste du dossier          |
-| Le tiroir est **fermé** dans le `.glb`…                                         | …mais **ouvert** dans `docs/renders/refs/cabinet.png`         |
+| Le tiroir est **fermé** dans le `.glb`…                                         | …mais **ouvert** dans `design/renders/refs/cabinet.png`       |
 
 ### Le risque d'éclairage est levé
 
@@ -89,7 +89,7 @@ de 0.055**.
 
 ### Le survol se lit sans ambiguïté
 
-**Testé** (`docs/renders/spikes/cabinet-hover-label.png`) : cinq dossiers
+**Testé** (`design/renders/spikes/cabinet-hover-label.png`) : cinq dossiers
 étiquetés, celui du milieu survolé — contour couleur `--glow` (#8FDBE4),
 soulevé de 0.05 en `y`. Les noms de projet sont **nets et lisibles** à ce
 cadrage, le dossier survolé se détache franchement, et l'accent froid tranche
@@ -108,7 +108,7 @@ Deux enseignements de la capture :
   (1.02, 1.03, 3.0) elle se lit comme un cadre flottant, pas comme un cerne.
   Voir la conception ci-dessous.
 
-Les trois captures du spike sont conservées dans `docs/renders/spikes/` :
+Les trois captures du spike sont conservées dans `design/renders/spikes/` :
 `cabinet-drawer-open.png` (le tiroir seul), `cabinet-folders-x5.png` (les cinq
 dossiers) et `cabinet-hover-label.png` (survol + étiquettes).
 
@@ -225,7 +225,7 @@ couche contenu ; les quatre autres ont été créés le 2026-08-19.
 | ------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------- |
 | **A — le tiroir** ([#76](https://github.com/t3hx/myPortfolio/issues/76))             | groupe runtime, ouverture auto à l'arrivée, fermeture au départ                                       |
 | **B — les dossiers** ([#77](https://github.com/t3hx/myPortfolio/issues/77))          | clones, échelonnement, étiquettes nommées, survol (contour + surélévation), clic → vol vers la caméra |
-| **C — la fiche, design** ([#78](https://github.com/t3hx/myPortfolio/issues/78))      | session `/design-consultation` → maquette dans `docs/design/screens/`, + typographie de l'étiquette   |
+| **C — la fiche, design** ([#78](https://github.com/t3hx/myPortfolio/issues/78))      | session `/design-consultation` → maquette dans `design/screens/`, + typographie de l'étiquette        |
 | **D — la fiche, intégration** ([#79](https://github.com/t3hx/myPortfolio/issues/79)) | panneau DOM plein écran, relais depuis le vol, `Échap`, phase `panel`                                 |
 | **E — le contenu** ([#31](https://github.com/t3hx/myPortfolio/issues/31))            | type TS, `src/content/projects.ts`, repli liste vide, illustration générique                          |
 

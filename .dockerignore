@@ -1,12 +1,16 @@
-# Ce qui n'a rien à faire dans le contexte de build (issue #16).
+# Ce qui n'a rien à faire dans le contexte de build (issue #16, revu par #111).
 #
-# `docs/` NE PEUT PAS être exclu en bloc, et c'est le piège : `main.tsx` importe
-# `../docs/design/tokens.css`. Le design system est une ENTRÉE DE BUILD, pas de
-# la documentation — l'exclure fait échouer `vite build` sur une résolution de
-# module, ce que le build a montré du premier coup.
+# La règle est désormais STRUCTURELLE, et c'est tout l'intérêt : le build ne lit
+# que `src/`, `public/`, `index.html` et les manifestes. Ni la documentation ni
+# les entrées de design n'y participent — `tokens.css` est du code servi au
+# visiteur et vit dans `src/styles/`, les maquettes et les rendus de référence
+# n'ont que les tests pour lecteurs, et `tests` est exclu juste en dessous.
 #
-# On écarte donc le poids, pas le dossier : 78 Mo de rendus, 67 Mo d'assets de
-# maquette et l'export Blender de travail, dont rien ne finit dans l'image.
+# La version précédente ne pouvait pas écarter `docs/` en bloc — `main.tsx`
+# importait `../docs/design/tokens.css` — et compensait par une liste
+# d'extensions (`docs/**/*.png`, `docs/**/*.jpg`…). Cette liste demandait un
+# entretien à chaque nouveau format déposé dans le dossier, et un `.webp` y
+# serait entré sans que personne le remarque.
 
 node_modules
 dist
@@ -14,12 +18,10 @@ dist
 .github
 tests
 coverage
+test-results
 
-docs/renders
-docs/design/assets
-docs/*.glb
-docs/**/*.png
-docs/**/*.jpg
+docs
+design
 
 *.md
 !README.md

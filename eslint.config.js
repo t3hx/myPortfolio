@@ -22,7 +22,7 @@ import tseslint from 'typescript-eslint'
  * linter s'occupe de ce que le typage ne dit pas.
  */
 export default tseslint.config(
-  { ignores: ['dist', 'docs/design/**', 'public/**'] },
+  { ignores: ['dist', 'design/**', 'public/**'] },
 
   js.configs.recommended,
   ...tseslint.configs.recommended,

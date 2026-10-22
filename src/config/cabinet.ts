@@ -9,8 +9,8 @@
  *   caméra de l'arrêt z = -0.87       → l'ouverture se fait vers +Z
  *
  * L'amplitude de 0.28 est celle qui reproduit le rendu de référence Blender
- * (`docs/renders/refs/cabinet.png`), vérifiée en capture :
- * `docs/renders/spikes/cabinet-drawer-open.png`.
+ * (`design/renders/refs/cabinet.png`), vérifiée en capture :
+ * `design/renders/spikes/cabinet-drawer-open.png`.
  */
 
 /** `label` de l'arrêt qui commande l'ouverture — clé de `CAMERA_STOPS`. */
@@ -96,6 +96,18 @@ export const FOLDER_Z_BACK = -2.21
 export const FOLDER_Z_FRONT = -1.99
 
 /**
+ * Le pas MAXIMAL entre deux dossiers (retour utilisateur, 2026-10-21 : à
+ * trois dossiers répartis sur toute la course, « l'écart est trop
+ * important » — trois objets sans rapport, plus une rangée).
+ *
+ * 0.055 est le pas d'une rangée PLEINE — cinq dossiers d'une borne à
+ * l'autre —, c'est-à-dire la densité sous laquelle le tiroir a été composé
+ * et validé. Moins de dossiers ne s'étalent plus pour remplir la course :
+ * ils gardent ce pas et la rangée se centre (voir `folderZ`).
+ */
+export const FOLDER_Z_STEP_MAX = 0.055
+
+/**
  * L'étiquette : un plan de texte posé devant la face de `Folder_Tab`.
  *
  * Peindre dans la texture existante supposerait des UV faits pour ça — ceux de
@@ -129,7 +141,7 @@ export const LABEL_INK = '#2B2418'
  *
  * Il monte **et** avance : au spike, un dossier qui monte seulement masque
  * complètement son voisin de derrière — le geste censé désigner une fiche en
- * cachait une autre (`docs/renders/spikes/cabinet-hover-label.png`).
+ * cachait une autre (`design/renders/spikes/cabinet-hover-label.png`).
  *
  * 0.05 en `y` suffit à dégager l'étiquette au-dessus de ses voisines ; le
  * couloir en Z garantit qu'il n'y a rien au-dessus pour l'arrêter.

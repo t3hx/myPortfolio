@@ -1,12 +1,18 @@
-import { useCallback, useMemo, useRef } from 'react'
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { CAMERA_STOPS } from '@/config/cameraStops'
 import { MENU_SECTIONS, MENU_SOCIALS } from '@/content/menu'
+import { FLAGS } from '@/config/icons'
+import { UI } from '@/content/ui'
+import { LOCALES, t } from '@/lib/locale'
+import { useLocale } from '@/state/locale'
 import { useInteraction } from '@/state/interaction'
+import { BUBBLE_IN_MS } from '@/scene/Bubble'
 import { Logo } from '@/ui/Logo'
+import { Mark } from '@/ui/Mark'
 
 /**
  * La barre de menu persistante (issue #26), recréée depuis les maquettes de
- * `docs/design/screens/` — son anatomie vit dans `docs/design/tokens.css`.
+ * `design/screens/` — son anatomie vit dans `src/styles/tokens.css`.
  *
  * Elle est atteignable depuis n'importe quel point du tour parce qu'elle n'est
  * jamais démontée : le repos à 40 % d'opacité est ce qui lui permet d'être là
@@ -27,7 +33,10 @@ import { Logo } from '@/ui/Logo'
 export function Menu() {
   const stopIndex = useInteraction((s) => s.stopIndex)
   const requestStop = useInteraction((s) => s.requestStop)
+  const released = useInteraction((s) => s.introReleased)
   const nav = useRef<HTMLElement>(null)
+  const locale = useLocale((s) => s.locale)
+  const setLocale = useLocale((s) => s.setLocale)
 
   // Un arrêt cité par le menu mais absent de CAMERA_STOPS est ignoré avec un
   // avertissement — même discipline que `extractStops` pour une caméra absente
@@ -49,6 +58,27 @@ export function Menu() {
 
   const socials = useMemo(() => MENU_SOCIALS.filter((s) => s.href), [])
 
+  /**
+   * **Elle arrive APRÈS la première bulle**, jamais avec elle et jamais avant
+   * (décision produit, 2026-09-07). Elle était là dès la première image, donc
+   * pendant toute l'intro : l'animation qui joue sur l'écran est la première
+   * chose du site, et une barre de navigation posée à côté disait déjà qu'il y
+   * avait autre chose à faire. Elle est du MOBILIER — elle arrive quand la
+   * pièce a fini de parler.
+   *
+   * Le repère est `introReleased`, celui-là même qui laisse la bulle d'accueil
+   * s'ouvrir, plus la durée de son entrée : la barre apparaît une fois la
+   * phrase posée, pas pendant qu'elle se pose. Sur un lien direct ou sous
+   * mouvement réduit, l'intro s'ouvre sur sa dernière image et libère tout de
+   * suite — la barre suit donc à 480 ms, sans cas particulier.
+   */
+  const [furnished, setFurnished] = useState(false)
+  useEffect(() => {
+    if (!released) return setFurnished(false)
+    const timer = window.setTimeout(() => setFurnished(true), BUBBLE_IN_MS)
+    return () => window.clearTimeout(timer)
+  }, [released])
+
   // Focus glissant : ↑↓ parcourent les items focusables de la barre, dans
   // l'ordre du DOM. `stopPropagation` n'est pas suffisant seul — la garde
   // `.menu` du rig est ce qui l'empêche vraiment d'avancer d'un arrêt.
@@ -64,7 +94,12 @@ export function Menu() {
   }, [])
 
   return (
-    <nav className="menu" aria-label="Menu" ref={nav} onKeyDown={onKeyDown}>
+    <nav
+      className={`menu${furnished ? '' : ' menu--waiting'}`}
+      aria-label={t(UI.menu.region, locale)}
+      ref={nav}
+      onKeyDown={onKeyDown}
+    >
       <Logo className="menu__logo" />
       <div className="menu__rule menu__rule--head" />
 
@@ -72,7 +107,7 @@ export function Menu() {
         const active = section.index === stopIndex
         return (
           <button
-            key={section.label}
+            key={section.stop}
             type="button"
             data-menu-item
             className={`menu__link${active ? ' menu__link--active' : ''}`}
@@ -83,7 +118,7 @@ export function Menu() {
               if (e.detail > 0) e.currentTarget.blur()
             }}
           >
-            <span>{section.label}</span>
+            <span>{t(section.label, locale)}</span>
           </button>
         )
       })}
@@ -97,23 +132,46 @@ export function Menu() {
           className="menu__social"
           href={social.href}
           title={social.title}
+          // Le nom accessible est du TEXTE, et il est nécessaire dès que la
+          // marque est un masque : un masque n'a pas de contenu, donc sans lui
+          // le lien s'annoncerait par son URL. `title` seul ne suffit pas — il
+          // n'est pas lu de façon fiable et n'apparaît qu'au survol souris.
+          aria-label={social.title}
           target="_blank"
           rel="noreferrer"
         >
-          {social.label}
+          <Mark icon={social.icon} fallback={social.label} />
         </a>
       ))}
 
-      {/* FR/EN : le bilingue est l'issue #33. EN reste un <span> et pas un
-          bouton désactivé — un bouton, même `disabled`, arrive avec sa propre
-          apparence système, et son gris à 45 % suffit à le lire comme la moitié
-          inactive d'un indicateur. */}
+      {/* FR/EN, vivant depuis #33. Les deux côtés sont des boutons : c'était
+          un `<span>` désactivé tant que l'anglais n'existait pas, parce qu'un
+          bouton, même `disabled`, arrive avec sa propre apparence système. Le
+          côté actif reste rendu et cliquable — le désactiver ferait disparaître
+          l'indicateur, or c'est lui qui dit dans quelle langue on est.
+          Le clic souris rend les flèches au tour, comme les sections. */}
       <div className="menu__lang">
-        <span className="menu__lang-on">FR</span>
-        <span className="menu__lang-rule" />
-        <span className="menu__lang-off" aria-disabled="true" title="Version anglaise à venir">
-          EN
-        </span>
+        {LOCALES.map((code, i) => (
+          <Fragment key={code}>
+            {i > 0 && <span className="menu__lang-rule" />}
+            <button
+              type="button"
+              className={code === locale ? 'menu__lang-on' : 'menu__lang-off'}
+              aria-current={code === locale ? 'true' : undefined}
+              // Le nom accessible est du TEXTE et nomme la langue, jamais un
+              // pays : un drapeau n'est pas une langue, et une image
+              // décorative laisserait un bouton sans nom (#166).
+              aria-label={t(UI.menu.switchTo, code)}
+              title={t(UI.menu.switchTo, code)}
+              onClick={(e) => {
+                setLocale(code)
+                if (e.detail > 0) e.currentTarget.blur()
+              }}
+            >
+              <img src={FLAGS[code]} alt="" />
+            </button>
+          </Fragment>
+        ))}
       </div>
     </nav>
   )

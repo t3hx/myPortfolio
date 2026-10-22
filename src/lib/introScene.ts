@@ -1,0 +1,535 @@
+import { INTRO_PHASES, INTRO_BEATS } from '@/lib/intro'
+import { easeInOutSine, easeInSine, easeOutBack, easeOutQuart, tween } from '@/lib/easing'
+
+/**
+ * Le monde A de l'intro — l'espace — en fonctions pures de T (#144).
+ *
+ * C'est la partition du handoff (design/intro/intro-scene.jsx), reprise
+ * nombre pour nombre : le cadre est 1920 × 1080, le centre (960, 540), et
+ * chaque grandeur est un `tween` évalué à T. Rien ici ne dessine ; le
+ * composant lit ces valeurs dans sa boucle d'images et les écrit dans le
+ * canvas, le SVG et le DOM.
+ *
+ * Trois eases et pas une de plus (discipline « cue-first » du prototype) :
+ * `enter` = power4.out, `draw` = sine.inOut, `pop` = back.out.
+ */
+export const CX = 960
+export const CY = 540
+
+const enter = (from: number, to: number, start: number, end: number) =>
+  tween(from, to, start, end, easeOutQuart)
+const draw = (from: number, to: number, start: number, end: number) =>
+  tween(from, to, start, end, easeInOutSine)
+const pop = (from: number, to: number, start: number, end: number) =>
+  tween(from, to, start, end, easeOutBack)
+/** `accelerate` = sine.in — la seule qui arrive à pleine vitesse (#147). */
+const accelerate = (from: number, to: number, start: number, end: number) =>
+  tween(from, to, start, end, easeInSine)
+const clamp = (v: number, lo: number, hi: number) => (v < lo ? lo : v > hi ? hi : v)
+const lerp = (a: number, b: number, u: number) => a + (b - a) * u
+
+const t0 = INTRO_PHASES[0].start
+const t1 = INTRO_PHASES[1].start
+const t2 = INTRO_PHASES[2].start
+const { arrival, suck, bang, pan, plunge } = INTRO_BEATS
+
+/** Un générateur pseudo-aléatoire seedé (mulberry32) : le même ciel à chaque
+ *  visite, et une capture comparable à la suivante. */
+export function rng32(seed: number): () => number {
+  let a = seed
+  return () => {
+    a |= 0
+    a = (a + 0x6d2b79f5) | 0
+    let t = Math.imul(a ^ (a >>> 15), 1 | a)
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+  }
+}
+
+// ---------------------------------------------------------------- caméra A
+export interface CameraA {
+  scale: number
+  /** Le point visé, en px du cadre : la caméra le tient au centre. */
+  fx: number
+  fy: number
+}
+
+/** La dérive du second triangle, celui dans lequel on plonge (#145). */
+export function triangle2Centre(T: number): { x: number; y: number } {
+  return { x: CX - 620 + 14 * Math.sin(T * 0.31), y: CY - 250 + 10 * Math.cos(T * 0.23) }
+}
+
+/** L'échelle atteinte au bord du triangle, quand la plongée commence. */
+const PAN_ZOOM = 2.2
+/** L'échelle au fond de la plongée, là où le monde A n'existe plus. */
+const PLUNGE_ZOOM = 16
+/** La durée de la plongée, en secondes. */
+const PLUNGE_S = 1.55
+/** De combien la plongée accélère après avoir pris le relais. */
+const PLUNGE_POWER = 2.8
+/** L'échelle acquise par le zoom lent de la phase 1, saturée avant le pano. */
+const PRE_ZOOM = 1.05
+
+/**
+ * LE RELAIS (#147) — la part linéaire de l'exposant de la plongée, c'est-à-dire
+ * la vitesse qu'elle prend à son premier instant.
+ *
+ * Il est CALCULÉ, jamais écrit : il vaut exactement la vitesse de zoom que le
+ * panoramique a au moment de lâcher, si bien qu'un panoramique raccourci ou
+ * une plongée rallongée restent raccordés sans que personne n'y pense. Écrit
+ * en dur, ce nombre serait faux au premier réglage de durée — et faux en
+ * silence, puisqu'un raccord manqué ne se voit qu'en regardant.
+ *
+ * La dérivée de `easeInSine` en 1 vaut π/2 ; le reste n'est que le passage en
+ * vitesse LOGARITHMIQUE, la seule qui se compare de part et d'autre : un zoom
+ * se perçoit en proportion par seconde, pas en unités par seconde.
+ */
+const PAN_EXIT_RATE = ((PAN_ZOOM - PRE_ZOOM) * (Math.PI / 2)) / (plunge - pan) / PAN_ZOOM
+const PLUNGE_HANDOVER = (PAN_EXIT_RATE * PLUNGE_S) / Math.log(PLUNGE_ZOOM / PAN_ZOOM)
+
+/**
+ * La caméra de l'espace : un zoom lent sur toute la phase 1, un panoramique
+ * vers le second triangle, puis la plongée exponentielle dedans (#145).
+ *
+ * **La visée et le zoom n'ont pas la même courbe, et c'est la correction de
+ * #147.** La visée DOIT arriver et se poser — on plonge dans le triangle, pas
+ * à côté — donc elle garde son `sine.inOut`. Le zoom, lui, ne doit jamais
+ * s'arrêter : il portait le même `sine.inOut`, arrivait à vitesse nulle, et la
+ * plongée repartait elle aussi de zéro (son exposant `u^2,2` est plat en 0).
+ * Deux immobilités bout à bout : mesuré, 0,007 de zoom par seconde à 8,8 s
+ * contre 0,55 au plus fort du panoramique — un tiers de seconde d'arrêt au
+ * milieu de ce que le spectateur lit comme un seul mouvement.
+ *
+ * Le zoom prend donc `sine.in` (il accélère jusqu'au bout) et l'exposant de la
+ * plongée gagne un terme linéaire dosé pour reprendre exactement cette
+ * vitesse-là. La pointe reste celle d'avant, ~2,7 de zoom par seconde : ce
+ * n'est pas la plongée qu'on accélère, c'est le trou qu'on enlève.
+ */
+export function cameraA(T: number): CameraA {
+  const c2 = triangle2Centre(T)
+  const panU = draw(0, 1, pan, plunge)(T)
+  const zoomU = accelerate(0, 1, pan, plunge)(T)
+  const plungeU = clamp((T - plunge) / PLUNGE_S, 0, 1)
+  const preZoom = 1 + 0.05 * draw(0, 1, t0, t1)(T)
+  const dive = PLUNGE_HANDOVER * plungeU + (1 - PLUNGE_HANDOVER) * Math.pow(plungeU, PLUNGE_POWER)
+  const scale =
+    T < plunge ? lerp(preZoom, PAN_ZOOM, zoomU) : PAN_ZOOM * Math.pow(PLUNGE_ZOOM / PAN_ZOOM, dive)
+  return { scale, fx: lerp(CX, c2.x, panU), fy: lerp(CY, c2.y, panU) }
+}
+
+/** Le monde A s'efface pendant la plongée, puis cesse d'exister. */
+export function worldA(T: number): { opacity: number; shown: boolean } {
+  return {
+    opacity: 1 - draw(0, 1, plunge + 1.05, plunge + 1.55)(T),
+    shown: T < plunge + 1.6,
+  }
+}
+
+// ---------------------------------------------------------------- triangle 1
+export interface TriangleState {
+  x: number
+  y: number
+  size: number
+  rot: number
+  glow: number
+  opacity: number
+  /** Les côtés en emphase néon : 0 haut, 1 droite, 2 gauche. */
+  lit: readonly number[]
+  weight: number
+}
+
+/**
+ * Le premier triangle : arrivée théâtrale, anticipation, succion, et le cœur
+ * lumineux qui grossit au centre juste avant le big-bang.
+ */
+export function triangle1(T: number): TriangleState & { coreR: number; coreOp: number } {
+  const arrScale = enter(6.2, 1.55, arrival, arrival + 2.2)(T)
+  const arrRot = pop(-160, 0, arrival, arrival + 2.4)(T)
+  const arrOp = enter(0, 1, arrival, arrival + 0.9)(T)
+  const antic = pop(0, 0.09, suck - 0.35, suck + 0.05)(T)
+  const suckU = clamp((T - suck) / 1.75, 0, 1)
+  const shrink = Math.pow(suckU, 1.9)
+  const scale = arrScale * (1 + antic) * (1 - 0.988 * shrink)
+  return {
+    x: CX,
+    y: CY,
+    size: (420 * scale) / 1.55,
+    rot: arrRot + 980 * Math.pow(suckU, 2.6),
+    glow: 1 + 2.2 * suckU,
+    opacity: arrOp * clamp((bang - T) / 0.06, 0, 1),
+    lit: [0],
+    weight: 1,
+    coreR: 30 * Math.pow(suckU, 1.6),
+    coreOp: clamp((suckU - 0.25) / 0.5, 0, 1) * clamp((bang + 0.05 - T) / 0.1, 0, 1),
+  }
+}
+
+// ---------------------------------------------------------------- triangle 2
+/**
+ * Le second triangle : la cible du panoramique, puis la porte de la plongée.
+ * Il dérive au loin sur la même dérive lente que le point visé par la caméra
+ * — c'est le même point, et il ne peut pas y en avoir deux — et il porte DEUX
+ * côtés en emphase là où le premier n'en portait qu'un, ce qui suffit à ne pas
+ * le lire comme le même objet revenu.
+ *
+ * Il s'allume 7,0 → 8,0 s, donc AVANT que le panoramique ne le rejoigne à
+ * 8,3 s : une cible qui apparaîtrait à l'arrivée dirait que la caméra a bougé
+ * pour rien.
+ */
+export function triangle2(T: number): TriangleState {
+  const c = triangle2Centre(T)
+  return {
+    x: c.x,
+    y: c.y,
+    size: 120,
+    rot: 12 * Math.sin(T * 0.21),
+    glow: 1.1,
+    opacity: draw(0, 1, t1 + 0.5, t1 + 1.5)(T),
+    lit: [0, 1],
+    weight: 1,
+  }
+}
+
+// ---------------------------------------------------------------- monde B
+export interface WorldB {
+  /** L'échelle du monde, autour du centre du cadre. */
+  scale: number
+  opacity: number
+}
+
+/**
+ * Le monde B — l'intérieur du triangle — surgit pendant la plongée : une
+ * graine à 7 % qui s'ouvre jusqu'au cadre entier (9,35 → 10,65 s), et un
+ * fondu (9,5 → 10,15 s) qui CROISE celui du monde A (9,85 → 10,35 s). Le
+ * croisement est le point : à aucune image l'écran n'est vide.
+ *
+ * Le 2 % de croissance résiduelle sur la phase 3 est du handoff : un monde
+ * parfaitement immobile derrière le nom se lit comme une image, pas comme un
+ * lieu.
+ */
+export function worldB(T: number): WorldB {
+  return {
+    scale: draw(0.07, 1, plunge + 0.55, plunge + 1.85)(T) * (1 + 0.02 * clamp((T - t2) / 7, 0, 1)),
+    opacity: draw(0, 1, plunge + 0.7, plunge + 1.35)(T),
+  }
+}
+
+// ---------------------------------------------------------------- le plan
+/**
+ * Les vagues de tracé d'un lot. Un lot entier qui partirait d'un bloc se
+ * lirait comme un calque qu'on allume ; cinq vagues décalées de 0,06 s font
+ * un dessin qui se pose.
+ */
+export const LAB_SUBGROUPS = 5
+/** L'écart entre deux lots, en secondes. */
+const LAB_BATCH_STEP = 0.26
+/** L'écart entre deux vagues d'un même lot. */
+const LAB_WAVE_STEP = 0.06
+/** Le temps que met un trait à s'écrire. */
+const LAB_STROKE_S = 0.72
+
+/**
+ * Le décalage de tiret d'une vague : 1 = rien de tracé, 0 = tout. Avec
+ * `pathLength="1"` et `stroke-dasharray: 1 1`, c'est la seule grandeur qui
+ * bouge dans le plan — une par vague, cinquante-cinq en tout, là où il y a
+ * 2 346 tracés. Elle est écrite sur le groupe de la vague, dont les tracés
+ * l'héritent : mesuré, la faire transiter par une variable CSS posée sur le
+ * conteneur coûtait deux images perdues (~50 ms) au plus fort du tracé, quand
+ * les deux gros lots (H1 et V1, 1 182 traits) partent ensemble — une variable
+ * invalide le style de TOUS les descendants du conteneur, y compris les 2 300
+ * tracés que cette vague-là ne concerne pas.
+ */
+export function labDashOffset(batch: number, wave: number, T: number): number {
+  const start = INTRO_BEATS.draw + batch * LAB_BATCH_STEP + wave * LAB_WAVE_STEP
+  return 1 - draw(0, 1, start, start + LAB_STROKE_S)(T)
+}
+
+// ---------------------------------------------------------------- étoiles
+export interface StarGroup {
+  points: [number, number][]
+  /** Diamètre du point, en px du cadre. */
+  size: number
+  /** Fréquence et phase du scintillement. */
+  f: number
+  ph: number
+  /** Opacité de croisière. */
+  base: number
+  /** Retard d'allumage, en secondes. */
+  delay: number
+}
+
+/** Six groupes d'étoiles seedés : trois fins, trois brillants. */
+export function makeStars(): StarGroup[] {
+  const r = rng32(7)
+  const points = (n: number): [number, number][] =>
+    Array.from({ length: n }, () => [-500 + r() * 2920, -350 + r() * 1780])
+  const groups: StarGroup[] = []
+  for (let g = 0; g < 3; g++)
+    groups.push({
+      points: points(58),
+      size: 2.2,
+      f: 0.9 + g * 0.35,
+      ph: g * 2.1,
+      base: 0.5,
+      delay: g * 0.22,
+    })
+  for (let g = 0; g < 3; g++)
+    groups.push({
+      points: points(24),
+      size: 3.4,
+      f: 0.7 + g * 0.3,
+      ph: 1 + g * 1.7,
+      base: 0.8,
+      delay: (3 + g) * 0.22,
+    })
+  return groups
+}
+
+/** L'opacité d'un groupe d'étoiles : un allumage décalé, puis un scintillement. */
+export function starAlpha(group: StarGroup, T: number): number {
+  const on = enter(0, 1, t0 + group.delay, t0 + 1.5 + group.delay)(T)
+  return on * group.base * (0.62 + 0.38 * Math.sin(T * group.f + group.ph))
+}
+
+// ---------------------------------------------------------------- particules
+export interface Particle {
+  ang: number
+  spd: number
+  /** 0 fines (60 %), 1 moyennes (30 %), 2 grosses et blanches (10 %). */
+  cls: 0 | 1 | 2
+  f: number
+  ph: number
+  /** Le tourbillon (#146) : retard, durée, rayon de départ. */
+  delay: number
+  dur: number
+  rad: number
+}
+
+/** Les particules seedées ; les classes tournent 6 / 3 / 1 sur dix. */
+export function makeParticles(n: number): Particle[] {
+  const r = rng32(31)
+  const out: Particle[] = []
+  for (let i = 0; i < n; i++) {
+    const tenth = i % 10
+    out.push({
+      ang: r() * Math.PI * 2,
+      spd: 0.3 + r() * 0.95,
+      cls: tenth < 6 ? 0 : tenth < 9 ? 1 : 2,
+      f: 0.4 + r() * 1.2,
+      ph: r() * 6.28,
+      delay: r() * 1.45,
+      dur: 1.6 + r() * 0.8,
+      rad: 700 + r() * 520,
+    })
+  }
+  return out
+}
+
+/** La nova est éjectée au big-bang et s'éteint avec le monde A. */
+export function novaActive(T: number): boolean {
+  return T >= bang - 0.02 && worldA(T).shown
+}
+
+export function novaOpacity(T: number): number {
+  return enter(0, 0.95, bang, bang + 0.18)(T)
+}
+
+/**
+ * La position d'une particule de la nova à T, écrite dans `out` : un rayon
+ * qui décélère sans jamais reculer, et une errance latérale qui grandit.
+ */
+export function novaPoint(p: Particle, T: number, out: { x: number; y: number }): void {
+  const u = clamp((T - bang) / 6.2, 0, 1)
+  const e = 1 - Math.pow(1 - u, 4)
+  const r = p.spd * 1020 * e
+  const wob = 26 * u * Math.sin(T * p.f + p.ph)
+  out.x = CX + Math.cos(p.ang) * r + Math.cos(p.ang + 1.57) * wob
+  out.y = CY + Math.sin(p.ang) * r * 0.94 + Math.sin(p.ang + 1.57) * wob
+}
+
+// ---------------------------------------------------------------- big-bang
+export interface Ring {
+  r: number
+  width: number
+  opacity: number
+  visible: boolean
+}
+
+/** Les deux ondes du big-bang : rapide et large, puis lente et courte. */
+export function rings(T: number): [Ring, Ring] {
+  const ring = (rMax: number, dur: number, op: number, w: number): Ring => {
+    const u = clamp((T - bang) / dur, 0, 1)
+    return {
+      r: enter(rMax === 910 ? 30 : 20, rMax, bang, bang + dur)(T),
+      width: 0.5 + w * (1 - u),
+      opacity: op * (1 - u),
+      visible: u > 0 && u < 1,
+    }
+  }
+  return [ring(910, 1.5, 0.55, 5), ring(520, 2.3, 0.25, 2.5)]
+}
+
+/** Le flash du big-bang, en espace écran : monte en 0,14 s, retombe en 0,54 s. */
+export function flashOpacity(T: number): number {
+  return (
+    Math.min(enter(0, 1, bang - 0.08, bang + 0.06)(T), draw(1, 0, bang + 0.06, bang + 0.6)(T)) *
+    0.95
+  )
+}
+
+// ---------------------------------------------------------------- mots de phase
+export interface PhaseWordSpec {
+  start: number
+  end: number
+  letters: number
+}
+
+/**
+ * Un mot de phase : lettre par lettre (90 ms chacune, jusqu'à 85 %), puis un
+ * fondu d'ensemble en 0,6 s à sa fin. `null` tant qu'il n'existe pas.
+ */
+export function phaseWordAlpha(
+  T: number,
+  word: PhaseWordSpec,
+): { opacity: number; letters: number[] } | null {
+  const gone = 1 - draw(0, 1, word.end, word.end + 0.6)(T)
+  if (T < word.start - 0.1 || gone <= 0.004) return null
+  const letters = Array.from({ length: word.letters }, (_, i) =>
+    enter(0, 0.85, word.start + i * 0.09, word.start + i * 0.09 + 0.2)(T),
+  )
+  return { opacity: gone, letters }
+}
+
+/** Les trois mots de phase, avec le compte de lettres qu'ils écrivent. */
+export const PHASE_WORDS = {
+  genesis: { start: INTRO_BEATS.genesis, end: 4.9, letters: 7 },
+  incubation: { start: INTRO_BEATS.incubation, end: t2 - 0.35, letters: 10 },
+  emergence: { start: INTRO_BEATS.emergence, end: t2 + 5.1, letters: 9 },
+} as const
+
+// ---------------------------------------------------------------- phase 3
+const { swirl, name: nameBeat, arc, etch, flicker } = INTRO_BEATS
+
+/**
+ * La ligne du nom dans le cadre. Le tourbillon y converge et le HTML s'y pose :
+ * les particules sont dans un canvas, les lettres dans le DOM, et les deux ne
+ * se rejoignent que parce qu'ils partagent CE repère et CE nombre.
+ */
+export const NAME_Y = CY - 60
+
+/** De combien une lettre monte en se posant, en px du cadre. */
+const NAME_RISE = 12
+
+/**
+ * Le tourbillon : il s'allume avec la phase et s'éteint pendant que les vraies
+ * lettres s'écrivent (15,5 → 16,3 s). Le relais est le point — les particules
+ * ne disparaissent pas, elles *deviennent* le nom.
+ */
+export function swirlOpacity(T: number): number {
+  return enter(0, 0.95, swirl, swirl + 0.5)(T) * (1 - draw(0, 1, t2 + 2.5, t2 + 3.3)(T))
+}
+
+export function swirlActive(T: number): boolean {
+  return T >= swirl - 0.02 && swirlOpacity(T) > 0.004
+}
+
+/**
+ * La position d'une particule du tourbillon, écrite dans `out` : une spirale
+ * qui se referme sur `(tx, ty)`, le pixel du nom qui lui a été attribué.
+ *
+ * Chaque particule a son retard et sa durée, ce qui fait que le nom se remplit
+ * par plaques et non d'un bloc ; l'enroulement de 4,3 rad est ce qui distingue
+ * un tourbillon d'une implosion. Le 0,9 sur l'ordonnée aplatit la spirale dans
+ * le sens du nom, qui est large et bas.
+ */
+export function swirlPoint(
+  p: Particle,
+  tx: number,
+  ty: number,
+  T: number,
+  out: { x: number; y: number },
+): void {
+  const u = clamp((T - swirl - p.delay) / p.dur, 0, 1)
+  const e = 0.5 - 0.5 * Math.cos(Math.PI * u)
+  const r = p.rad * (1 - e)
+  const ang = p.ang + 4.3 * e
+  out.x = tx + Math.cos(ang) * r
+  out.y = ty + Math.sin(ang) * r * 0.9
+}
+
+/** Une lettre du nom : son opacité, et de combien elle est encore en dessous. */
+export function nameLetter(i: number, T: number): { opacity: number; shift: number } {
+  const opacity = draw(0, 1, nameBeat + i * 0.045, nameBeat + 0.55 + i * 0.045)(T)
+  return { opacity, shift: (1 - opacity) * NAME_RISE }
+}
+
+/**
+ * Le plan du lab passe à 32 % pendant que le nom s'écrit : il reste le décor
+ * du lieu, il cesse d'être le sujet. Il ne remonte jamais — c'est cet état-là
+ * que la dernière image garde pour toute la visite.
+ */
+export function labOpacity(T: number): number {
+  return 1 - 0.68 * draw(0, 1, t2 + 1.6, t2 + 3.1)(T)
+}
+
+/**
+ * Le troisième triangle : il arrive par un ARC de cercle, pas par une ligne —
+ * le rayon se referme de 760 à 0 pendant que l'angle balaie −215° → −90°, donc
+ * il entre par la gauche, passe par le haut et se pose derrière le nom. Puis
+ * il s'assombrit, parce que la vedette revient au texte.
+ *
+ * Il porte ses trois côtés en néon là où le premier n'en portait qu'un et le
+ * second deux : c'est la même forme, arrivée au bout de son histoire.
+ */
+export function triangle3(T: number): TriangleState {
+  const u = draw(0, 1, arc, arc + 2.3)(T)
+  const theta = (lerp(-215, -90, u) * Math.PI) / 180
+  const radius = enter(760, 0, arc, arc + 2.3)(T)
+  const dim = draw(0, 1, arc + 2.3, arc + 3.4)(T)
+  return {
+    x: CX + Math.cos(theta) * radius,
+    y: NAME_Y + 14 + Math.sin(theta) * radius,
+    size: lerp(240, 470, u),
+    rot: lerp(-80, 0, u),
+    glow: lerp(2.2, 1.15, dim),
+    opacity: draw(0, 0.92, arc, arc + 0.8)(T) * (1 - 0.48 * dim),
+    lit: [0, 1, 2],
+    weight: 1.8,
+  }
+}
+
+export interface EtchState {
+  /** La part du titre déjà gravée, de 0 (rien) à 1 (tout). */
+  progress: number
+  /** L'étincelle n'existe que pendant la course du faisceau. */
+  sparkVisible: boolean
+  /** Son scintillement, jamais éteint : une gravure qui grésille. */
+  sparkOpacity: number
+}
+
+/**
+ * La gravure laser du titre : le texte est découvert de la gauche vers la
+ * droite en 1,7 s, et une étincelle suit le bord.
+ *
+ * Le scintillement est en `sin(T · 42)` — plus rapide qu'une image à 60 Hz ne
+ * peut le montrer proprement, et c'est exactement l'effet voulu : un grésillement,
+ * pas une pulsation. Il ne descend jamais sous 0,5 : une étincelle qui
+ * s'éteint cesse d'être une étincelle.
+ */
+export function etchTitle(T: number): EtchState {
+  const progress = draw(0, 1, etch, etch + 1.7)(T)
+  return {
+    progress,
+    sparkVisible: progress > 0.001 && progress < 0.999,
+    sparkOpacity: 0.75 + 0.25 * Math.sin(T * 42),
+  }
+}
+
+/**
+ * « CREATIVE » clignote une fois la gravure finie, et pour toujours. La boucle
+ * elle-même est en CSS : l'horloge de l'intro s'arrête à la dernière image, et
+ * un néon défaillant qui s'arrêterait avec elle ne serait qu'un mot pâle.
+ */
+export function flickerOn(T: number): boolean {
+  return T > flicker
+}

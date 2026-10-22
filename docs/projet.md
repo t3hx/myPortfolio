@@ -42,13 +42,13 @@ Inspiration principale : <https://guillaumegouessan.com/>
 
 ### Mobile
 
-- Les cadrages caméra sont pensés paysage, incompatibles avec un affichage portrait. Cible : utilisation plein écran en mode paysage sur mobile. Gros chantier, **pour la fin**.
+- **Le mobile, c'est le classic** (décision du 2026-09-26, spec : `docs/SPEC_MOBILE_CLASSIC.md`, EPIC #185). La scène 3D n'est pas servie aux appareils à pointeur « coarse » — téléphones **et** tablettes, iPad Pro compris : ils sont routés vers le site classic (#190), qui doit être pleinement responsive (#187). L'ancienne cible « plein écran en mode paysage sur mobile » est abandonnée : tout le 3D est composé paysage 16:9 (cadrages Blender, table de placement des bulles, écran CV, viseur), et les ~162 Mo de VRAM texture étaient le seul risque identifié qui fasse _planter_ un appareil — précisément le téléphone. La présélection reste affichée sur ces appareils, carte 3D désactivée avec une phrase honnête — jamais de repli silencieux.
 
 ## Direction artistique
 
 - Tendance **2,5D** (2D + 3D) : contours projetés et aplats de couleur simples, proche du cell-shading.
 - Les contours projetés de Blender (Line Art / Freestyle) sont la cible visuelle mais **ne s'exportent pas dans un `.glb`** : gros chantier pour les reproduire fidèlement en post-processing Three.js (outline pass, edge detection, ou autre technique à évaluer).
-- Le matching colorimétrique Blender EEVEE → WebGL est déjà calibré dans le prototype (`src/config/blenderMatch.ts` : AgX tone mapping, exposition, multiplicateur d'intensité lumineuse ×0.01, bloom). Ces valeurs et la boucle de comparaison (`docs/renders/refs/` vs captures) sont à transposer telles quelles.
+- Le matching colorimétrique Blender EEVEE → WebGL est déjà calibré dans le prototype (`src/config/blenderMatch.ts` : AgX tone mapping, exposition, multiplicateur d'intensité lumineuse ×0.01, bloom). Ces valeurs et la boucle de comparaison (`design/renders/refs/` vs captures) sont à transposer telles quelles.
 - ⚠️ **Périmé (2026-08-09)** : `blenderMatch.ts` a été supprimé avec l'export lit. L'export v12 est **entièrement pré-baké unlit** — l'AgX est cuit dans les textures, le rendu tourne en `NoToneMapping`, zéro lumière. Le pipeline courant est `src/config/renderPipeline.ts`. Seule la boucle de comparaison aux renders reste valable.
 
 ## Architecture
@@ -77,8 +77,7 @@ Les acquis du prototype à transposer : extraction des transforms des caméras `
 
 ### Outillage IA
 
-- Framework **Gstack + Gbrain** (garry-tan) : `/office-hours` pour discuter, reviews croisées, sous-agents pour tâches spécifiques. <https://github.com/garrytan/gstack>
-- **Claude Design** interviendra sur la partie visuelle (UI hors 3D) une fois le topo produit ; l'UI est minimale, le clou du spectacle étant la 3D interactive. → **La session a eu lieu et son rendu est `docs/design/`** (DESIGN.md, tokens.css, 13 maquettes). Le brief d'entrée qui l'avait alimentée a été retiré une fois son rendu livré : deux fichiers revendiquant l'autorité design, c'est la panne à deux sources de vérité. Il reste consultable dans l'historique git.
+- **Claude Design** interviendra sur la partie visuelle (UI hors 3D) une fois le topo produit ; l'UI est minimale, le clou du spectacle étant la 3D interactive. → **La session a eu lieu ; son rendu est réparti par nature depuis #111** — `docs/DESIGN.md` (la direction), `src/styles/tokens.css` (le code servi au visiteur), `design/screens/` (15 maquettes). Le brief d'entrée qui l'avait alimentée a été retiré une fois son rendu livré : deux fichiers revendiquant l'autorité design, c'est la panne à deux sources de vérité. Il reste consultable dans l'historique git.
 
 ## Guidelines de coding
 
@@ -91,17 +90,16 @@ Les acquis du prototype à transposer : extraction des transforms des caméras `
 ## Workflow version control & projet
 
 - **Jujutsu (jj) en priorité**, git seulement quand on n'a pas le choix.
-- Branches :
-  - **`dev`** : branche principale de travail. On peut commit dessus. Les PR vers `dev` déclenchent la CI (verify, tests) mais **jamais de deploy**. **Squash uniquement**.
-  - **`main`** : branche de déploiement. **Commit interdit**, PR uniquement (**merge commit uniquement**). Une PR vers `main` déclenche le pipeline complet : vérif → build de l'image chez GitHub → push GHCR → pull + deploy Dokploy.
+- Branches (**trunk-based** depuis le 2026-10-22) :
+  - **`main`** : seule branche longue, et branche de déploiement. **Commit interdit**, PR uniquement, **squash uniquement** : le titre de la PR devient le commit et fixe la version. Une PR déclenche la CI (verify) ; son merge déclenche le pipeline complet : vérif → version → build de l'image chez GitHub → push GHCR → deploy Dokploy → vérification que la prod sert la version → GitHub Release.
 
 ```
-feat/xxx ──squash──▶ dev ──merge commit──▶ main ──▶ CI ──▶ build ──▶ GHCR ──▶ Dokploy
-            CI            CI, jamais de deploy                                en ligne
+feat/xxx ──PR (CI)──squash──▶ main ──▶ CI ──▶ version ──▶ build ──▶ GHCR ──▶ Dokploy ──▶ Release
+                                                                                 en ligne
 ```
 
 - **Intégration GitHub (Orca IDE) au max** : une **issue** par unité de travail — **epic** / **feature** / **task** — avec **taille** (S à XL) et **priorité** (P0, P1, P2), versées automatiquement dans un projet GitHub suivi et mis à jour au fil de l'eau.
   - Nomenclature : _EPIC_ = `Project_name-EP#x/Titre`, _FEATURE_ = `Project_name-FEAT#x/Titre`, _TASK_ = `Project_name-TK#x/Titre` (x entier).
 - **Une branche par feature, gros fix ou gros refacto**, nommée d'après l'issue. On squash en conservant les branches. Idée : un epic pourrait finir en déploiement (pipeline complet).
-- **Avant tout squash sur `dev`, me faire tester.**
+- **Avant tout squash sur `main`, me faire tester** : le merge met en ligne.
 - Ne pas hésiter à créer des **worktrees via Orca** quand c'est pertinent.

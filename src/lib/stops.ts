@@ -21,10 +21,86 @@ export interface StopTransform {
   quaternion: Quaternion
   /** Horizontal field of view, in degrees. */
   hfov: number
+  /**
+   * Le champ VERTICAL que Blender a composé, en degrés — le `yfov` du glTF,
+   * tel quel.
+   *
+   * Il était lu puis jeté : `hfov` se dérive de lui et de l'`aspectRatio`, et
+   * c'est l'horizontal qui est l'invariant du tour. Mais l'accueil a besoin de
+   * la borne verticale d'origine (#135) : son cadrage doit ne JAMAIS montrer
+   * au-delà de l'écran du PC, et sur une fenêtre plus haute que celle composée,
+   * l'ajustement horizontal fait justement grandir le champ vertical.
+   */
+  yfov: number
+  /**
+   * De 0 à 1 — combien la borne verticale ci-dessus s'applique.
+   *
+   * **Un poids et non un booléen, parce qu'il s'interpole.** Un mouvement qui
+   * quitte l'accueil part d'un arrêt borné vers un arrêt libre : une bascule
+   * franche sauterait à la première image du trajet. `blendPose` le mélange
+   * comme le reste de la pose, et la borne se relâche pendant le vol.
+   *
+   * Sur une fenêtre au moins aussi large que le cadrage composé, il ne change
+   * rien du tout : la borne n'est jamais atteinte.
+   */
+  contain: number
+  /**
+   * De 0 à 1 — combien la règle de la COLONNE LISIBLE s'applique (2026-09-07).
+   *
+   * Le CV est du DOM posé sur la projection de l'écran vertical, et sa colonne
+   * vaut 44,8 % de la fenêtre. Sur une fenêtre étroite, 44,8 % ne font plus
+   * assez de pixels : mesuré sur un téléphone en portrait (390 × 844),
+   * 175 px de large et 444 px de contenu en trop — illisible. Le cadrage se
+   * rapproche donc jusqu'à ce que la colonne retrouve la largeur pour laquelle
+   * elle est écrite, ou toute la fenêtre si celle-ci est plus étroite.
+   *
+   * Un poids et non un booléen, pour la raison de `contain` : il s'interpole,
+   * et quitter le CV relâche le zoom pendant le vol au lieu de sauter à la
+   * première image.
+   */
+  column: number
 }
 
 const DEG = 180 / Math.PI
 const RAD = Math.PI / 180
+
+/**
+ * La colonne du CV, telle que le design l'a écrite : sa largeur en fraction du
+ * cadre, la largeur en pixels sous laquelle elle cesse d'être lisible, et la
+ * marge qu'on lui laisse de chaque côté quand la fenêtre est plus étroite que
+ * ça.
+ *
+ * **Ces trois nombres sont écrits deux fois**, ici et dans `tokens.css`, parce
+ * que le cadrage 3D et la boîte DOM sont deux moteurs différents qui doivent
+ * répondre la même chose. `tests/stops.test.ts` échoue si les deux divergent.
+ */
+export const CV_COLUMN_FRACTION = 0.448
+export const CV_COLUMN_PX = 573
+export const CV_COLUMN_MARGIN_PX = 24
+
+/**
+ * La largeur que la colonne DOIT atteindre, en pixels, sur une fenêtre de
+ * `widthPx` : celle du design, ou toute la fenêtre moins ses marges si elle est
+ * plus étroite.
+ */
+export function cvColumnTarget(widthPx: number): number {
+  return Math.min(CV_COLUMN_PX, Math.max(0, widthPx - 2 * CV_COLUMN_MARGIN_PX))
+}
+
+/**
+ * Le champ horizontal, en degrés, qui donne à la colonne sa largeur lisible.
+ *
+ * Il ne fait que RESSERRER : `min(1, …)` interdit de reculer. Une fenêtre au
+ * moins aussi large que le cadrage composé garde donc exactement le cadrage de
+ * Blender — 1 280 px le laisse intact au pixel près, 1 920 aussi, et les dix
+ * références de rendu avec.
+ */
+export function columnHfov(hfov: number, widthPx: number): number {
+  const target = cvColumnTarget(widthPx)
+  if (target <= 0 || widthPx <= 0) return hfov
+  const shrink = Math.min(1, (CV_COLUMN_FRACTION * widthPx) / target)
+  return 2 * Math.atan(Math.tan((hfov * RAD) / 2) * shrink) * DEG
+}
 
 /**
  * Vertical fov (degrees) that renders `hfov` horizontally on a viewport of
@@ -38,60 +114,83 @@ export function verticalFov(hfov: number, aspect: number): number {
 }
 
 /**
- * Reads each `CameraStop_*` node's world transform straight from the loaded
- * scene graph (so there is no Blender Z-up → glTF Y-up conversion to get wrong).
- * The .glb's cameras are never made active — we only sample their transforms
- * and tween OUR render camera to match.
+ * Lit le transform monde d'UNE caméra du `.glb`, par le nom exact de son nœud
+ * (donc sans conversion Z-up → Y-up de Blender à se tromper). Les caméras du
+ * `.glb` ne sont jamais activées : on échantillonne leur pose et on interpole
+ * NOTRE caméra de rendu jusqu'à elle.
  *
- * Returns transforms in CAMERA_STOPS order. Missing stops are skipped with a
- * console warning (the degraded re-export case from the design doc's test plan).
+ * Ce helper existe pour être appelé DEUX fois de sources différentes : par
+ * `extractStops()` pour chaque arrêt du tour, et par le télescope pour
+ * `CameraStop_TelescopeMoon`, qui est une caméra du `.glb` **hors tour**
+ * (#113). C'est la dérivation du champ horizontal qui ne doit exister qu'une
+ * fois — la recopier ailleurs, ce serait une deuxième source de vérité sur une
+ * focale, et `tests/stops.test.ts` ne verrouille que celle-ci.
+ *
+ * `null` avec un avertissement si le nœud manque, ou s'il porte le bon nom
+ * sans porter de caméra.
+ */
+export function readStopTransform(scene: Object3D, cameraName: string): StopTransform | null {
+  const node = scene.getObjectByName(cameraName)
+  if (!node) {
+    console.warn(`[stops] Missing camera node "${cameraName}" in the .glb — skipping stop.`)
+    return null
+  }
+
+  // The node may itself be a camera, or hold one as a child.
+  const cams: PerspectiveCamera[] = []
+  node.traverse((c: Object3D) => {
+    if ((c as PerspectiveCamera).isCamera) cams.push(c as PerspectiveCamera)
+  })
+  const cam = cams[0] ?? null
+
+  // A node with the right name but NO camera used to fall through to a
+  // 45° default. That is the worst kind of failure: the stop parks at the
+  // right spot, warns about nothing, and shows a framing nobody authored —
+  // so it looks plausible and reads as a Blender decision. Skip it loudly
+  // instead, exactly like a stop missing from the graph.
+  if (!cam) {
+    console.warn(
+      `[stops] "${cameraName}" exists in the .glb but carries no camera ` +
+        '(an Empty with the right name?) — skipping. Its focal length cannot ' +
+        'be derived, and a default one would be silently wrong.',
+    )
+    return null
+  }
+
+  const position = new Vector3()
+  const quaternion = new Quaternion()
+  cam.getWorldPosition(position)
+  cam.getWorldQuaternion(quaternion)
+  // glTF `yfov` + `aspectRatio`, as loaded into three's camera.fov/.aspect.
+  // Convert to the horizontal field, which is what the framing really is.
+  const aspect = cam.aspect > 0 ? cam.aspect : 1
+  const hfov = 2 * Math.atan(Math.tan((cam.fov * RAD) / 2) * aspect) * DEG
+  // `contain` à 0 par défaut : c'est `extractStops` qui le pose, depuis
+  // `CAMERA_STOPS`. La lune passe aussi par ici (#113) et n'est pas un arrêt du
+  // tour — elle n'a donc pas de ligne où déclarer quoi que ce soit.
+  return { position, quaternion, hfov, yfov: cam.fov, contain: 0, column: 0 }
+}
+
+/**
+ * Les arrêts du tour, lus dans le graphe chargé. Renvoie les transforms indexés
+ * par nom de caméra ; un arrêt manquant est sauté avec un avertissement (le cas
+ * du ré-export dégradé prévu au plan de test du design doc).
+ *
+ * Ne lit QUE `CAMERA_STOPS` : une caméra du `.glb` absente de ce tableau n'est
+ * jamais extraite ici. C'est voulu — le tour est ce tableau — et c'est pourquoi
+ * la lune passe par `readStopTransform()` de son côté depuis #113.
  */
 export function extractStops(scene: Object3D): Map<string, StopTransform> {
   scene.updateMatrixWorld(true)
   const stops = new Map<string, StopTransform>()
 
   for (const stop of CAMERA_STOPS) {
-    const node = scene.getObjectByName(stop.camera)
-    if (!node) {
-      console.warn(`[stops] Missing camera node "${stop.camera}" in the .glb — skipping stop.`)
-      continue
+    const transform = readStopTransform(scene, stop.camera)
+    if (transform) {
+      transform.contain = stop.fit === 'contain' ? 1 : 0
+      transform.column = stop.fit === 'column' ? 1 : 0
+      stops.set(stop.camera, transform)
     }
-
-    // The node may itself be a camera, or hold one as a child.
-    const cams: PerspectiveCamera[] = []
-    node.traverse((c: Object3D) => {
-      if ((c as PerspectiveCamera).isCamera) cams.push(c as PerspectiveCamera)
-    })
-    const cam = cams[0] ?? null
-
-    // A node with the right name but NO camera used to fall through to a
-    // 45° default. That is the worst kind of failure: the stop parks at the
-    // right spot, warns about nothing, and shows a framing nobody authored —
-    // so it looks plausible and reads as a Blender decision. Skip it loudly
-    // instead, exactly like a stop missing from the graph.
-    // A node with the right name but NO camera used to fall through to a
-    // 45° default. That is the worst kind of failure: the stop parks at the
-    // right spot, warns about nothing, and shows a framing nobody authored —
-    // so it looks plausible and reads as a Blender decision. Skip it loudly
-    // instead, exactly like a stop missing from the graph.
-    if (!cam) {
-      console.warn(
-        `[stops] "${stop.camera}" exists in the .glb but carries no camera ` +
-          '(an Empty with the right name?) — skipping. Its focal length cannot ' +
-          'be derived, and a default one would be silently wrong.',
-      )
-      continue
-    }
-
-    const position = new Vector3()
-    const quaternion = new Quaternion()
-    cam.getWorldPosition(position)
-    cam.getWorldQuaternion(quaternion)
-    // glTF `yfov` + `aspectRatio`, as loaded into three's camera.fov/.aspect.
-    // Convert to the horizontal field, which is what the framing really is.
-    const aspect = cam.aspect > 0 ? cam.aspect : 1
-    const hfov = 2 * Math.atan(Math.tan((cam.fov * RAD) / 2) * aspect) * DEG
-    stops.set(stop.camera, { position, quaternion, hfov })
   }
 
   if (stops.size === 0) {
@@ -103,38 +202,186 @@ export function extractStops(scene: Object3D): Map<string, StopTransform> {
   return stops
 }
 
-/** CAMERA_STOPS order, holes removed. Blender is the single source of truth
- *  for poses AND focal lengths: name a camera `CameraStop_*` there, add its
- *  order/label to CAMERA_STOPS here, done. (The hardcoded STOP_POSES fallback
- *  table is gone — it only existed while an export shipped without cameras.) */
 export function orderedStops(map: Map<string, StopTransform>): StopTransform[] {
   return CAMERA_STOPS.map((s) => map.get(s.camera)).filter(
     (t): t is StopTransform => t !== undefined,
   )
 }
 
-// Scratch objects — avoid per-frame allocation.
-const tmpPos = new Vector3()
-const tmpQuat = new Quaternion()
+/**
+ * Mélange deux poses et écrit le résultat dans `out`. `t = 0` rend `from`,
+ * `t = 1` rend exactement `to`.
+ *
+ * **Le champ interpolé est HORIZONTAL, jamais vertical, et ce n'est pas un
+ * détail de rangement.** Une caméra glTF décrit son cadrage par `yfov` **plus**
+ * `aspectRatio`, et Blender dérive ce couple de la résolution de rendu. Ce qui
+ * est invariant, c'est le champ horizontal : l'interpoler lui, puis convertir
+ * par viewport, fait survivre le cadrage de Blender à tous les rapports
+ * d'écran — un cadre plus court rogne en haut et en bas au lieu de reculer.
+ * Interpoler le champ vertical rendrait le mouvement dépendant de l'écran.
+ */
+export function blendPose(
+  out: StopTransform,
+  from: StopTransform,
+  to: StopTransform,
+  t: number,
+): StopTransform {
+  out.position.lerpVectors(from.position, to.position, t)
+  out.quaternion.copy(from.quaternion).slerp(to.quaternion, t)
+  out.hfov = from.hfov + (to.hfov - from.hfov) * t
+  out.yfov = from.yfov + (to.yfov - from.yfov) * t
+  // La borne verticale se relâche pendant le vol au lieu de sauter à la
+  // première image — c'est toute la raison d'en faire un poids.
+  out.contain = from.contain + (to.contain - from.contain) * t
+  // Idem pour la colonne : quitter le CV relâche son resserrement pendant le
+  // vol, au lieu de rendre le champ d'un coup à la première image.
+  out.column = from.column + (to.column - from.column) * t
+  return out
+}
 
 /**
- * Applies a continuous tour progress p ∈ [0, N-1] to the render camera:
- * position lerped, orientation slerped, horizontal fov interpolated (so
- * focal-length changes — the wide guitar shot → the telescope-moon zoom —
- * come for free), then converted to the vertical fov this viewport needs.
+ * Écrit une pose dans la caméra de rendu. C'est le seul endroit où le champ
+ * horizontal redevient le champ vertical que three.js attend — et il le fait
+ * avec le rapport d'écran RÉEL de la caméra.
+ *
+ * Ce détail a déjà coûté un défaut : le retour du télescope échantillonnait la
+ * pose du tour dans une caméra jetable laissée à son rapport par défaut, et
+ * revenait donc zoomé.
  */
-export function applyProgress(cam: PerspectiveCamera, stops: StopTransform[], p: number): void {
-  if (stops.length === 0) return
-  const clamped = Math.min(Math.max(p, 0), stops.length - 1)
-  const i = Math.min(Math.floor(clamped), stops.length - 2)
-  const t = stops.length > 1 ? clamped - i : 0
-  const a = stops[Math.max(i, 0)]
-  const b = stops[Math.min(i + 1, stops.length - 1)]
-
-  tmpPos.lerpVectors(a.position, b.position, t)
-  tmpQuat.copy(a.quaternion).slerp(b.quaternion, t)
-  cam.position.copy(tmpPos)
-  cam.quaternion.copy(tmpQuat)
-  cam.fov = verticalFov(a.hfov + (b.hfov - a.hfov) * t, cam.aspect)
+export function applyPose(cam: PerspectiveCamera, pose: StopTransform, widthPx: number): void {
+  cam.position.copy(pose.position)
+  cam.quaternion.copy(pose.quaternion)
+  cam.fov = poseVerticalFov(pose, cam.aspect, widthPx)
   cam.updateProjectionMatrix()
+}
+
+/**
+ * Le champ vertical qu'une pose donne à une fenêtre de ce rapport, en degrés.
+ *
+ * L'ajustement HORIZONTAL, la règle du tour : le champ horizontal composé dans
+ * Blender est conservé partout, et une fenêtre plus courte recadre en haut et
+ * en bas plutôt que de reculer et perdre le plan. Sauf là où cadrer trop large
+ * montrerait ce qu'il ne faut pas voir (#135) : la borne `yfov` ne mord QUE sur
+ * une fenêtre plus haute que celle composée — sur 16:9 et au-delà, `free` est
+ * déjà sous `yfov` et le minimum ne change rien.
+ *
+ * Exposé à part parce que l'intro (#142) doit savoir ce que la caméra Home
+ * montre de l'écran, et le calculer autrement ici et là finirait par diverger.
+ */
+export function poseVerticalFov(pose: StopTransform, aspect: number, widthPx: number): number {
+  // Le resserrement de la colonne joue sur le champ HORIZONTAL, donc avant
+  // tout le reste : c'est lui qui décide de ce que le vertical vaudra.
+  const hfov = pose.hfov + (columnHfov(pose.hfov, widthPx) - pose.hfov) * pose.column
+  const free = verticalFov(hfov, aspect)
+  return free + (Math.min(free, pose.yfov) - free) * pose.contain
+}
+
+/** Une pose neutre, à remplir. */
+export function emptyPose(): StopTransform {
+  return {
+    position: new Vector3(),
+    quaternion: new Quaternion(),
+    hfov: 60,
+    yfov: 40,
+    contain: 0,
+    column: 0,
+  }
+}
+
+/** Copie `from` dans `out`, sans allouer. */
+export function copyPose(out: StopTransform, from: StopTransform): StopTransform {
+  out.position.copy(from.position)
+  out.quaternion.copy(from.quaternion)
+  out.hfov = from.hfov
+  out.yfov = from.yfov
+  out.contain = from.contain
+  out.column = from.column
+  return out
+}
+
+/**
+ * L'index visé par un PAS du tour, dans la direction donnée.
+ *
+ * Deux décisions produit tiennent dans cette fonction, et aucune ne survit à
+ * une « simplification » en modulo (2026-08-24) :
+ *
+ *  - **Le tour boucle en avant, du dernier arrêt vers le PREMIER ARRÊT**, pas
+ *    vers l'accueil. L'accueil est le seuil du parcours : son cadrage remplit
+ *    l'image d'un écran pour que la première vue se lise comme une image plate,
+ *    et le premier défilement recule et révèle la pièce. Rejouer cette
+ *    révélation à chaque tour la viderait de son effet.
+ *  - **Il ne boucle pas en arrière.** Reculer depuis l'accueil ne fait rien —
+ *    on y retourne en reculant depuis le premier arrêt, ou par la barre de
+ *    menu, jamais en avançant.
+ *
+ * `null` quand le pas ne mène nulle part.
+ */
+export function nextStopIndex(from: number, dir: 1 | -1, count: number): number | null {
+  if (count <= 0) return null
+  const last = count - 1
+  const next = from + dir
+  if (next < 0) return null
+  if (next > last) return last >= LOOP_FIRST ? LOOP_FIRST : null
+  return next
+}
+
+/** Le premier arrêt du tour, celui sur lequel on boucle. L'accueil est 0. */
+export const LOOP_FIRST = 1
+
+/**
+ * Les trois échelles qui font qu'un mouvement est « long ». **Mesurées sur la
+ * scène**, pas choisies : ce sont les maxima observés entre deux arrêts
+ * voisins du tour.
+ *
+ *   distance   0,72 → 3,04 m   (médiane 1,36)
+ *   rotation   13 → 157°       (médiane 44)
+ *   Δ champ    1,4 → 44°       (médiane 10)
+ */
+const MOVE_REF_M = 3.05
+const MOVE_REF_DEG = 158
+const MOVE_REF_FOV = 45
+
+/**
+ * Les bornes de la durée, en secondes — **arbitrées dans un vrai navigateur**
+ * (#115, 2026-08-24), sur trois candidats : 1,0–1,7 s (trop sec), celles-ci, et
+ * 1,35–2,5 s (le milieu du trajet s'étire trop). Un mouvement ne se juge qu'en
+ * mouvement : une capture prise sous un rasteriseur logiciel ne dit rien de sa
+ * fluidité, et c'est pourquoi le choix ne s'est pas fait sur des images.
+ *
+ * Un peu plus lent qu'avant (1,2 s pour un pas, 1,6 s pour un saut, sans rapport
+ * l'une avec l'autre), et surtout plus étalé : le mouvement le plus ample dure
+ * presque le double du plus modeste, là où les deux duraient pareil.
+ */
+export const MOVE_MIN_S = 1.15
+export const MOVE_MAX_S = 2.1
+
+/**
+ * La durée d'un mouvement, d'après ce qu'il fait parcourir à l'œil.
+ *
+ * **Trois termes, et pas un seul, parce que la mesure a montré que distance et
+ * rotation sont DÉCORRÉLÉES sur cette scène.** Le pas le plus court en distance
+ * (Télescope → Mappemonde, 0,72 m) est aussi le plus violent : un demi-tour de
+ * 157° sur place. Le plus long (Posters → Télescope, 3,04 m) ne tourne que de
+ * 26°. Une durée proportionnelle à la seule distance rendrait donc le demi-tour
+ * le plus RAPIDE de la visite, ce qui est exactement l'inverse de ce qu'il
+ * faut. Le champ compte pour la même raison : un changement de focale se lit
+ * comme un travelling, même sans un centimètre parcouru.
+ *
+ * On prend le maximum des trois plutôt que leur somme : ce qui fatigue l'œil,
+ * c'est le mouvement le plus ample, pas leur cumul.
+ */
+export function moveDuration(from: StopTransform, to: StopTransform): number {
+  const metres = from.position.distanceTo(to.position)
+  // L'angle entre deux orientations, en degrés. `Math.abs` sur le produit
+  // scalaire : q et −q décrivent la même orientation, et sans lui un demi-tour
+  // se compterait parfois à 360° moins son angle.
+  const dot = Math.min(1, Math.abs(from.quaternion.dot(to.quaternion)))
+  const degres = 2 * Math.acos(dot) * DEG
+  const champ = Math.abs(from.hfov - to.hfov)
+
+  const effort = Math.min(
+    1,
+    Math.max(metres / MOVE_REF_M, degres / MOVE_REF_DEG, champ / MOVE_REF_FOV),
+  )
+  return MOVE_MIN_S + (MOVE_MAX_S - MOVE_MIN_S) * effort
 }

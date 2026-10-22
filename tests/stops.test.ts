@@ -1,6 +1,24 @@
-import { Object3D, PerspectiveCamera } from 'three'
+import { readFileSync } from 'node:fs'
+import { Object3D, PerspectiveCamera, Vector3 } from 'three'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { applyProgress, extractStops, orderedStops, verticalFov } from '@/lib/stops'
+import {
+  CV_COLUMN_FRACTION,
+  CV_COLUMN_MARGIN_PX,
+  CV_COLUMN_PX,
+  MOVE_MAX_S,
+  MOVE_MIN_S,
+  applyPose,
+  blendPose,
+  columnHfov,
+  cvColumnTarget,
+  emptyPose,
+  extractStops,
+  moveDuration,
+  nextStopIndex,
+  orderedStops,
+  poseVerticalFov,
+  verticalFov,
+} from '@/lib/stops'
 
 /**
  * `src/lib/stops.ts` porte le cadrage de toute la visite, et s'est déjà trompé
@@ -175,7 +193,13 @@ describe('orderedStops', () => {
   })
 })
 
-describe('applyProgress', () => {
+/**
+ * `blendPose` + `applyPose` ont remplacé `applyProgress` (#115) : la première
+ * mélange deux poses, la seconde en écrit une dans la caméra. Ce que ces tests
+ * verrouillent n'a pas changé — l'interpolation porte sur le champ HORIZONTAL,
+ * l'arrivée est exacte, et le cadrage ne dépend pas du rapport d'écran.
+ */
+describe('blendPose et applyPose', () => {
   const paliers = [
     { position: { x: 0 }, hfov: 40 },
     { position: { x: 10 }, hfov: 80 },
@@ -197,7 +221,8 @@ describe('applyProgress', () => {
     const stops = deuxStops()
     const cam = new PerspectiveCamera(50, 16 / 9)
 
-    applyProgress(cam, stops, 0.5)
+    const [a, b] = stops
+    applyPose(cam, blendPose(emptyPose(), a, b, 0.5), 1920)
 
     expect(cam.fov).toBeCloseTo(verticalFov(60, 16 / 9), 5)
   })
@@ -206,7 +231,8 @@ describe('applyProgress', () => {
     const stops = deuxStops()
     const cam = new PerspectiveCamera(50, 16 / 9)
 
-    applyProgress(cam, stops, 1)
+    const [a, b] = stops
+    applyPose(cam, blendPose(emptyPose(), a, b, 1), 1920)
 
     expect(cam.fov).toBeCloseTo(verticalFov(80, 16 / 9), 5)
     expect(cam.position.x).toBeCloseTo(10, 5)
@@ -219,8 +245,9 @@ describe('applyProgress', () => {
     const large = new PerspectiveCamera(50, 21 / 9)
     const carre = new PerspectiveCamera(50, 1)
 
-    applyProgress(large, stops, 0)
-    applyProgress(carre, stops, 0)
+    const [a] = stops
+    applyPose(large, a, 1920)
+    applyPose(carre, a, 1920)
 
     const hLarge = 2 * Math.atan(Math.tan((large.fov * RAD) / 2) * large.aspect) * DEG
     const hCarre = 2 * Math.atan(Math.tan((carre.fov * RAD) / 2) * carre.aspect) * DEG
@@ -228,24 +255,158 @@ describe('applyProgress', () => {
     expect(hLarge).toBeCloseTo(40, 5)
   })
 
-  it('borne la progression aux extrémités de la visite', () => {
+  it('rend exactement les poses d’origine aux deux bouts', () => {
+    // Le mélange ne doit rien laisser traîner : à t = 1, la caméra est sur le
+    // cadrage autorisé par Blender, pas à un epsilon de lui. C'est ce que le
+    // mouvement recopie à l'arrivée pour repartir d'un état propre.
     const stops = deuxStops()
-    const cam = new PerspectiveCamera(50, 16 / 9)
+    const [a, b] = stops
 
-    applyProgress(cam, stops, -5)
-    expect(cam.position.x).toBeCloseTo(0, 5)
+    const debut = blendPose(emptyPose(), a, b, 0)
+    expect(debut.position.x).toBeCloseTo(0, 10)
+    expect(debut.hfov).toBeCloseTo(paliers[0].hfov, 10)
 
-    applyProgress(cam, stops, 99)
-    expect(cam.position.x).toBeCloseTo(10, 5)
+    const fin = blendPose(emptyPose(), a, b, 1)
+    expect(fin.position.x).toBeCloseTo(10, 10)
+    expect(fin.hfov).toBeCloseTo(paliers[1].hfov, 10)
   })
 
-  it('ne touche pas à la caméra si la visite est vide', () => {
-    const cam = new PerspectiveCamera(50, 16 / 9)
-    cam.position.set(1, 2, 3)
+  it('borne les index, pas les poses', () => {
+    // Le bornage a changé d'endroit avec #115 : il n'y a plus de progression
+    // continue à écrêter, seulement un index d'arrêt. `nextStopIndex` refuse
+    // de sortir du tour, et le mouvement borne l'index qu'on lui demande.
+    expect(nextStopIndex(0, -1, 2)).toBeNull()
+    expect(nextStopIndex(1, 1, 2)).toBe(1)
+  })
+})
 
-    applyProgress(cam, [], 0.5)
+describe('nextStopIndex', () => {
+  it('avance d’un arrêt au suivant', () => {
+    expect(nextStopIndex(0, 1, 10)).toBe(1)
+    expect(nextStopIndex(4, 1, 10)).toBe(5)
+  })
 
-    expect(cam.fov).toBe(50)
-    expect(cam.position.toArray()).toEqual([1, 2, 3])
+  it('boucle du dernier arrêt vers le PREMIER ARRÊT, jamais vers l’accueil', () => {
+    // La décision produit du 2026-08-24 : l'accueil est le seuil du parcours,
+    // pas une étape de la boucle. Un modulo rendrait 0 et rejouerait la
+    // révélation de la pièce à chaque tour.
+    expect(nextStopIndex(9, 1, 10)).toBe(1)
+    expect(nextStopIndex(9, 1, 10)).not.toBe(0)
+  })
+
+  it('recule jusqu’à l’accueil, et s’y arrête', () => {
+    expect(nextStopIndex(1, -1, 10)).toBe(0)
+    expect(nextStopIndex(0, -1, 10)).toBeNull()
+  })
+
+  it('ne boucle pas sur un tour qui n’a que l’accueil', () => {
+    expect(nextStopIndex(0, 1, 1)).toBeNull()
+    expect(nextStopIndex(0, 1, 0)).toBeNull()
+  })
+})
+
+describe('moveDuration', () => {
+  const pose = (x: number, hfov: number, yaw = 0) => {
+    const p = emptyPose()
+    p.position.set(x, 0, 0)
+    p.hfov = hfov
+    p.quaternion.setFromAxisAngle(new Vector3(0, 1, 0), yaw)
+    return p
+  }
+
+  it('reste dans ses bornes', () => {
+    expect(moveDuration(pose(0, 50), pose(0, 50))).toBeCloseTo(MOVE_MIN_S, 5)
+    expect(moveDuration(pose(0, 50), pose(100, 50))).toBeCloseTo(MOVE_MAX_S, 5)
+  })
+
+  it('ne se laisse pas piloter par la seule distance', () => {
+    // Le fait mesuré qui justifie les trois termes : sur cette scène, le pas
+    // le plus COURT (0,72 m) est un demi-tour de 157°, et le plus LONG
+    // (3,04 m) ne tourne que de 26°. Sur la distance seule, le demi-tour
+    // serait le mouvement le plus rapide de la visite.
+    const demiTour = moveDuration(pose(0, 50), pose(0.72, 50, Math.PI * 0.87))
+    const traversee = moveDuration(pose(0, 50), pose(3.04, 50, 0.46))
+    expect(demiTour).toBeGreaterThan(traversee * 0.9)
+  })
+
+  it('compte un changement de focale comme un mouvement', () => {
+    // Un zoom se lit comme un travelling, même sans un centimètre parcouru.
+    const surPlace = moveDuration(pose(0, 20), pose(0, 20))
+    const zoom = moveDuration(pose(0, 20), pose(0, 64))
+    expect(zoom).toBeGreaterThan(surPlace)
+  })
+
+  it('est symétrique : l’aller et le retour durent autant', () => {
+    const a = pose(0, 30)
+    const b = pose(2, 60, 1.1)
+    expect(moveDuration(a, b)).toBeCloseTo(moveDuration(b, a), 10)
+  })
+})
+
+/**
+ * LA COLONNE LISIBLE DU CV (2026-09-07). Le cadrage 3D et la boîte DOM sont
+ * deux moteurs qui doivent répondre la même largeur : le texte est posé sur la
+ * projection de l'écran vertical, et s'ils divergent, la colonne s'écrit à côté
+ * de l'écran qui est censé l'afficher. Rien dans le rendu ne le dirait.
+ */
+describe('la colonne lisible du CV', () => {
+  const css = readFileSync('src/styles/tokens.css', 'utf8')
+
+  it('écrit les mêmes trois nombres dans le CSS et dans le code', () => {
+    const rule = css.match(/--cv-column:\s*max\(([\d.]+)vw,\s*min\((\d+)px,\s*100vw - (\d+)px\)\)/)
+    expect(rule, '--cv-column introuvable dans tokens.css').not.toBeNull()
+    expect(Number(rule![1])).toBeCloseTo(CV_COLUMN_FRACTION * 100, 6)
+    expect(Number(rule![2])).toBe(CV_COLUMN_PX)
+    expect(Number(rule![3])).toBe(2 * CV_COLUMN_MARGIN_PX)
+  })
+
+  it('ne resserre RIEN sur une fenêtre au moins aussi large que le design', () => {
+    // 1 280 est le cadre du design, 1 920 celui des références de rendu : le
+    // cadrage composé dans Blender doit y être intact au degré près.
+    for (const width of [1280, 1512, 1920, 2560]) {
+      expect(columnHfov(26.99, width)).toBeCloseTo(26.99, 6)
+    }
+  })
+
+  it('resserre juste ce qu’il faut sur une fenêtre étroite', () => {
+    // La largeur obtenue est `fraction × largeur × tan(H0/2) / tan(H/2)`.
+    const column = (width: number) =>
+      (CV_COLUMN_FRACTION * width * Math.tan((26.99 * Math.PI) / 360)) /
+      Math.tan((columnHfov(26.99, width) * Math.PI) / 360)
+    expect(column(1024)).toBeCloseTo(CV_COLUMN_PX, 3)
+    expect(column(390)).toBeCloseTo(cvColumnTarget(390), 3)
+    expect(cvColumnTarget(390)).toBe(342)
+  })
+
+  it('ne s’applique QU’À l’arrêt qui le demande, et s’interpole en le quittant', () => {
+    const cv = { ...emptyPose(), hfov: 26.99, yfov: 15.4, column: 1 }
+    const libre = { ...emptyPose(), hfov: 26.99, yfov: 15.4, column: 0 }
+    // Sur une fenêtre étroite, l'arrêt libre garde son champ, le CV le resserre.
+    expect(poseVerticalFov(libre, 0.46, 390)).toBeGreaterThan(poseVerticalFov(cv, 0.46, 390))
+    // Et le poids se relâche pendant le vol au lieu de sauter.
+    const moitie = blendPose(emptyPose(), cv, libre, 0.5)
+    expect(moitie.column).toBeCloseTo(0.5, 6)
+  })
+})
+
+describe('poseVerticalFov', () => {
+  const pose = { ...emptyPose(), hfov: 53.13, yfov: 31.42 }
+
+  it('keeps the horizontal fit on a free stop, whatever the window', () => {
+    // Fenêtre plus haute que 16:9 : le champ vertical GRANDIT, rien ne le borne.
+    expect(poseVerticalFov({ ...pose, contain: 0 }, 1.6, 1920)).toBeCloseTo(
+      verticalFov(53.13, 1.6),
+      6,
+    )
+    expect(poseVerticalFov({ ...pose, contain: 0 }, 1.6, 1920)).toBeGreaterThan(31.42)
+  })
+
+  it('caps a contained stop at its authored vertical field on a taller window', () => {
+    expect(poseVerticalFov({ ...pose, contain: 1 }, 1.6, 1920)).toBeCloseTo(31.42, 6)
+    // Et ne change rien sur une fenêtre au moins aussi large que composée.
+    expect(poseVerticalFov({ ...pose, contain: 1 }, 2.37, 1920)).toBeCloseTo(
+      verticalFov(53.13, 2.37),
+      6,
+    )
   })
 })

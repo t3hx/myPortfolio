@@ -1,0 +1,857 @@
+/* Spike-grade styling (HUD, panel). La bulle et la pré-sélection portent le
+   vrai design system — tokens et composants dans src/styles/tokens.css,
+   importé AVANT ce fichier (voir main.tsx). */
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: #04050c;
+  font-family: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', monospace;
+}
+
+.stage {
+  position: fixed;
+  inset: 0;
+}
+
+/* LE TACTILE APPARTIENT AU TOUR, et il faut le dire au navigateur.
+   Sans cette ligne le geste de balayage est intercepté par le défilement natif
+   et le pincement de zoom, et la scène ne reçoit qu'un `touchmove` sur deux :
+   sur téléphone, l'app n'avançait pas d'un arrêt (rapporté le 2026-09-07).
+
+   Elle est posée sur le CANVAS et non sur `.stage` : `touch-action` se compose
+   avec celui des ancêtres, si bien qu'un `none` sur l'étage interdirait aussi
+   de faire défiler la fiche projet et le CV, qui vivent dedans et qui, eux,
+   ont bel et bien quelque chose à faire défiler. */
+.stage canvas {
+  touch-action: none;
+}
+
+/* --- HUD -------------------------------------------------------------------------- */
+/* Root swallows no events; interactive islands re-enable them. Wheel anywhere else
+   falls through to drei's hidden scroller (risk point #2, "suspenders" half). */
+.hud {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 200;
+  color: rgba(190, 215, 255, 0.85);
+}
+
+.status {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  letter-spacing: 0.06em;
+}
+
+.phase {
+  padding: 3px 8px;
+  border-radius: 5px;
+  border: 1px solid rgba(120, 200, 255, 0.35);
+  background: rgba(6, 9, 20, 0.6);
+  font-weight: 700;
+}
+
+.phase-touring {
+  color: #8be28b;
+}
+.phase-parked {
+  color: #6fd0ff;
+}
+.phase-panel {
+  color: #ffce6b;
+}
+.phase-telescope {
+  color: #d99bff;
+}
+
+/* --- Actions & hint --------------------------------------------------------------- */
+.actions {
+  position: absolute;
+  bottom: 46px;
+  left: 16px;
+  display: flex;
+  gap: 8px;
+  pointer-events: auto;
+}
+
+.actions button,
+.actions select {
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(120, 200, 255, 0.35);
+  background: rgba(6, 9, 20, 0.7);
+  color: #eaf4ff;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.actions button:hover {
+  border-color: #6fd0ff;
+}
+
+/* Une seconde rangée, au-dessus de celle des phases, pour ne pas déplacer des
+   boutons que le muscle connaît. Elle porte ce qui ne dépend pas de la phase :
+   le rejeu de l'intro et le choix de l'arrêt. */
+.actions--intro {
+  bottom: 82px;
+}
+
+.picker {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+}
+
+.hint {
+  position: absolute;
+  bottom: 14px;
+  left: 16px;
+  margin: 0;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: rgba(190, 215, 255, 0.45);
+}
+
+/* --- Panneaux ---------------------------------------------------------------------- */
+/* `.panel` est un MARQUEUR DE COMPORTEMENT, pas une apparence : `CameraRig`
+   ignore toute molette dont la cible est dedans. Il ne doit donc porter AUCUN
+   style, sinon tout panneau qui le réclame pour la molette hérite d'une
+   géométrie qui n'est pas la sienne — mesuré : la fiche projet (#83) sortait à
+   420 px de large, collée à droite, avec le fond bleu du HUD.
+
+   Il n'y a plus rien d'autre ici. `.hud-panel` habillait un panneau de
+   démonstration du spike — un tiroir bleu rempli de « Scrollable filler block »
+   — dont le seul travail était de prouver que la molette lui appartenait. La
+   fiche projet le prouve maintenant en produisant quelque chose, et le HUD
+   l'ouvre directement (voir `Hud.tsx`). */
+
+/* La couche de l'intro (#142) : du DOM posé dans la 3D sur l'écran principal,
+   par un drei <Html transform>. Sous les bulles (100) : la bulle d'accueil se
+   pose devant le moniteur, et le menu reste au-dessus de tout. Rien n'y est
+   cliquable — la scène écoute, pas l'écran. */
+.intro-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: var(--z-intro);
+  overflow: hidden;
+}
+
+/* La boîte de l'écran : SANS FOND — le moniteur est le fond de l'animation
+   (décision du 2026-09-06). Elle ne fait que rogner ce qui déborde de l'écran.
+   Le cadre 16:9 est contenu et centré dedans, avec une marge
+   (INTRO_SCREEN_MARGIN), jamais rogné ni étiré — et il ne rogne rien lui-même,
+   sinon les étoiles s'arrêtent net à son bord et dessinent un rectangle. */
+.intro-screen {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.intro-frame {
+  position: relative;
+  overflow: visible;
+}
+
+/* La scène de l'intro : un canvas pour le raster, un SVG pour le vecteur, du
+   HTML pour le texte, dans le repère du cadre. L'accent vient d'une variable
+   posée par le composant (provisoire jusqu'à #147). */
+.intro-stage {
+  position: absolute;
+  inset: 0;
+  overflow: visible;
+  font-family: var(--font-ui);
+}
+
+/* Les calques du monde A sont posés sur l'ÉCRAN entier (taille et décalage
+   inline), pas sur le cadre. */
+.intro-world {
+  position: absolute;
+}
+
+.intro-canvas,
+.intro-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.intro-svg {
+  overflow: visible;
+}
+
+/* Le monde B (#145) — l'intérieur du triangle. Posé sur le CADRE et non sur
+   l'écran : à l'échelle 1 il le remplit exactement, et c'est ce qui donne au
+   plan du lab la taille pour laquelle il a été dessiné. Son opacité est écrite
+   par la boucle d'images ; son zoom est un transform SVG, jamais CSS. */
+.intro-world-b {
+  position: absolute;
+  inset: 0;
+}
+
+/* La poussière du monde B : le premier groupe d'étoiles, figé et très
+   discret. Un noir parfait derrière le plan se lirait comme un cache posé sur
+   l'écran plutôt que comme un espace. */
+.intro-dust {
+  fill: none;
+  stroke: var(--cream);
+  stroke-width: 2;
+  stroke-linecap: round;
+  opacity: 0.14;
+}
+
+/* Le plan du lab : l'encre, le remplissage, la casse et le pointillé sont
+   déclarés UNE fois ici et hérités par les 2 346 tracés — chacun ne porte que
+   son `d`, son épaisseur et son `pathLength="1"`. C'est aussi ce qui permet à
+   l'accent de changer (#147) sans reconstruire un seul chemin.
+
+   `stroke-dasharray: 1 1` sur une longueur normalisée à 1 : le décalage de
+   tiret va de 1 (rien) à 0 (tout), et c'est la seule grandeur qui bouge, une
+   par vague. Le 1 déclaré ici est la valeur AVANT que la boucle n'écrive quoi
+   que ce soit : sans lui le décalage vaut 0, et le plan entier est déjà tracé
+   quand le monde B s'ouvre. */
+.intro-lab {
+  fill: none;
+  stroke: var(--intro-accent);
+  stroke-linecap: round;
+  stroke-dasharray: 1 1;
+  stroke-dashoffset: 1;
+}
+
+/* Le canvas du tourbillon (#146) est posé sur l'ÉCRAN et non sur le cadre :
+   ses particules partent jusqu'à 1 220 px de leur cible. Sa taille et son
+   décalage sont écrits en ligne, donc il ne peut pas hériter du `inset: 0`. */
+.intro-canvas--loose {
+  inset: auto;
+}
+
+/* L'IDENTITÉ (#146) — le nom et le titre, en HTML pour la netteté du texte et
+   son ombre portée. Elle vit dans le CADRE, à l'échelle du monde B : c'est le
+   seul transform CSS de l'intro, et il ne porte que du texte — les 2 346
+   tracés du plan restent, eux, sous un transform SVG vectoriel. */
+.intro-identity {
+  position: absolute;
+  inset: 0;
+  transform-origin: 0 0;
+  will-change: transform;
+}
+
+/* Le nom. La taille, la police et l'interlettrage sont écrits en ligne depuis
+   INTRO_NAME_FONT : le canvas hors écran échantillonne EXACTEMENT ces
+   valeurs-là pour donner une cible à chaque particule, et deux déclarations
+   séparées finiraient par diverger sans rien dire. */
+.intro-name {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  height: 116px;
+  line-height: 116px;
+  text-align: center;
+  color: var(--cream);
+  white-space: pre;
+}
+
+.intro-name span {
+  display: inline-block;
+  opacity: 0;
+  text-shadow:
+    0 0 26px color-mix(in srgb, var(--intro-accent) 35%, transparent),
+    0 0 7px color-mix(in srgb, var(--intro-accent) 65%, transparent);
+}
+
+/* Le titre gravé au laser. Son gris froid est celui du handoff, plus sourd que
+   le crème du nom : le titre accompagne, il n'annonce pas. */
+.intro-title {
+  position: absolute;
+  height: 40px;
+}
+
+.intro-title__text {
+  width: 100%;
+  text-align: center;
+  font-size: 24px;
+  font-weight: 500;
+  letter-spacing: 0.52em;
+  color: #c9d4d8;
+  text-shadow: 0 0 14px color-mix(in srgb, var(--intro-accent) 25%, transparent);
+  /* L'interlettrage s'ajoute APRÈS la dernière lettre : sans ce rattrapage le
+     texte centré penche d'un demi-cadratin vers la gauche. */
+  padding-left: 0.52em;
+}
+
+/* L'étincelle qui suit le bord de la gravure. Sa position et son scintillement
+   sont écrits par la boucle ; le halo est un `box-shadow`, pas un `filter`,
+   qui coûterait une rastérisation à chaque image. */
+.intro-spark {
+  position: absolute;
+  top: -4px;
+  width: 6px;
+  height: 38px;
+  border-radius: 3px;
+  background: var(--intro-core);
+  box-shadow:
+    0 0 18px 6px var(--intro-accent),
+    0 0 46px 18px color-mix(in srgb, var(--intro-accent) 40%, transparent);
+}
+
+/* « CREATIVE » clignote pour toujours, comme un néon qui fonctionne plus mal
+   que bien : majoritairement éteint, avec de brefs retours pleins.
+
+   La boucle est en CSS et pas dans la boucle d'images, parce que l'horloge de
+   l'intro s'arrête à la dernière image — un clignotement piloté par T se
+   figerait avec elle, sur une valeur quelconque. `steps(1, end)` est ce qui
+   fait un néon plutôt qu'une respiration : chaque palier tient jusqu'au
+   suivant, rien n'est interpolé. */
+@keyframes intro-flicker {
+  0% {
+    opacity: 1;
+  }
+  4% {
+    opacity: 0.1;
+  }
+  7% {
+    opacity: 1;
+  }
+  9% {
+    opacity: 0.14;
+  }
+  13% {
+    opacity: 0.85;
+  }
+  15% {
+    opacity: 0.08;
+  }
+  36% {
+    opacity: 0.18;
+  }
+  38% {
+    opacity: 1;
+  }
+  40% {
+    opacity: 0.1;
+  }
+  44% {
+    opacity: 0.9;
+  }
+  47% {
+    opacity: 0.12;
+  }
+  62% {
+    opacity: 0.2;
+  }
+  64% {
+    opacity: 1;
+  }
+  66% {
+    opacity: 0.09;
+  }
+  70% {
+    opacity: 0.16;
+  }
+  88% {
+    opacity: 0.12;
+  }
+  91% {
+    opacity: 1;
+  }
+  94% {
+    opacity: 0.1;
+  }
+  100% {
+    opacity: 0.18;
+  }
+}
+
+.intro-flicker {
+  animation: intro-flicker 2.7s steps(1, end) infinite;
+}
+
+/* Mouvement réduit : le mot reste écrit, plein, et ne clignote pas. Même règle
+   que partout ailleurs — ce qui démarre tout seul est coupé. */
+@media (prefers-reduced-motion: reduce) {
+  .intro-flicker {
+    animation: none;
+  }
+}
+
+/* Le flash du big-bang, sur tout l'écran : blanc au centre, accent, puis rien. */
+.intro-flash {
+  position: absolute;
+  background: radial-gradient(circle at 50% 50%, #fff 0%, var(--intro-accent) 22%, transparent 62%);
+}
+
+/* Un mot de phase : lettre par lettre, entre deux tirets (#147).
+
+   IL PORTE LE DORÉ, ET PLUS L'ACCENT. Il l'a porté, et il se lisait alors comme
+   un élément du dessin plutôt que comme une légende de celui-ci : tout ce que
+   l'intro trace — le triangle, les ondes, les particules, le plan, le
+   tourbillon — est déjà dans l'accent. `--intro-gold` est dérivé du crème,
+   la seule couleur non cyan de la palette (voir `config/intro.ts`) : il se
+   démarque des trois candidates d'accent quelle que soit celle qu'on
+   retienne, et d'un cran de plus que le crème, qui est aussi la couleur du
+   nom.
+
+   Les tirets le portent AUSSI : ce sont la ponctuation du mot, pas un autre
+   élément. Et le halo est doré lui aussi, sinon la couleur qu'on vient de
+   donner au texte lui est reprise par son ombre.
+
+   Le bloc SE DIMENSIONNE SUR SON CONTENU, et ne porte plus la largeur fixe de
+   460 px qu'il avait : deux tirets symétriques ne veulent rien dire autour d'un
+   texte aligné dans une boîte plus large que lui. L'ancrage est donc celui du
+   côté dont chaque mot est proche, ou son centre pour celui qu'on a recentré —
+   voir `WORD_STYLE` dans `IntroStage.tsx`, où les trois positions sont écrites
+   avec leur raison. */
+.intro-word {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  font-size: 24px;
+  font-weight: 500;
+  letter-spacing: 0.62em;
+  color: var(--intro-gold);
+  text-shadow: 0 0 14px color-mix(in srgb, var(--intro-gold) 40%, transparent);
+  white-space: pre;
+}
+
+/* L'interlettrage s'ajoute APRÈS la dernière lettre : sans ce rattrapage le
+   mot est décalé d'un demi-cadratin dans son propre bloc, et les deux tirets
+   cessent d'être à la même distance de lui. Même correction que `.intro-title`. */
+.intro-word__text {
+  padding-left: 0.62em;
+}
+
+/* Les tirets suivent la PREMIÈRE et la DERNIÈRE lettre (voir `applyWord`), et
+   non l'opacité du bloc : posés à plein, ils flotteraient de part et d'autre
+   d'un mot pas encore écrit — 0,63 s pour GENESIS, ce qui se lit comme un
+   défaut d'affichage. */
+.intro-word__rule {
+  width: 34px;
+  height: 2px;
+  background: var(--intro-gold);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--intro-gold) 55%, transparent);
+}
+
+/* Stable portal layer for world-anchored bubbles — sits between the canvas (0)
+   and the HUD (200) so panels/nav always paint above bubbles. */
+.bubble-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 100;
+  overflow: hidden;
+
+  /* L'UNITÉ du dialogue (#137) — « un pixel du design, redimensionné ».
+
+     La bulle était figée aux tailles de la session design, mesurées dans un
+     cadre de 1280 : sur un écran de 2560 la phrase occupe deux fois moins de
+     champ visuel et devient pénible à lire. Tout ce qui la dimensionne est donc
+     réécrit en multiples de cette unité — `calc(19 * var(--u))` se lit comme
+     « les 19 px du design », et non comme un nombre magique de plus.
+
+     **C'est une LONGUEUR, pas un facteur, et le détour est obligatoire.** Écrite
+     `clamp(1, calc(100vw / 1280), 1.35)`, elle mélange des nombres et une
+     longueur — `100vw / 1280` est une longueur — et le `clamp` entier devient
+     invalide. Mesuré : la police retombait alors à 16 px, la taille par défaut
+     du navigateur, ce qui ressemble à s'y méprendre à un réglage qui n'a pas
+     pris. En longueur, les trois bornes sont du même type et `calc(19 * var(--u))`
+     est valide, parce qu'un nombre multiplié par une longueur EST une longueur.
+
+     Elle suit la LARGEUR, jamais `min(vw, vh)` — même raison que la visée du
+     télescope : le tour ajuste son champ horizontalement, donc c'est la largeur
+     qui décide de la taille apparente de tout ce que la scène montre. Indexée
+     sur la hauteur, la bulle grossirait sur un écran étroit et haut, où il y a
+     justement le moins de place.
+
+     Le plancher à 1 px garantit qu'en dessous de 1280 RIEN ne change : c'est
+     exactement la largeur du cadre du design. Le plafond à 1,35 px est atteint
+     dès 1728 de large.
+
+     **La LARGEUR maximale, elle, ne suit pas cette unité** (correction du
+     2026-08-25) : elle est composée contre la SCÈNE et non contre le texte. En
+     la faisant grossir aussi, la bulle de l'étagère venait mordre le montant de
+     la bibliothèque à 2560 — une bulle désigne son sujet, elle ne le recouvre
+     pas. La boîte grandit donc en HAUTEUR, où elle n'a personne à recouvrir.
+     Voir `Bubble.tsx`.
+
+     Elle vit ICI et non dans `tokens.css` : les maquettes gardent les tailles
+     que la session design a validées, et c'est le calque projeté — lui seul —
+     qui s'adapte à la fenêtre. */
+  --u: clamp(1px, calc(100vw / 1280), 1.35px);
+}
+
+/* Tout ce qui fait la TAILLE de la bulle suit la même unité. Grossir la seule
+   police laisserait un cadre trop serré autour d'un texte trop grand : le
+   rembourrage et le rayon sont de l'anatomie, pas de la décoration.
+   Les nombres reprennent ceux de `tokens.css` ; `tests/bubbleScale.test.ts`
+   échoue si les deux se mettent à dire autre chose. */
+/* Bloc en flux pour que `center` centre réellement la bulle sur le point
+   projeté — en `position: absolute` (la règle des maquettes), le conteneur
+   mesurerait 0×0 et le translate(-50%,-50%) du centrage serait sans effet. En
+   maquette, `.bubble` reste absolue dans la page ; la règle ne vit donc qu'ici. */
+.bubble-layer .bubble {
+  position: relative;
+  width: max-content;
+  /* Les largeurs du design (max-width 380, table de placement de #48) sont
+     mesurées en content-box — les maquettes ne posent aucun reset. Sous le
+     border-box global de l'app elles rétréciraient du rembourrage et du bord.
+     Voir DESIGN.md, notes d'implémentation. */
+  box-sizing: content-box;
+  padding: calc(16 * var(--u)) calc(22 * var(--u)) calc(15 * var(--u));
+  border-radius: calc(10 * var(--u));
+}
+
+.bubble-layer .bubble__text {
+  font-size: calc(19 * var(--u));
+}
+
+.bubble-layer .bubble__label {
+  font-size: calc(11 * var(--u));
+}
+
+/* L'UNITÉ du CV (#194) — « un pixel du design du CV, redimensionné ».
+
+   Même idée que `--u` pour la bulle (#137), mais SANS plafond, et la différence
+   est le sujet : la bulle est posée sur la scène et son plafond protège la
+   table de placement ; le CV, lui, est affiché PAR le moniteur vertical, dont
+   la part de la fenêtre est constante — le cadrage caméra ne bouge pas. Pour
+   que l'écran CV d'un visiteur en 2560 soit trait pour trait celui d'un
+   visiteur en 1280, le contenu doit suivre le moniteur, sans borne.
+
+   Plancher à 1 px : sous les 1280 du cadre du design rien ne change — là c'est
+   `columnHfov` (lib/stops.ts) qui resserre la caméra pour garantir la colonne.
+   Toute l'anatomie `.cv`/`.job` de `tokens.css` est écrite en multiples de
+   cette unité ; `tests/cvScale.test.ts` échoue si un pixel nu y revient.
+
+   Elle vit sur `:root` — `.cv` n'est pas un descendant de `.bubble-layer` — et
+   dans CE fichier : les maquettes de `design/screens/` ne chargent que
+   `tokens.css` et retombent sur le repli `var(--cv-u, 1px)`, c'est-à-dire sur
+   les tailles que la session design a validées. */
+:root {
+  --cv-u: max(1px, calc(100vw / 1280));
+}
+
+.bubble-layer .bubble__dot {
+  width: calc(7 * var(--u));
+  height: calc(7 * var(--u));
+}
+
+/* Les maquettes posent ce reset en style inline sur chaque <p>. */
+.bubble-layer .bubble__text {
+  display: block;
+  margin: 0;
+}
+
+/* Sortie : fondu simple avant le départ caméra (budget DESIGN.md : 200 ms,
+   la caméra part en 1200 ms). Déclarée après tokens.css : à spécificité
+   égale, elle bat `bubble-in` — y compris la variante mouvement réduit. */
+.bubble--out {
+  animation: bubble-out var(--t-bubble-out) linear both;
+}
+
+@keyframes bubble-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+/* Les tokens (importés avant ce fichier) posent Space Grotesk sur .stage ; le
+   HUD diagnostic garde sa mono de spike tant qu'il n'est pas redessiné. */
+.hud {
+  font-family: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', monospace;
+}
+
+/* --- Écran 0a : pré-sélection 3D / classique (issue #24) --------------------------- */
+/* Porté depuis design/screens/0a-preselection.html — la maquette de référence.
+   Tokens et composants .bubble__* : src/styles/tokens.css.
+
+   `overflow-y: auto` + `safe center`, et les deux vont ensemble (#188) : le
+   document ne défilera JAMAIS — `html, body, #root` sont `overflow: hidden`,
+   il le faut pour la scène — donc quand cet écran dépasse le viewport (~700 px
+   de contenu en colonne contre ~660 px sur un téléphone en portrait, ~390 px
+   en paysage), c'est lui qui doit porter son propre défilement, sinon la
+   seconde carte et la note sont coupées sans recours ni indice. Et un `center`
+   nu sur un conteneur qui défile est la leçon du CV : il déborde des DEUX
+   côtés, un conteneur ne défile jamais en négatif, le haut — logo, question —
+   devient inatteignable. `safe` retombe sur `flex-start` exactement là, et un
+   navigateur qui ignore le mot-clé retombe au même endroit. */
+.presel {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: safe center;
+  gap: 40px;
+  padding: 24px;
+  overflow-y: auto;
+  pointer-events: auto;
+  background: radial-gradient(1100px 750px at 50% 115%, #26190f, var(--ink) 70%);
+}
+
+.presel__head {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  text-align: center;
+}
+
+/* La forme, son trait et la respiration vivent dans `.logo` / `logo-breathe`
+   (tokens.css, issue #65) : ici, seulement ce qui est propre à cet écran. */
+.presel__logo {
+  width: 16px;
+  height: 16px;
+  animation: logo-breathe 2.6s ease-in-out infinite;
+}
+
+/* Boucle autonome : neutralisée en mouvement réduit (même règle que le logo
+   du preloader dans tokens.css — la lueur est figée à la main parce que la
+   respiration anime aussi le `filter`). */
+@media (prefers-reduced-motion: reduce) {
+  .presel__logo {
+    animation: none !important;
+    opacity: 1;
+    filter: drop-shadow(0 0 6px rgba(var(--glow-rgb), 0.55));
+  }
+}
+
+.presel__eyebrow {
+  margin: 0;
+  font-size: 11px;
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+  color: rgba(var(--cream-rgb), 0.5);
+}
+
+.presel__title {
+  margin: 0;
+  font-family: var(--font-voice);
+  font-style: italic;
+  font-size: 30px;
+  font-weight: 400;
+  color: #f2e9da;
+}
+
+.presel__cards {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 24px;
+}
+
+.presel-card {
+  width: 340px;
+  max-width: 100%;
+  text-align: left;
+  background: linear-gradient(160deg, rgba(var(--ink-glass), 0.66), rgba(var(--ink-glass), 0.54));
+  border: 1px solid rgba(var(--cream-rgb), 0.14);
+  border-radius: var(--r-bubble);
+  padding: 26px 28px 22px;
+  cursor: pointer;
+  box-shadow: 0 14px 44px rgba(0, 0, 0, 0.38);
+  font-family: var(--font-ui);
+  color: var(--cream);
+  transition:
+    border-color 200ms var(--ease-out),
+    box-shadow 200ms var(--ease-out);
+}
+
+/* Le halo EST l'indicateur de focus (même style que le survol) : l'anneau
+   natif du navigateur ferait double emploi par-dessus. */
+.presel-card:focus-visible {
+  outline: none;
+}
+
+/* Le halo est porté par UNE classe, jamais par `:hover` et `:focus-visible`
+   (2026-08-25). Ces deux pseudo-classes sont indépendantes : `autoFocus` posant
+   le focus sur la carte 3D dès le chargement, survoler la seconde en allumait
+   deux — un écran qui pose une question en montrant deux réponses cochées. Deux
+   règles ne peuvent pas s'exclure ; une variable d'état, si, et c'est
+   `Preselection` qui la tient.
+
+   Il respire au même rythme que le logo du preloader (2,6 s ease-in-out). Au
+   relâchement, l'animation s'arrête et la transition de la règle de base ramène
+   l'ombre en 200 ms. */
+/* En haut à droite, là où le site classique la pose aussi : deux écrans, une
+   seule habitude. Fixe et hors de `.presel`, qui est centré — l'y mettre
+   l'aurait fait entrer dans la colonne et pousser le titre. */
+.presel__lang {
+  position: fixed;
+  top: 14px;
+  right: 16px;
+  z-index: var(--z-bar);
+}
+
+.presel-card--lit {
+  border-color: rgba(var(--glow-deep-rgb), 0.55);
+  animation: presel-halo 2.6s ease-in-out infinite;
+}
+
+@keyframes presel-halo {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 1.5px rgba(var(--glow-deep-rgb), 0.2),
+      0 0 22px 2px rgba(var(--glow-deep-rgb), 0.2),
+      0 14px 44px rgba(0, 0, 0, 0.38);
+  }
+  50% {
+    box-shadow:
+      0 0 0 1.5px rgba(var(--glow-deep-rgb), 0.34),
+      0 0 38px 4px rgba(var(--glow-deep-rgb), 0.38),
+      0 14px 44px rgba(0, 0, 0, 0.38);
+  }
+}
+
+/* Mouvement réduit : la boucle est neutralisée (critère d'autonomie de
+   tokens.css), le halo reste — statique — car il répond à un geste. */
+@media (prefers-reduced-motion: reduce) {
+  .presel-card--lit {
+    animation: none;
+    box-shadow:
+      0 0 0 1.5px rgba(var(--glow-deep-rgb), 0.3),
+      0 0 38px 4px rgba(var(--glow-deep-rgb), 0.34),
+      0 14px 44px rgba(0, 0, 0, 0.38);
+  }
+}
+
+/* La carte 3D sur un appareil à pointeur coarse (#186) : désactivée, jamais
+   cachée — l'écran explique les deux expériences, et la promesse « il y a une
+   3D, venez la voir sur grand écran » vaut d'être lue. Éteinte mais lisible :
+   le corps s'assourdit, l'explication (dans `.presel-card__meta`) remonte d'un
+   cran au-dessus du gris technique, parce qu'elle est le contenu utile. */
+.presel-card--off {
+  cursor: default;
+  border-color: rgba(var(--cream-rgb), 0.08);
+}
+
+.presel-card--off .bubble__text {
+  color: rgba(var(--cream-rgb), 0.45);
+}
+
+.presel-card--off .presel-card__meta {
+  color: rgba(var(--cream-rgb), 0.65);
+}
+
+.presel-card .bubble__kicker {
+  margin-bottom: 10px;
+}
+
+.presel-card .bubble__text {
+  margin: 0 0 16px;
+  font-size: 17px;
+}
+
+.presel-card__label--lit {
+  color: rgba(var(--cream-rgb), 0.8);
+}
+
+.presel-card__dot--muted {
+  background: rgba(var(--cream-rgb), 0.45);
+  box-shadow: none;
+}
+
+.presel-card__meta,
+.presel__note {
+  font-family: ui-monospace, monospace;
+  font-size: 11px;
+  color: rgba(var(--cream-rgb), 0.5);
+}
+
+.presel__note {
+  margin: 0;
+  color: rgba(var(--cream-rgb), 0.4);
+  text-align: center;
+}
+
+/* --- Pré-sélection, petit écran (≤ 720 px — #188) ---------------------------------- */
+/* Le seuil de la maison : `classic.css` et `tokens.css` cassent au même point,
+   un troisième chiffre ferait trois définitions de « petit écran » pour un
+   seul site. La maquette `design/screens/0a-preselection.html` reste l'oracle
+   du desktop — elle ne bouge pas, ces règles s'ajoutent ici seulement.
+
+   Le rembourrage du haut n'est pas du goût : le LangToggle est FIXE en haut à
+   droite (habitude partagée avec le site classique), et sur un téléphone en
+   portrait le contenu dépasse le viewport — `safe center` le fait donc partir
+   du haut, où l'accroche passait sous le toggle. 64 px le dégagent. */
+@media (max-width: 720px) {
+  .presel {
+    gap: 28px;
+    padding: 64px 16px 28px;
+  }
+
+  /* 30 px sur ~360 px de large casse la question en trois lignes ; 26 px la
+     tient en deux sans perdre la voix italique. */
+  .presel__title {
+    font-size: 26px;
+  }
+
+  /* Le `max-width: 100%` de la carte se réfère à `.presel__cards`, qui suit
+     son CONTENU et non le viewport : à 360 px de large, la carte de 340 px
+     débordait du cadre (mesuré, `scrollWidth` 372 > 360). Élargir la rangée au
+     viewport rend ce max-width effectif — en dessous de 372 px la carte
+     rétrécit, au-dessus elle garde ses 340 px composés. */
+  .presel__cards {
+    width: 100%;
+  }
+
+  .presel-card {
+    padding: 22px 22px 18px;
+  }
+}
+
+/* --- Version classique (échafaudage — la vraie page 2D est une autre issue) -------- */
+.classic .classic__body {
+  max-width: 420px;
+  margin: 0;
+  text-align: center;
+  font-family: var(--font-voice);
+  font-style: italic;
+  font-size: 17px;
+  line-height: 1.6;
+  color: rgba(var(--cream-rgb), 0.75);
+}
+
+.classic__switch {
+  padding: 10px 18px;
+  background: none;
+  border: 1px solid rgba(var(--cream-rgb), 0.25);
+  border-radius: var(--r-item);
+  font-family: var(--font-ui);
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: rgba(var(--cream-rgb), 0.72);
+  cursor: pointer;
+  transition:
+    border-color 200ms var(--ease-out),
+    color 200ms var(--ease-out);
+}
+
+.classic__switch:hover,
+.classic__switch:focus-visible {
+  border-color: rgba(var(--glow-deep-rgb), 0.55);
+  color: var(--cream);
+}

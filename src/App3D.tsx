@@ -2,10 +2,12 @@ import { Canvas } from '@react-three/fiber'
 import { Suspense, useRef } from 'react'
 import { CLEAR_COLOR, OUTPUT_COLOR_SPACE, TONE_MAPPING } from '@/config/renderPipeline'
 import { Experience } from '@/scene/Experience'
-import { viewMode } from '@/lib/viewMode'
+import { captureMode, viewMode } from '@/lib/viewMode'
 import { Hud } from '@/ui/Hud'
+import { CvScreen } from '@/ui/CvScreen'
 import { Menu } from '@/ui/Menu'
 import { ProjectSheet } from '@/ui/ProjectSheet'
+import { TelescopeScope } from '@/ui/TelescopeScope'
 
 /**
  * L'expérience 3D complète. One Canvas, one render camera. The scene is
@@ -27,11 +29,18 @@ export default function App3D() {
   // Stable portal target for world-anchored <Html> content (bubbles) — kept
   // outside the canvas container so the HUD/panel stacking order is ours.
   const bubbleLayer = useRef<HTMLDivElement>(null!)
+  // La couche de l'intro (#142), sous les bulles : le DOM posé sur l'écran
+  // principal, qui suit la caméra par transform CSS.
+  const introLayer = useRef<HTMLDivElement>(null!)
 
   return (
     <div className="stage">
       <Canvas
         camera={{ near: 0.05, far: 1000 }}
+        // `?capture` seulement (#45) : sans `preserveDrawingBuffer`, le
+        // `toDataURL()` de la boucle de comparaison rend du noir, et l'allumer
+        // en permanence coûterait une copie de tampon à chaque image.
+        gl={{ preserveDrawingBuffer: captureMode }}
         onCreated={({ gl }) => {
           gl.toneMapping = TONE_MAPPING
           gl.outputColorSpace = OUTPUT_COLOR_SPACE
@@ -39,17 +48,27 @@ export default function App3D() {
       >
         <color attach="background" args={[CLEAR_COLOR]} />
         <Suspense fallback={null}>
-          <Experience bubbleLayer={bubbleLayer} />
+          <Experience bubbleLayer={bubbleLayer} introLayer={introLayer} />
         </Suspense>
       </Canvas>
+      <div ref={introLayer} className="intro-layer" />
       <div ref={bubbleLayer} className="bubble-layer" />
-      {/* Le HUD est l'outillage du spike : bandeau de phase, rail de stops,
-          boutons de test des phases. `?debug` le déclarait déjà (viewMode.ts)
-          mais rien ne branchait le fil, alors il s'affichait toujours — et son
-          rail se superposait pixel pour pixel à la barre de menu, les deux à
-          z-index 200. L'issue #26 le disait : le rail est un prototype de
-          diagnostic, pas la navigation. */}
+      {/* Le HUD est l'outillage de diagnostic : bandeau de phase, liste des
+          arrêts, rejeu de l'intro, raccourcis de panneau. `?debug` le déclarait
+          déjà (viewMode.ts) mais rien ne branchait le fil, alors il s'affichait
+          toujours — et son rail d'arrêts se superposait pixel pour pixel à la
+          barre de menu, les deux à z-index 200. Le rail a été remplacé par une
+          liste déroulante rangée avec les autres boutons (#147) : l'issue #26
+          le disait déjà, c'est un prototype de diagnostic, pas la navigation. */}
       {viewMode === 'tour' && <Hud />}
+      {/* Le CV (#93) est monté AVANT la barre, et il vit à --z-bubble (100) :
+          il n'est pas modal, la barre (200) reste au-dessus et « Résumé » reste
+          la porte de sortie. Il ne rend rien hors de l'arrêt CV. */}
+      <CvScreen />
+      {/* La visée du télescope (#106), montée AVANT la barre et à
+          --z-bubble : elle n'est pas modale, la barre reste au-dessus et
+          cliquable. Elle ne rend rien hors de la phase TELESCOPE. */}
+      <TelescopeScope />
       <Menu />
       {/* La fiche projet (#83) est montée APRÈS la barre : elle la couvre, comme
           l'empilement panneaux 300 > barre 200 l'impose. Elle ne rend rien tant

@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@1,6..72,300..500&family=Space+Grotesk:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="./image-slot.js"></script>
+<script>
+(function(){
+  if (window.__pfBooted) return; window.__pfBooted = true;
+  var cur=0, angle=0, speed=24, last=performance.now(), mouse=null;
+  addEventListener('mousemove', function(e){ mouse={x:e.clientX,y:e.clientY}; }, {passive:true});
+  function loop(){
+    requestAnimationFrame(loop);
+    var now=performance.now(), dt=Math.min(.05,(now-last)/1000); last=now;
+    var g=document.getElementById('glow-layer');
+    if(g){
+      var doc=document.scrollingElement||document.documentElement;
+      var max=Math.max(1,doc.scrollHeight-window.innerHeight);
+      var t=Math.min(1,Math.max(0,(window.scrollY||doc.scrollTop||0)/max));
+      cur+=(t-cur)*0.02;
+      g.style.transform='translate3d(0,'+(-cur*Math.max(0,g.offsetHeight-window.innerHeight)).toFixed(1)+'px,0)';
+    }
+    var s=document.getElementById('cube-spin');
+    if(s){
+      var target=26;
+      if(mouse){
+        var r=s.getBoundingClientRect();
+        var d=Math.hypot(mouse.x-(r.left+r.width/2), mouse.y-(r.top+r.height/2));
+        target=7+Math.min(1, d*2/Math.hypot(window.innerWidth,window.innerHeight))*55;
+      }
+      speed+=(target-speed)*0.05; angle=(angle+speed*dt)%360;
+      s.style.transform='rotateX(-18deg) rotateY('+angle+'deg)';
+    }
+  }
+  requestAnimationFrame(loop);
+  var tries=0;
+  (function bind(){
+    var h=document.getElementById('hero-name'), m=document.getElementById('mini-name');
+    if(h&&m){
+      new IntersectionObserver(function(es){
+        es.forEach(function(en){
+          m.style.opacity=en.isIntersecting?'0':'1';
+          m.style.transform=en.isIntersecting?'translateY(-8px)':'none';
+        });
+      },{threshold:0}).observe(h);
+    } else if(++tries<300){ setTimeout(bind,100); }
+  })();
+})();
+</script>
+<style>
+html,body{margin:0;padding:0;background:#0E0B08;}
+body{overflow-x:hidden;}
+a{color:#EFE5D3;text-decoration:none;transition:color .18s;}
+a:hover{color:#8FDBE4;}
+::selection{background:rgba(143,219,228,.28);}
+@keyframes spin3d{from{transform:rotateX(-18deg) rotateY(0deg)}to{transform:rotateX(-18deg) rotateY(360deg)}}
+@keyframes spin3dAlt{from{transform:rotateX(24deg) rotateY(360deg)}to{transform:rotateX(24deg) rotateY(0deg)}}
+@keyframes reveal{from{opacity:0;transform:translateY(26px)}to{opacity:1;transform:none}}
+@keyframes ignite{from{opacity:0}to{opacity:1}}
+@keyframes breathe{0%,100%{opacity:.55;filter:drop-shadow(0 0 5px rgba(143,219,228,.5))}50%{opacity:1;filter:drop-shadow(0 0 13px rgba(143,219,228,.9))}}
+@keyframes caretBlink{0%,49%{opacity:1}50%,100%{opacity:0}}
+@keyframes slideL{from{opacity:0;transform:translateX(-16vw)}to{opacity:1;transform:none}}
+@keyframes slideR{from{opacity:0;transform:translateX(16vw)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion: reduce){*{animation-duration:.01s !important}}
+</style>
+</helmet>
+<div style="min-height:100vh;background:#0E0B08;color:#EFE5D3;font-family:'Space Grotesk',sans-serif;">
+  <div style="position:fixed;inset:0;overflow:hidden;pointer-events:none;z-index:0">
+    <div id="glow-layer" ref="{{ glowRef }}" style="position:absolute;left:0;top:0;width:100%;height:205vh;will-change:transform;background:radial-gradient(ellipse 90% 28% at 50% 56%, rgba(82,45,21,.7), transparent 65%)"></div>
+  </div>
+  <header style="position:fixed;top:14px;right:16px;z-index:200;display:flex;align-items:center;gap:16px;font-family:'IBM Plex Mono',monospace">
+    <a href="https://github.com/t3hx" target="_blank" rel="noopener" style="font-size:12px;letter-spacing:.06em;text-shadow:0 1px 10px rgba(0,0,0,.7);padding:6px 2px">gh</a>
+    <a href="https://linkedin.com/in/tdbs" target="_blank" rel="noopener" style="font-size:12px;letter-spacing:.06em;text-shadow:0 1px 10px rgba(0,0,0,.7);padding:6px 2px">in</a>
+    <button onClick="{{ toggleLang }}" style="background:none;border:1px solid rgba(143,219,228,.4);color:#8FDBE4;font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.1em;border-radius:10px;padding:5px 8px;cursor:pointer;transition:border-color .18s" style-hover="border-color:rgba(143,219,228,.9)">{{ langLabel }}</button>
+  </header>
+  <div style="position:absolute;top:20px;left:20px;z-index:150">
+    <image-slot id="photo-profil" shape="circle" placeholder="photo" style="width:88px;height:88px;border:1px solid rgba(239,229,211,.25);border-radius:50%"></image-slot>
+  </div>
+  <div id="mini-name" style="position:fixed;top:14px;left:18px;z-index:200;display:flex;align-items:center;gap:10px;height:32px;font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:.08em;color:#F2E9DA;text-shadow:0 1px 10px rgba(0,0,0,.7);opacity:0;transform:translateY(-8px);transition:opacity .45s ease,transform .45s ease;pointer-events:none">
+    <span style="width:6px;height:6px;border-radius:50%;background:#8FDBE4;box-shadow:0 0 8px rgba(143,219,228,.9)"></span>
+    <span>THIBAULT DUBOIS</span>
+  </div>
+
+  <section id="hero" data-screen-label="Accueil" style="position:relative;min-height:100vh;display:flex;align-items:center;justify-content:center;overflow:hidden">
+    <div style="position:absolute;inset:0;background:radial-gradient(ellipse 46% 36% at 50% 46%, rgba(143,219,228,.13), transparent 70%);animation:ignite 2.6s ease 1.5s both;pointer-events:none"></div>
+    <div ref="{{ heroShapeRef }}" style="position:absolute;left:50%;top:46%;margin:-150px 0 0 -150px;width:300px;height:300px;perspective:900px;animation:ignite 2.2s ease 1s both;pointer-events:none">
+      <div style="width:100%;height:100%;perspective:640px;transform:scale({{ cubeScale }})">
+      <div id="cube-spin" style="position:relative;width:100%;height:100%;transform-style:preserve-3d;transform:rotateX(-18deg)">
+        <div style="position:absolute;inset:0;border:1px solid rgba(143,219,228,.26);background:rgba(143,219,228,.02);transform:rotateY(0deg) translateZ(150px)"></div>
+        <div style="position:absolute;inset:0;border:1px solid rgba(143,219,228,.26);background:rgba(143,219,228,.02);transform:rotateY(90deg) translateZ(150px)"></div>
+        <div style="position:absolute;inset:0;border:1px solid rgba(143,219,228,.26);background:rgba(143,219,228,.02);transform:rotateY(180deg) translateZ(150px)"></div>
+        <div style="position:absolute;inset:0;border:1px solid rgba(143,219,228,.26);background:rgba(143,219,228,.02);transform:rotateY(270deg) translateZ(150px)"></div>
+        <div style="position:absolute;inset:0;border:1px solid rgba(143,219,228,.26);transform:rotateX(90deg) translateZ(150px)"></div>
+        <div style="position:absolute;inset:0;border:1px solid rgba(143,219,228,.26);transform:rotateX(-90deg) translateZ(150px)"></div>
+      </div>
+      </div>
+    </div>
+    <div style="position:relative;z-index:2;text-align:center;padding:0 24px;max-width:960px">
+      <div style="display:inline-flex;align-items:center;gap:10px;animation:ignite 1s ease .4s both">
+        <span style="width:7px;height:7px;border-radius:50%;background:#8FDBE4;box-shadow:0 0 10px rgba(143,219,228,.9)"></span>
+        <span style="font-size:11px;text-transform:uppercase;letter-spacing:.22em;color:rgba(239,229,211,.72)">{{ t.kicker }}</span>
+      </div>
+      <h1 id="hero-name" style="display:flex;flex-direction:{{ nameDir }};justify-content:center;align-items:center;gap:0 .45em;font-family:'IBM Plex Mono',monospace;font-weight:500;font-size:clamp(40px, 7vw, 92px);line-height:1.08;letter-spacing:-.01em;margin:26px 0 22px;min-height:1.1em;color:#F2E9DA"><span style="white-space:pre;min-height:1.1em;animation:slideL 1.1s cubic-bezier(.8,0,.2,1) .25s both">{{ firstName }}</span><span style="white-space:pre;min-height:1.1em;animation:slideR 1.1s cubic-bezier(.8,0,.2,1) .45s both">{{ lastName }}<sc-if value="{{ showCaret }}" hint-placeholder-val="{{ false }}"><span style="display:inline-block;width:.55em;height:.95em;background:#8FDBE4;margin-left:.08em;vertical-align:text-bottom;animation:caretBlink 1s steps(1) infinite;box-shadow:0 0 14px rgba(143,219,228,.7)"></span></sc-if></span></h1>
+      <p style="font-family:'Newsreader',serif;font-style:italic;font-weight:300;font-size:clamp(18px,2.2vw,23px);line-height:1.5;color:#F2E9DA;max-width:600px;margin:0 auto;text-wrap:pretty;animation:ignite 1.4s ease 2s both">{{ t.tagline }}</p>
+      <div style="display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:10px 16px;margin-top:34px;font-family:'IBM Plex Mono',monospace;font-size:12.5px;color:rgba(239,229,211,.75);animation:ignite 1.4s ease 2.5s both">
+        <span>{{ t.metaAge }}</span>
+        <span style="width:4px;height:4px;border-radius:50%;background:rgba(143,219,228,.8)"></span>
+        <span>{{ t.metaLang }}</span>
+        <span style="width:4px;height:4px;border-radius:50%;background:rgba(143,219,228,.8)"></span>
+        <span>{{ t.metaPermis }}</span>
+      </div>
+    </div>
+    <div style="position:absolute;bottom:26px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:10px;animation:ignite 1.6s ease 3s both">
+      <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:.24em;color:rgba(239,229,211,.55)">{{ t.scroll }}</span>
+      <span style="width:1px;height:38px;background:linear-gradient(rgba(239,229,211,.5), rgba(143,219,228,.9))"></span>
+    </div>
+  </section>
+
+  <section id="cap" data-screen-label="Projet professionnel" style="position:relative;max-width:1040px;margin:0 auto;padding:clamp(100px,18vw,160px) 24px 30px">
+    <div style="display:flex;align-items:center;gap:12px;opacity:0;animation:{{ a.cap0 }}">
+      <span style="width:7px;height:7px;border-radius:50%;background:#8FDBE4;box-shadow:0 0 10px rgba(143,219,228,.9)"></span>
+      <span style="font-size:11px;text-transform:uppercase;letter-spacing:.22em;color:#8FDBE4">{{ t.capKicker }}</span>
+    </div>
+    <h2 style="font-weight:500;font-size:clamp(30px,3.8vw,42px);letter-spacing:-.015em;margin:18px 0 36px;opacity:0;animation:{{ a.cap1 }}"><span style="position:relative;display:inline-block"><span style="position:absolute;left:50%;top:44%;width:.9em;height:.9em;transform:translate(-50%,-50%);perspective:1.92em;pointer-events:none"><span style="position:absolute;inset:0;display:block;transform-style:preserve-3d;animation:spin3d 14s linear infinite"><span style="position:absolute;inset:0;border:1px solid rgba(143,219,228,.5);transform:rotateY(0deg) translateZ(.45em)"></span><span style="position:absolute;inset:0;border:1px solid rgba(143,219,228,.5);transform:rotateY(90deg) translateZ(.45em)"></span><span style="position:absolute;inset:0;border:1px solid rgba(143,219,228,.5);transform:rotateY(180deg) translateZ(.45em)"></span><span style="position:absolute;inset:0;border:1px solid rgba(143,219,228,.5);transform:rotateY(270deg) translateZ(.45em)"></span></span></span>{{ capT.f }}</span>{{ capT.r }}</h2>
+    <div style="border:1px solid rgba(239,229,211,.13);border-radius:18px;background:rgba(24,17,12,.55);backdrop-filter:blur(22px);padding:44px clamp(24px,5vw,64px);box-shadow:0 14px 44px rgba(0,0,0,.38);opacity:0;animation:{{ a.cap2 }}">
+      <p style="font-family:'Space Grotesk',sans-serif;font-weight:400;font-size:clamp(19px,2.4vw,25px);line-height:1.6;color:#F2E9DA;margin:0;max-width:760px;text-wrap:pretty">{{ t.capText }}</p>
+      <p style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.08em;color:rgba(239,229,211,.45);margin:26px 0 0">{{ t.phNote }}</p>
+    </div>
+  </section>
+
+  <section id="cv" data-screen-label="CV" style="position:relative;max-width:1040px;margin:0 auto;padding:clamp(90px,16vw,150px) 24px 30px">
+    <div style="display:flex;align-items:center;gap:12px;opacity:0;animation:{{ a.cv0 }}">
+      <span style="width:7px;height:7px;border-radius:50%;background:#8FDBE4;box-shadow:0 0 10px rgba(143,219,228,.9)"></span>
+      <span style="font-size:11px;text-transform:uppercase;letter-spacing:.22em;color:#8FDBE4">{{ t.cvKicker }}</span>
+    </div>
+    <h2 style="font-weight:500;font-size:clamp(30px,3.8vw,42px);letter-spacing:-.015em;margin:18px 0 36px;opacity:0;animation:{{ a.cv1 }}"><span style="position:relative;display:inline-block"><span style="position:absolute;left:50%;top:44%;width:.9em;height:.9em;transform:translate(-50%,-50%);perspective:1.92em;pointer-events:none"><span style="position:absolute;inset:0;display:block;transform-style:preserve-3d;animation:spin3d 14s linear infinite"><span style="position:absolute;inset:0;border:1px solid rgba(143,219,228,.5);transform:rotateY(0deg) translateZ(.45em)"></span><span style="position:absolute;inset:0;border:1px solid rgba(143,219,228,.5);transform:rotateY(90deg) translateZ(.45em)"></span><span style="position:absolute;inset:0;border:1px solid rgba(143,219,228,.5);transform:rotateY(180deg) translateZ(.45em)"></span><span style="position:absolute;inset:0;border:1px solid rgba(143,219,228,.5);transform:rotateY(270deg) translateZ(.45em)"></span></span></span>{{ cvT.f }}</span>{{ cvT.r }}</h2>
+
+    <div style="font-size:12px;text-transform:uppercase;letter-spacing:.2em;color:rgba(239,229,211,.6);margin:0 0 16px;opacity:0;animation:{{ a.cv2 }}">{{ t.expTitle }}</div>
+    <div id="cv-exp" style="display:flex;flex-direction:column;gap:12px;margin-bottom:56px">
+      <sc-for list="{{ exps }}" as="e" hint-placeholder-count="3">
+        <div onMouseEnter="{{ e.onEnter }}" style="border:1px solid rgba(239,229,211,.12);border-radius:18px;padding:18px 22px;background:rgba(24,17,12,.5);backdrop-filter:blur(22px);transition:border-color .22s,background .22s;opacity:0;animation:{{ e.anim }}" style-hover="border-color:rgba(143,219,228,.5);background:rgba(239,229,211,.04)">
+          <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:6px 18px">
+            <div>
+              <div style="font-size:17px;font-weight:500">{{ e.role }}</div>
+              <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:rgba(239,229,211,.6);margin-top:3px">{{ e.org }}</div>
+            </div>
+            <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#8FDBE4">{{ e.period }}</div>
+          </div>
+          <div style="overflow:hidden;max-height:{{ e.mh }};transition:max-height .3s ease">
+            <div style="padding-top:14px;display:flex;flex-direction:column;gap:6px">
+              <sc-for list="{{ e.missions }}" as="m" hint-placeholder-count="4">
+                <div style="display:flex;gap:10px;font-size:14px;line-height:1.6;color:rgba(239,229,211,.78)">
+                  <span style="flex:0 0 auto;width:5px;height:5px;border-radius:50%;background:#8FDBE4;margin-top:9px"></span>
+                  <span>{{ m }}</span>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+
+    <div id="cv-tech" style="font-size:12px;text-transform:uppercase;letter-spacing:.2em;color:rgba(239,229,211,.6);margin:0 0 18px;opacity:0;animation:{{ a.tech0 }}">{{ t.techTitle }}</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(88px,1fr));gap:16px;margin-bottom:56px">
+      <sc-for list="{{ techs }}" as="tech" hint-placeholder-count="9">
+        <div style="display:flex;flex-direction:column;align-items:center;gap:10px;opacity:0;animation:{{ tech.anim }}">
+          <div style="width:54px;height:54px;border:1px solid rgba(239,229,211,.16);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:19px;font-weight:500;color:#EFE5D3;background:rgba(24,17,12,.5);transition:border-color .2s,box-shadow .2s" style-hover="border-color:rgba(143,219,228,.6);box-shadow:0 0 18px rgba(143,219,228,.18)">{{ tech.initial }}</div>
+          <div style="font-size:12px;color:rgba(239,229,211,.72);text-align:center">{{ tech.name }}</div>
+        </div>
+      </sc-for>
+    </div>
+
+    <div id="cv-soft" style="font-size:12px;text-transform:uppercase;letter-spacing:.2em;color:rgba(239,229,211,.6);margin:0 0 16px;opacity:0;animation:{{ a.soft0 }}">{{ t.softTitle }}</div>
+    <div style="display:flex;flex-wrap:wrap;gap:10px">
+      <sc-for list="{{ softs }}" as="s" hint-placeholder-count="5">
+        <span style="border:1px solid rgba(239,229,211,.16);border-radius:999px;padding:8px 16px;font-family:'IBM Plex Mono',monospace;font-size:12px;color:rgba(239,229,211,.82);transition:border-color .2s;opacity:0;animation:{{ s.anim }};display:inline-block" style-hover="border-color:rgba(143,219,228,.55)">{{ s.label }}</span>
+      </sc-for>
+    </div>
+  </section>
+
+  <section id="projets" data-screen-label="Projets persos" style="position:relative;max-width:1040px;margin:0 auto;padding:clamp(90px,16vw,150px) 24px 30px">
+    <div style="display:flex;align-items:center;gap:12px;opacity:0;animation:{{ a.proj0 }}">
+      <span style="width:7px;height:7px;border-radius:50%;background:#8FDBE4;box-shadow:0 0 10px rgba(143,219,228,.9)"></span>
+      <span style="font-size:11px;text-transform:uppercase;letter-spacing:.22em;color:#8FDBE4">{{ t.projKicker }}</span>
+    </div>
+    <h2 style="font-weight:500;font-size:clamp(30px,3.8vw,42px);letter-spacing:-.015em;margin:18px 0 36px;opacity:0;animation:{{ a.proj1 }}"><span style="position:relative;display:inline-block"><span style="position:absolute;left:50%;top:44%;width:.9em;height:.9em;transform:translate(-50%,-50%);perspective:1.92em;pointer-events:none"><span style="position:absolute;inset:0;display:block;transform-style:preserve-3d;animation:spin3d 14s linear infinite"><span style="position:absolute;inset:0;border:1px solid rgba(143,219,228,.5);transform:rotateY(0deg) translateZ(.45em)"></span><span style="position:absolute;inset:0;border:1px solid rgba(143,219,228,.5);transform:rotateY(90deg) translateZ(.45em)"></span><span style="position:absolute;inset:0;border:1px solid rgba(143,219,228,.5);transform:rotateY(180deg) translateZ(.45em)"></span><span style="position:absolute;inset:0;border:1px solid rgba(143,219,228,.5);transform:rotateY(270deg) translateZ(.45em)"></span></span></span>{{ projT.f }}</span>{{ projT.r }}</h2>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:18px">
+      <sc-for list="{{ projects }}" as="p" hint-placeholder-count="3">
+        <div style="border:1px solid rgba(239,229,211,.12);border-radius:18px;background:rgba(24,17,12,.55);backdrop-filter:blur(22px);overflow:hidden;transition:border-color .22s,box-shadow .22s,transform .22s;opacity:0;animation:{{ p.anim }}" style-hover="border-color:rgba(111,216,230,.6);box-shadow:0 0 40px rgba(143,219,228,.12), 0 14px 44px rgba(0,0,0,.38);transform:translateY(-4px)">
+          <div style="height:140px;background:repeating-linear-gradient(45deg, rgba(239,229,211,.055) 0 8px, transparent 8px 16px);display:flex;align-items:center;justify-content:center;border-bottom:1px solid rgba(239,229,211,.1)">
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.1em;color:rgba(239,229,211,.5)">{{ t.coverLabel }}</span>
+          </div>
+          <div style="padding:20px 22px 24px">
+            <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#8FDBE4;letter-spacing:.08em">{{ p.year }}</div>
+            <div style="font-size:20px;font-weight:500;margin:8px 0 10px">{{ p.title }}</div>
+            <p style="font-family:'Newsreader',serif;font-style:italic;font-weight:300;font-size:15.5px;line-height:1.5;color:rgba(242,233,218,.85);margin:0 0 16px;text-wrap:pretty">{{ p.phrase }}</p>
+            <div style="font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:rgba(239,229,211,.6)">{{ p.stack }}</div>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+  </section>
+
+  <section id="formations" data-screen-label="Formations" style="position:relative;max-width:1040px;margin:0 auto;padding:130px 24px 60px">
+    <div style="display:flex;align-items:center;gap:12px;opacity:0;animation:{{ a.form0 }}">
+      <span style="width:7px;height:7px;border-radius:50%;background:#8FDBE4;box-shadow:0 0 10px rgba(143,219,228,.9)"></span>
+      <span style="font-size:11px;text-transform:uppercase;letter-spacing:.22em;color:#8FDBE4">{{ t.formKicker }}</span>
+    </div>
+    <h2 style="font-weight:500;font-size:clamp(30px,3.8vw,42px);letter-spacing:-.015em;margin:18px 0 36px;opacity:0;animation:{{ a.form1 }}"><span style="position:relative;display:inline-block"><span style="position:absolute;left:50%;top:44%;width:.9em;height:.9em;transform:translate(-50%,-50%);perspective:1.92em;pointer-events:none"><span style="position:absolute;inset:0;display:block;transform-style:preserve-3d;animation:spin3d 14s linear infinite"><span style="position:absolute;inset:0;border:1px solid rgba(143,219,228,.5);transform:rotateY(0deg) translateZ(.45em)"></span><span style="position:absolute;inset:0;border:1px solid rgba(143,219,228,.5);transform:rotateY(90deg) translateZ(.45em)"></span><span style="position:absolute;inset:0;border:1px solid rgba(143,219,228,.5);transform:rotateY(180deg) translateZ(.45em)"></span><span style="position:absolute;inset:0;border:1px solid rgba(143,219,228,.5);transform:rotateY(270deg) translateZ(.45em)"></span></span></span>{{ formT.f }}</span>{{ formT.r }}</h2>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <sc-for list="{{ forms }}" as="f" hint-placeholder-count="2">
+        <div style="border:1px solid rgba(239,229,211,.12);border-radius:18px;padding:18px 22px;background:rgba(24,17,12,.5);backdrop-filter:blur(22px);display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:6px 18px;opacity:0;animation:{{ f.anim }}">
+          <div>
+            <div style="font-size:17px;font-weight:500">{{ f.title }}</div>
+            <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:rgba(239,229,211,.6);margin-top:3px">{{ f.org }}</div>
+          </div>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#8FDBE4">{{ f.period }}</div>
+        </div>
+      </sc-for>
+    </div>
+  </section>
+
+  <footer data-screen-label="Contact" style="position:relative;max-width:1040px;margin:0 auto;padding:40px 24px {{ footPadB }}">
+    <div style="height:1px;background:rgba(239,229,211,.12);margin-bottom:28px"></div>
+    <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:14px">
+      <span style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:rgba(239,229,211,.55)">{{ t.footNote }}</span>
+      <div style="display:flex;gap:22px;font-size:13px">
+        <a href="https://github.com/t3hx" target="_blank" rel="noopener">github.com/t3hx</a>
+        <a href="https://linkedin.com/in/tdbs" target="_blank" rel="noopener">linkedin.com/in/tdbs</a>
+      </div>
+    </div>
+  </footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;lang&quot;: {&quot;editor&quot;: &quot;enum&quot;, &quot;options&quot;: [&quot;fr&quot;, &quot;en&quot;], &quot;default&quot;: &quot;fr&quot;, &quot;tsType&quot;: &quot;'fr'|'en'&quot;, &quot;section&quot;: &quot;Contenu&quot;}, &quot;motion&quot;: {&quot;editor&quot;: &quot;boolean&quot;, &quot;default&quot;: true, &quot;tsType&quot;: &quot;boolean&quot;, &quot;section&quot;: &quot;Animations&quot;}, &quot;decryptMs&quot;: {&quot;editor&quot;: &quot;range&quot;, &quot;default&quot;: 1700, &quot;min&quot;: 400, &quot;max&quot;: 4000, &quot;step&quot;: 100, &quot;unit&quot;: &quot;ms&quot;, &quot;tsType&quot;: &quot;number&quot;, &quot;section&quot;: &quot;Animations&quot;}}">
+const I18N = {
+  fr: {
+    kicker: 'Portfolio — Développeur front créatif',
+    tagline: '« Donner de la vie aux interfaces : le mouvement, la matière, l\u2019interaction. »',
+    metaAge: '36 ans', metaLang: 'Français natif · Anglais pro (C1)', metaPermis: 'Permis B',
+    scroll: 'défiler',
+    capKicker: '01 — Projet professionnel', capTitle: 'Le cap',
+    capText: 'Concevoir des interfaces où chaque interaction a une intention : rejoindre une équipe produit exigeante pour construire des expériences web vivantes, entre front créatif et 3D temps réel.',
+    phNote: '// contenu placeholder — à remplacer par votre texte',
+    cvKicker: '02 — CV', cvTitle: 'Parcours',
+    expTitle: 'Expériences', techTitle: 'Savoir-faire', softTitle: 'Savoir-être',
+    projKicker: '03 — Projets persos', projTitle: 'Projets persos',
+    formKicker: '04 — Formations', formTitle: 'Formations',
+    coverLabel: 'visuel projet — à fournir',
+    footNote: '© 2026 Thibault Dubois — conçu et développé à la main',
+    nav: ['Accueil', 'Le cap', 'CV', 'Projets', 'Formations'],
+    navShort: ['Accueil', 'Cap', 'CV', 'Projets', 'Form.'],
+    softs: ['Autonomie', 'Curiosité', 'Rigueur', 'Communication', 'Esprit d\u2019équipe'],
+    exps: [
+      { role: 'Développeur front créatif', org: 'Studio [placeholder]', period: '2023 — 2026', missions: [
+        'Développement d\u2019expériences web interactives (React, Three.js)',
+        'Mise en place d\u2019un système d\u2019animations et de micro-interactions',
+        'Optimisation des performances de rendu temps réel',
+        'Collaboration quotidienne avec les designers'] },
+      { role: 'Développeur front-end', org: 'Agence [placeholder]', period: '2020 — 2023', missions: [
+        'Intégration de sites et d\u2019applications Vue.js / Tailwind CSS',
+        'Conception de composants réutilisables et documentés',
+        'Migration progressive vers TypeScript',
+        'Revue de code et accompagnement des juniors'] },
+      { role: 'Développeur web', org: 'Entreprise [placeholder]', period: '2017 — 2020', missions: [
+        'Développement full-stack JavaScript (Node, PostgreSQL)',
+        'Modélisation de données et API REST',
+        'Mise en production et suivi des déploiements',
+        'Support et évolutions applicatives'] }
+    ],
+    forms: [
+      { title: 'Diplôme [placeholder]', org: 'École / Université [placeholder]', period: '2015 — 2017' },
+      { title: 'Formation développement web', org: 'Organisme [placeholder]', period: '2014' }
+    ],
+    projects: [
+      { year: '2026', title: 'Atelier', phrase: 'Un portfolio 3D immersif : une pièce à explorer, des objets qui racontent.', stack: 'React · R3F / Three.js · Vite' },
+      { year: '2025', title: 'Pulse', phrase: 'Un visualiseur audio temps réel qui respire avec la musique.', stack: 'Vue.js · Canvas · Supabase' },
+      { year: '2024', title: 'Traces', phrase: 'Un carnet cartographique pour garder la mémoire des lieux.', stack: 'TypeScript · React · PostgreSQL' }
+    ]
+  },
+  en: {
+    kicker: 'Portfolio — Creative front-end developer',
+    tagline: '\u201CBringing interfaces to life: motion, texture, interaction.\u201D',
+    metaAge: '36 years old', metaLang: 'French native · English professional (C1)', metaPermis: 'Driving licence B',
+    scroll: 'scroll',
+    capKicker: '01 — Professional goal', capTitle: 'The course',
+    capText: 'Designing interfaces where every interaction has intent: joining a demanding product team to build living web experiences, between creative front-end and real-time 3D.',
+    phNote: '// placeholder copy — replace with your own text',
+    cvKicker: '02 — Resume', cvTitle: 'Background',
+    expTitle: 'Experience', techTitle: 'Hard skills', softTitle: 'Soft skills',
+    projKicker: '03 — Side projects', projTitle: 'Side projects',
+    formKicker: '04 — Education', formTitle: 'Education',
+    coverLabel: 'project visual — to be provided',
+    footNote: '© 2026 Thibault Dubois — designed & built by hand',
+    nav: ['Home', 'The course', 'Resume', 'Projects', 'Education'],
+    navShort: ['Home', 'Goal', 'CV', 'Work', 'Edu.'],
+    softs: ['Autonomy', 'Curiosity', 'Rigour', 'Communication', 'Team spirit'],
+    exps: [
+      { role: 'Creative front-end developer', org: 'Studio [placeholder]', period: '2023 — 2026', missions: [
+        'Built interactive web experiences (React, Three.js)',
+        'Designed a system of animations and micro-interactions',
+        'Optimised real-time rendering performance',
+        'Daily collaboration with designers'] },
+      { role: 'Front-end developer', org: 'Agency [placeholder]', period: '2020 — 2023', missions: [
+        'Built Vue.js / Tailwind CSS sites and applications',
+        'Designed reusable, documented components',
+        'Led a progressive TypeScript migration',
+        'Code reviews and junior mentoring'] },
+      { role: 'Web developer', org: 'Company [placeholder]', period: '2017 — 2020', missions: [
+        'Full-stack JavaScript development (Node, PostgreSQL)',
+        'Data modelling and REST APIs',
+        'Production releases and deployment follow-up',
+        'Support and application evolutions'] }
+    ],
+    forms: [
+      { title: 'Degree [placeholder]', org: 'School / University [placeholder]', period: '2015 — 2017' },
+      { title: 'Web development training', org: 'Provider [placeholder]', period: '2014' }
+    ],
+    projects: [
+      { year: '2026', title: 'Atelier', phrase: 'An immersive 3D portfolio: a room to explore, objects that tell stories.', stack: 'React · R3F / Three.js · Vite' },
+      { year: '2025', title: 'Pulse', phrase: 'A real-time audio visualiser that breathes with the music.', stack: 'Vue.js · Canvas · Supabase' },
+      { year: '2024', title: 'Traces', phrase: 'A cartographic notebook to keep the memory of places.', stack: 'TypeScript · React · PostgreSQL' }
+    ]
+  }
+};
+const TECHS = [
+  { initial: 'Js', name: 'JavaScript' }, { initial: 'Ts', name: 'TypeScript' },
+  { initial: 'V', name: 'Vue.js' }, { initial: 'R', name: 'React.js' },
+  { initial: '3', name: 'Three.js' }, { initial: 'Tw', name: 'Tailwind CSS' },
+  { initial: 'Pg', name: 'PostgreSQL' }, { initial: 'Sb', name: 'Supabase' },
+  { initial: 'M', name: 'MongoDB' }
+];
+const NAME = 'THIBAULT DUBOIS';
+const GLYPHS = '#/\\<>[]{}=+*%$&@0123456789';
+
+class Component extends DCLogic {
+  state = { lang: null, name: '', decryptDone: false, openExp: 0, rv: {}, showMiniName: false, isMobile: typeof matchMedia !== 'undefined' && matchMedia('(max-width: 720px)').matches };
+  heroShapeRef = React.createRef();
+  glowRef = React.createRef();
+
+  componentDidMount() {
+    const motion = this.props.motion ?? true;
+    if (!motion) { this.setState({ name: NAME, decryptDone: true }); }
+    else {
+      const dur = this.props.decryptMs ?? 1700;
+      const t0 = performance.now();
+      const tick = (now) => {
+        const p = Math.min(1, (now - t0 - 350) / dur);
+        const lock = Math.floor(Math.max(0, p) * NAME.length);
+        let s = '';
+        for (let i = 0; i < NAME.length; i++) {
+          const c = NAME[i];
+          s += (i < lock || c === ' ') ? c : GLYPHS[(i * 31 + Math.floor(now / 45)) % GLYPHS.length];
+        }
+        this.setState({ name: s, decryptDone: p >= 1 });
+        if (p < 1) this._raf = requestAnimationFrame(tick);
+      };
+      this._raf = requestAnimationFrame(tick);
+    }
+    this._onMove = (ev) => {
+      this._mouse = { x: ev.clientX, y: ev.clientY };
+      const el = this.heroShapeRef.current; if (!el) return;
+      const dx = (ev.clientX / window.innerWidth - .5), dy = (ev.clientY / window.innerHeight - .5);
+      el.style.transform = `translate(${dx * -18}px, ${dy * -14}px)`;
+    };
+    window.addEventListener('mousemove', this._onMove);
+    this._mq = matchMedia('(max-width: 720px)');
+    this._onMq = () => this.setState({ isMobile: this._mq.matches });
+    this._mq.addEventListener('change', this._onMq);
+    this._onMq();
+    const map = { cap: 'cap', cv: 'cv', 'cv-exp': 'cvexp', 'cv-tech': 'cvtech', 'cv-soft': 'cvsoft', projets: 'proj', formations: 'form' };
+    this._io = new IntersectionObserver((ents) => {
+      let upd = null;
+      ents.forEach(en => { if (en.isIntersecting) { upd = upd || {}; upd[map[en.target.id]] = true; this._io.unobserve(en.target); } });
+      if (upd) this.setState(s => ({ rv: { ...s.rv, ...upd } }));
+    }, { rootMargin: '9999px 0px -10% 0px' });
+    Object.keys(map).forEach(id => { const el = document.getElementById(id); if (el) this._io.observe(el); });
+  }
+  componentWillUnmount() {
+    cancelAnimationFrame(this._raf);
+    window.removeEventListener('mousemove', this._onMove);
+    if (this._mq) this._mq.removeEventListener('change', this._onMq);
+    if (this._io) this._io.disconnect();
+  }
+  goTo(id) {
+    const el = document.getElementById(id); if (!el) return;
+    window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY, behavior: 'smooth' });
+  }
+  renderVals() {
+    const lang = this.state.lang ?? this.props.lang ?? 'fr';
+    const t = I18N[lang];
+    const ids = ['hero', 'cap', 'cv', 'projets', 'formations'];
+    const isMobile = this.state.isMobile;
+    const nm = this.state.name;
+    const rv = this.state.rv || {};
+    const A = (g, ms) => rv[g] ? `reveal .85s cubic-bezier(.2,.7,.2,1) ${ms}ms both` : 'none';
+    return {
+      t,
+      firstName: nm.slice(0, 8),
+      lastName: nm.length > 9 ? nm.slice(9) : '',
+      nameDir: isMobile ? 'column' : 'row',
+      showCaret: !this.state.decryptDone && (this.props.motion ?? true),
+      heroShapeRef: this.heroShapeRef,
+      glowRef: this.glowRef,
+      cubeScale: isMobile ? .6 : 1,
+      isMobile, isDesktop: !isMobile,
+      footPadB: isMobile ? '90px' : '70px',
+      showMiniName: this.state.showMiniName,
+      langLabel: lang === 'fr' ? 'EN' : 'FR',
+      toggleLang: () => this.setState({ lang: lang === 'fr' ? 'en' : 'fr' }),
+      capT: { f: t.capTitle.slice(0, 1), r: t.capTitle.slice(1) },
+      cvT: { f: t.cvTitle.slice(0, 1), r: t.cvTitle.slice(1) },
+      projT: { f: t.projTitle.slice(0, 1), r: t.projTitle.slice(1) },
+      formT: { f: t.formTitle.slice(0, 1), r: t.formTitle.slice(1) },
+      a: {
+        cap0: A('cap', 0), cap1: A('cap', 90), cap2: A('cap', 200),
+        cv0: A('cv', 0), cv1: A('cv', 90), cv2: A('cv', 180),
+        tech0: A('cvtech', 0), soft0: A('cvsoft', 0),
+        proj0: A('proj', 0), proj1: A('proj', 90),
+        form0: A('form', 0), form1: A('form', 90)
+      },
+      exps: t.exps.map((e, i) => ({
+        ...e,
+        onEnter: () => this.setState({ openExp: i }),
+        mh: this.state.openExp === i ? '340px' : '0px',
+        anim: A('cvexp', i * 110)
+      })),
+      forms: t.forms.map((f, i) => ({ ...f, anim: A('form', 180 + i * 110) })),
+      projects: t.projects.map((p, i) => ({ ...p, anim: A('proj', 180 + i * 120) })),
+      softs: t.softs.map((label, i) => ({ label, anim: A('cvsoft', 80 + i * 45) })),
+      techs: TECHS.map((tc, i) => ({ ...tc, anim: A('cvtech', 90 + i * 45) }))
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -3,6 +3,7 @@ import {
   DRAWER_CONTENT_NAMES,
   FOLDER_Z_BACK,
   FOLDER_Z_FRONT,
+  FOLDER_Z_STEP_MAX,
   LABEL_HEIGHT,
   LABEL_OFFSET_Z,
   LABEL_WIDTH,
@@ -18,7 +19,7 @@ import { labelTexture } from '@/lib/folderLabel'
  * C'est le nombre de dossiers qui fabrique la cible du deuxième clic — mesuré,
  * un dossier seul au fond du tiroir n'occupe que quelques pour cent de la
  * hauteur du cadre, alors que cinq échelonnés remplissent le tiroir et donnent
- * des onglets de ~100 × 50 px (`docs/renders/spikes/cabinet-folders-x5.png`).
+ * des onglets de ~100 × 50 px (`design/renders/spikes/cabinet-folders-x5.png`).
  */
 export interface FolderHandle {
   /** La fiche que ce dossier ouvre. */
@@ -32,13 +33,36 @@ export interface FolderHandle {
 /**
  * La profondeur du i-ème dossier, dans le repère du tiroir fermé.
  *
- * Le pas se DÉRIVE du nombre de projets : à cinq il vaut 0.055, à trois 0.11.
- * Le coder en dur ferait sortir le dossier de devant à travers la façade dès
- * qu'on ajoute une fiche — c'est exactement ce qu'a montré le spike.
+ * **Le premier du tableau est DEVANT, contre la poignée, et les suivants
+ * s'enfoncent** (correction du 2026-09-11, #180). Le sens était inversé :
+ * « Portfolio », premier de `PROJECTS`, se retrouvait au fond du tiroir,
+ * derrière les quatre autres, si bien que le dossier qu'on voit en ouvrant
+ * était le dernier projet de la liste. L'ordre du tableau est celui de la
+ * LECTURE, pas celui d'un empilement vu depuis le fond.
+ *
+ * Les deux bornes ne changent pas : elles décrivent les limites physiques du
+ * tiroir — au-delà, l'étiquette entre dans le plateau ou traverse la façade
+ * (#81) — et elles restent justes. C'est leur rôle dans l'interpolation qui
+ * s'échange.
+ *
+ * Le pas se DÉRIVE du nombre de projets, et il est PLAFONNÉ (2026-10-21) :
+ * dériver seul voulait dire « remplir la course quoi qu'il arrive », et à
+ * trois dossiers l'écart doublait (0.11) — mesuré à l'œil par l'auteur comme
+ * trop important. Le plafond est le pas d'une rangée pleine (0.055), et une
+ * rangée plafonnée se CENTRE entre les bornes — même point d'équilibre que le
+ * dossier unique — plutôt que de coller à la poignée ou au fond. Coder le pas
+ * en dur ferait sortir le dossier de devant à travers la façade dès qu'on
+ * ajoute une fiche — c'est exactement ce qu'a montré le spike ; le plafond ne
+ * réintroduit pas ce risque, puisqu'il ne joue qu'en dessous de la rangée
+ * pleine.
  */
 export function folderZ(index: number, count: number): number {
-  if (count <= 1) return (FOLDER_Z_BACK + FOLDER_Z_FRONT) / 2
-  return FOLDER_Z_BACK + (index * (FOLDER_Z_FRONT - FOLDER_Z_BACK)) / (count - 1)
+  const centre = (FOLDER_Z_BACK + FOLDER_Z_FRONT) / 2
+  if (count <= 1) return centre
+  const pas = Math.min(Math.abs(FOLDER_Z_BACK - FOLDER_Z_FRONT) / (count - 1), FOLDER_Z_STEP_MAX)
+  // Le fond est plus négatif que l'avant : l'index croissant s'enfonce.
+  const sens = Math.sign(FOLDER_Z_BACK - FOLDER_Z_FRONT)
+  return centre + sens * (index - (count - 1) / 2) * pas
 }
 
 /**

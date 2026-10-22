@@ -1,0 +1,557 @@
+import { existsSync, readFileSync } from 'node:fs'
+import { describe, expect, it } from 'vitest'
+import { CAMERA_STOPS } from '@/config/cameraStops'
+import { CV, CV_JOBS_EMPTY, glyphMark, type CvGlyph } from '@/content/cv'
+import {
+  CASCADE_MS,
+  CASCADE_STEP_MS,
+  CV_OUT_MS,
+  CV_STOP_LABEL,
+  DECRYPT_MS,
+  MISSIONS_ON_SCREEN,
+} from '@/ui/CvScreen'
+import { LOCALES, t, tm } from '@/lib/locale'
+
+/**
+ * Le CV (#93). Quatre choses qu'aucune relecture ne rattraperait :
+ *
+ *   1. l'arrêt qui l'affiche est désigné par un `label` — le renommer dans
+ *      `CAMERA_STOPS` laisserait un composant qui ne s'affiche plus jamais,
+ *      sans la moindre erreur (même piège que les sections de la barre) ;
+ *   2. la durée de sortie vit DEUX FOIS — en CSS (`--t-cv-out`) et en JS
+ *      (`CV_OUT_MS`, qui décide du démontage) ;
+ *   3. l'anatomie doit rester dans `tokens.css` : dès qu'elle repart dans un
+ *      CSS local, l'app et la maquette peuvent diverger en silence ;
+ *   4. l'accordéon ne doit plus porter de plafond en dur — une `max-height`
+ *      devinée fait disparaître la mission de trop sans rien dire.
+ *
+ * La forme, jamais la prose : les textes de `CV` sont les placeholders de la
+ * maquette et attendent la plume de leur auteur.
+ */
+
+const tokens = readFileSync('src/styles/tokens.css', 'utf8')
+const mockup = readFileSync('design/screens/02-cv.html', 'utf8')
+const component = readFileSync('src/ui/CvScreen.tsx', 'utf8')
+// Le site classique lit la MÊME donnée et la rend autrement : toutes les
+// missions, et pas de mention d'âge en anglais. Les deux règles se vérifient
+// dans son source, faute de DOM ici.
+const classique = readFileSync('src/ui/ClassicApp.tsx', 'utf8')
+const heros = readFileSync('src/ui/classic/Hero.tsx', 'utf8')
+// Le déchiffrage a déménagé dans un module partagé avec le site classique
+// (#29). **La garde suit le fichier** : ces trois règles — figement de
+// gauche à droite, espaces jamais brouillés, tirage déterministe — sont ce
+// qui fait qu'un nom se résout au lieu de scintiller, et elles protègent
+// maintenant les deux expériences d'un coup.
+const decrypt = readFileSync('src/ui/Scrambled.tsx', 'utf8')
+// L'horloge est dans un module à part : un fichier qui exporte un composant
+// ET un crochet perd le Fast Refresh. C'est elle qui porte la coupure sous
+// mouvement réduit.
+const decryptClock = readFileSync('src/lib/decrypt.ts', 'utf8')
+
+describe("l'arrêt du CV", () => {
+  it('existe encore dans le tour', () => {
+    const stop = CAMERA_STOPS.find((s) => s.label === CV_STOP_LABEL)
+    expect(stop, `aucun arrêt nommé « ${CV_STOP_LABEL} »`).toBeDefined()
+  })
+})
+
+describe('le nom déchiffré', () => {
+  it('dure exactement ce que le CSS annonce', () => {
+    const declared = tokens.match(/--t-decrypt:\s*(\d+)ms/)
+    expect(declared, 'jeton --t-decrypt introuvable dans tokens.css').not.toBeNull()
+    expect(Number(declared![1])).toBe(DECRYPT_MS)
+  })
+
+  it('a un nom à déchiffrer et le garde lisible pour une synthèse vocale', () => {
+    // Le texte brouillé est `aria-hidden` ; le vrai nom vit dans `aria-label`,
+    // sans quoi une synthèse lirait une ligne de bruit tirée au sort.
+    expect(CV.identity.name.trim()).not.toBe('')
+    expect(component).toContain('aria-label={text}')
+    expect(component).toContain('aria-hidden="true"')
+  })
+
+  it("s'affiche en chasse fixe", () => {
+    // Les glyphes tirés au sort changent de largeur en chasse
+    // proportionnelle : le nom gigoterait pendant toute l'animation.
+    const rule = tokens.slice(tokens.indexOf('.cv__name {'), tokens.indexOf('.cv__row {'))
+    expect(rule).toContain('ui-monospace')
+  })
+
+  it('est neutralisé par `prefers-reduced-motion`', () => {
+    // Le critère du design system est l'autonomie : cette animation part toute
+    // seule, elle doit donc être coupée — pas seulement raccourcie.
+    expect(decryptClock).toContain("matchMedia('(prefers-reduced-motion: reduce)')")
+  })
+
+  it('ne tire jamais un espace au sort', () => {
+    // Ce sont les espaces qui gardent la silhouette du nom pendant le
+    // brouillage ; un espace dans le jeu de glyphes ouvrirait des trous.
+    const charset = decrypt.match(/DECRYPT_CHARSET = '([^']+)'/)
+    expect(charset, 'DECRYPT_CHARSET introuvable').not.toBeNull()
+    expect(charset![1]).not.toContain(' ')
+    expect(charset![1].length).toBeGreaterThan(10)
+  })
+})
+
+describe('la cascade de déchiffrement', () => {
+  it('dure exactement ce que le CSS annonce', () => {
+    const declared = tokens.match(/--t-cascade:\s*(\d+)ms/)
+    expect(declared, 'jeton --t-cascade introuvable').not.toBeNull()
+    expect(Number(declared![1])).toBe(CASCADE_MS)
+    expect(CASCADE_STEP_MS).toBeLessThan(CASCADE_MS)
+  })
+
+  it("n'a qu'une horloge pour tout l'écran", () => {
+    // Une quinzaine de titres s'animent ensemble. Une boucle `rAF` et un état
+    // par titre, c'est quinze rendus React par image à côté d'une scène 3D.
+    // `Scrambled` doit donc rester PUR : il dérive son texte du temps qu'on
+    // lui passe, il ne le mesure pas.
+    const body = decrypt.slice(decrypt.indexOf('export function Scrambled'), decrypt.length)
+    expect(body).not.toContain('useState')
+    expect(body).not.toContain('useEffect')
+    expect(body).not.toContain('requestAnimationFrame')
+  })
+
+  it('tire ses glyphes de façon déterministe', () => {
+    // `Scrambled` est rendu pendant la phase de rendu de React : un tirage non
+    // pur y donnerait un texte différent à chaque re-rendu déclenché par autre
+    // chose que l'horloge. On regarde le CORPS de la fonction, pas le fichier :
+    // son commentaire, lui, a le droit de nommer ce qu'on évite.
+    const body = decrypt.slice(decrypt.indexOf('export function Scrambled'), decrypt.length)
+    expect(body).not.toContain('Math.random')
+  })
+
+  it('affiche un caret pendant le déchiffrement du nom, et lui seul', () => {
+    expect(tokens).toContain('.cv__caret')
+    expect(component).toContain('cv__caret')
+    expect(component).toContain('typing &&')
+  })
+})
+
+describe('le CV ne bouge pas quand un accordéon s’ouvre', () => {
+  it('est ancré sous une entretoise INCOMPRESSIBLE', () => {
+    // Le CV n'est pas centré : centré, tout ce qui le fait grandir le fait
+    // remonter — la moitié de ce qu'un accordéon ajoute est reprise en haut.
+    // C'est de l'arithmétique, aucune réserve ne le corrige exactement puisque
+    // les quatre accordéons n'ont pas la même hauteur.
+    //
+    // `flex: 0 0 auto` est le mot load-bearing : une entretoise compressible
+    // (`0 1 auto`) tient tant que rien ne déborde, puis cède — mesuré 9 px à
+    // 1512 × 945, où le CV déborde déjà au repos. Incompressible, le haut est
+    // figé à toute hauteur : 0 px sur les huit cartouches, aux trois tailles.
+    //
+    // Depuis #194 elle est COURTE : le CV s'aligne en haut de l'écran, et
+    // l'air au-dessus du nom vaut l'air latéral entre la colonne et le bezel
+    // (16u + les 24u de `padding-block` = 40u, contre 39,6u mesurés de côté).
+    const before = tokens.slice(
+      tokens.indexOf('.cv::before {'),
+      tokens.indexOf('}', tokens.indexOf('.cv::before {')),
+    )
+    expect(before).toContain('flex: 0 0 auto')
+    expect(before).toContain('height: calc(16 * var(--cv-u, 1px))')
+  })
+
+  it('ne centre plus, et ne réagit plus au survol par la mise en page', () => {
+    // `:has(.job:hover)` réglait la réserve précédente et se déclenchait AUSSI
+    // sur les formations, qui n'ouvrent rien : survoler un diplôme déplaçait
+    // tout le CV. Rien ne doit plus faire dépendre la mise en page d'un survol.
+    const rule = tokens.slice(tokens.indexOf('.cv {'), tokens.indexOf('.cv::before'))
+    expect(rule).toContain('justify-content: flex-start')
+    expect(tokens).not.toContain('.cv:has(')
+    expect(tokens).not.toContain('--cv-reserve')
+  })
+})
+
+describe('le balayage au survol', () => {
+  it('traverse la cartouche une fois, sans rien promettre', () => {
+    // Il est posé sur `.job`, donc les formations l'ont aussi : il n'annonce
+    // pas une ouverture, il accuse réception du pointeur.
+    expect(tokens).toContain('@keyframes job-sweep')
+    expect(tokens).toContain('.job:hover::before')
+    expect(tokens).toMatch(/--t-sweep:\s*\d+ms/)
+    // `overflow: hidden` est ce qui coupe le liseré aux bords arrondis.
+    const rule = tokens.slice(
+      tokens.indexOf('.job { position: relative'),
+      tokens.indexOf('.job::before'),
+    )
+    expect(rule).toContain('overflow: hidden')
+  })
+})
+
+describe('le CV défile', () => {
+  it('est ancré, prend la molette, et ne porte pas `panel`', () => {
+    // Sept blocs font ~910 px : ça tient sur un écran plein, pas dans un cadre
+    // de 720. Trois choses qu'un refactor casserait sans bruit —
+    //   1. `flex-start`, jamais `center`. Centré, le bloc remonte à chaque
+    //      ouverture d'accordéon ; et un `center` seul déborde des DEUX côtés
+    //      quand ça ne rentre pas, or un conteneur ne défile jamais vers le
+    //      négatif — la moitié haute deviendrait inatteignable ;
+    //   2. `pointer-events: auto`, sinon la molette ne l'atteint jamais et va
+    //      au canevas ;
+    //   3. surtout PAS `panel` : cette classe ferait ignorer au tour toute
+    //      molette passant ici, et on ne pourrait plus quitter l'arrêt en
+    //      défilant. C'est `CvScreen` qui arbitre, cran par cran.
+    const rule = tokens.slice(tokens.indexOf('.cv {'), tokens.indexOf('.cv--out'))
+    expect(rule).toContain('justify-content: flex-start')
+    expect(rule).toContain('overflow-y: auto')
+    expect(rule).toContain('pointer-events: auto')
+    expect(component).not.toContain('cv panel')
+  })
+
+  it('arbitre la molette avec un écouteur natif, pas un `onWheel` React', () => {
+    // `CameraRig` écoute en natif sur `.stage`. React 19 délègue ses `onWheel`
+    // à la racine de l'arbre, qui est un ANCÊTRE de `.stage` : un
+    // `stopPropagation` synthétique arriverait après coup, le tour ayant déjà
+    // avancé. Mesuré — c'est exactement ce qui s'est passé au premier essai.
+    expect(component).toContain("addEventListener('wheel'")
+    expect(component).not.toContain('onWheel=')
+  })
+})
+
+describe('la sortie du CV', () => {
+  it('dure exactement ce que le CSS annonce', () => {
+    const declared = tokens.match(/--t-cv-out:\s*(\d+)ms/)
+    expect(declared, 'jeton --t-cv-out introuvable dans tokens.css').not.toBeNull()
+    expect(Number(declared![1])).toBe(CV_OUT_MS)
+  })
+
+  it("est déclarée après l'entrée, sinon elle ne gagne pas", () => {
+    // Même spécificité : c'est l'ordre dans le fichier qui tranche. Remonter
+    // `.cv--out` au-dessus de `.cv` laisserait le fondu de sortie sans effet.
+    expect(tokens.indexOf('.cv--out')).toBeGreaterThan(tokens.indexOf('.cv {'))
+  })
+})
+
+describe('le contenu du CV', () => {
+  it('sait afficher chaque poste sans trou', () => {
+    // Le composant lit ces champs sans garde : un poste incomplet laisserait un
+    // blanc dans la composition plutôt qu'une erreur.
+    for (const job of CV.jobs) {
+      const société = tm(job.company, 'fr')
+      expect(société, société).toBeTruthy()
+      expect(job.period, société).toBeTruthy()
+      // Les DEUX langues (#33) : une traduction oubliée laisse un blanc dans
+      // la composition, exactement comme un champ vide. `company` est
+      // `MaybeLocalized` depuis le 2026-10-21 — la cartouche de reconversion
+      // porte un cadre traduit, pas un nom propre.
+      for (const locale of LOCALES) {
+        const where = `${société} (${locale})`
+        expect(tm(job.company, locale).trim(), where).not.toBe('')
+        expect(t(job.title, locale).trim(), where).not.toBe('')
+        // **La règle « quatre missions au minimum » est retirée** (#173). Elle
+        // datait du 2026-08-20, quand la donnée était inventée et pouvait donc
+        // se rembourrer jusqu'à quatre. Sur le vrai parcours, un poste en porte
+        // sept, un autre trois, et un autre aucune — celui qui n'en a pas se
+        // rend en cartouche STATIQUE, sans rien promettre au survol. Ce qui
+        // reste vrai : une liste déclarée n'est jamais vide ni trouée.
+        if (job.missions === undefined) continue
+        expect(t(job.missions, locale).length, where).toBeGreaterThan(0)
+        for (const m of t(job.missions, locale)) expect(m.trim(), where).not.toBe('')
+      }
+      // Les deux langues disent le même nombre de missions : une traduction
+      // qui en perd une la fait disparaître de l'écran anglais, et rien ne le
+      // signale — c'est le même piège que les pages de bulle (#32).
+      if (job.missions !== undefined) {
+        expect(t(job.missions, 'en').length, société).toBe(t(job.missions, 'fr').length)
+      }
+    }
+  })
+
+  it('ne montre que les quatre premières missions à l’écran', () => {
+    // Décision de l'auteur (2026-09-11) : quatre au plus dans la scène, toutes
+    // sur le site classique. Le PDF reste exhaustif, l'écran vertical non — son
+    // budget de hauteur est la ressource rare, et un accordéon de sept lignes
+    // pousse le CV dehors. La donnée porte TOUT : c'est le rendu qui coupe.
+    expect(MISSIONS_ON_SCREEN).toBe(4)
+    const plusLong = Math.max(...CV.jobs.map((j) => (j.missions ? t(j.missions, 'fr').length : 0)))
+    // Sans un poste qui dépasse, la coupe ne serait vérifiée par personne.
+    expect(plusLong, 'aucun poste ne dépasse la coupe : la règle est muette').toBeGreaterThan(
+      MISSIONS_ON_SCREEN,
+    )
+    expect(component).toContain('MISSIONS_ON_SCREEN')
+    expect(classique, 'le site classique doit garder toutes les missions').not.toContain(
+      'MISSIONS_ON_SCREEN',
+    )
+  })
+
+  it('nomme de vraies entreprises, et aucune invention', () => {
+    // Le CV de l'app a affiché pendant des semaines quatre postes inventés —
+    // Studio Nova, Atelier K, Freelance, Coopérative Lumen — posés par #93 pour
+    // que l'écran ait une forme. À l'écran ça ne ressemblait pas à un trou, ça
+    // ressemblait à un CV. La liste est donc verrouillée par son contenu.
+    // La reconversion ouvre le parcours depuis le 2026-10-21 : son « entreprise »
+    // est le cadre que le CV papier écrit sous l'intitulé, pas un nom propre.
+    expect(CV.jobs.map((j) => tm(j.company, 'fr'))).toEqual([
+      'Formation autodidacte & projets perso',
+      'Optimal Ways',
+      'IDKIDS Group',
+      'Web Transition',
+      'OVHcloud',
+    ])
+    expect(CV.formations.map((f) => f.school)).toEqual(['vueschool.io', 'OpenClassrooms', 'ISEG'])
+  })
+
+  it('nomme ses clients quand il y en a', () => {
+    for (const job of CV.jobs) {
+      if (job.clients === undefined) continue
+      for (const locale of LOCALES) {
+        expect(tm(job.clients, locale).trim(), `${tm(job.company, 'fr')} (${locale})`).not.toBe('')
+      }
+    }
+    // Le libellé est dans la donnée, pas dans les deux composants qui l'affichent.
+    for (const locale of LOCALES) expect(t(CV.clientsLabel, locale).trim(), locale).not.toBe('')
+  })
+
+  it('identifie chaque poste de façon unique', () => {
+    // `entreprise-période` sert de clé React : deux postes identiques feraient
+    // disparaître une cartouche silencieusement. La clé dérive de la forme
+    // FRANÇAISE — stable quand la langue bascule, comme dans les composants.
+    const keys = CV.jobs.map((j) => `${tm(j.company, 'fr')}-${j.period}`)
+    expect(new Set(keys).size).toBe(keys.length)
+  })
+
+  it('a des faits complets et une phrase de repli', () => {
+    for (const locale of LOCALES) expect(t(CV.factsTitle, locale).trim()).not.toBe('')
+    expect(CV.facts.length).toBeGreaterThan(0)
+    for (const fact of CV.facts) {
+      for (const locale of LOCALES) {
+        expect(t(fact.label, locale).trim(), locale).not.toBe('')
+        expect(tm(fact.value, locale).trim(), locale).not.toBe('')
+      }
+    }
+    for (const locale of LOCALES) {
+      expect(t(CV_JOBS_EMPTY, locale).trim().length, locale).toBeGreaterThan(0)
+    }
+  })
+})
+
+describe('les formations', () => {
+  it('affichent chaque cartouche sans trou', () => {
+    expect(CV.formations.length).toBeGreaterThan(0)
+    for (const locale of LOCALES) {
+      expect(t(CV.formationsTitle, locale).trim(), locale).not.toBe('')
+    }
+    for (const f of CV.formations) {
+      expect(f.school, f.school).toBeTruthy()
+      expect(f.period, f.school).toBeTruthy()
+      for (const locale of LOCALES) {
+        expect(t(f.title, locale).trim(), `${f.school} (${locale})`).not.toBe('')
+      }
+    }
+  })
+
+  it('identifie chaque cartouche de façon unique', () => {
+    // `école-période` sert de clé React, comme `entreprise-période` pour un poste.
+    const keys = CV.formations.map((f) => `${f.school}-${f.period}`)
+    expect(new Set(keys).size).toBe(keys.length)
+  })
+
+  it('ne portent aucune mission à dérouler', () => {
+    // `.job--static` retire le survol ET le `tabIndex` : un diplôme n'ouvre
+    // rien, il ne doit donc rien promettre.
+    expect(component).toContain('job job--static')
+  })
+})
+
+describe('les réglettes de vignettes', () => {
+  const strips: [string, CvGlyph[]][] = [
+    ['savoir-être', CV.traits],
+    ['savoir-faire', CV.skills],
+  ]
+
+  it('a toujours de quoi fabriquer une initiale', () => {
+    // Sans SVG, la vignette affiche `name.slice(0, 1)`. Un nom vide y produit
+    // une pastille muette — pas une erreur, juste un carré vide que personne
+    // ne relierait à sa cause.
+    for (const [strip, items] of strips) {
+      expect(items.length, strip).toBeGreaterThan(0)
+      for (const item of items) {
+        // `tm` : un savoir-être est traduit, une technologie non — même champ.
+        for (const locale of LOCALES) {
+          expect(tm(item.name, locale).trim(), `${strip} (${locale})`).not.toBe('')
+        }
+      }
+    }
+  })
+
+  it('identifie chaque vignette de façon unique', () => {
+    // `name` sert de clé React : un doublon ferait disparaître une vignette.
+    for (const [strip, items] of strips) {
+      const names = items.map((i) => i.name)
+      expect(new Set(names).size, strip).toBe(names.length)
+    }
+  })
+
+  it('ne montre jamais deux fois la même marque du savoir-faire, dans aucune langue', () => {
+    // Seul le savoir-faire montre encore des marques : les traits sont des
+    // étiquettes texte depuis #194, et le mot entier ne peut pas se confondre
+    // avec son voisin comme deux initiales le faisaient.
+    for (const locale of LOCALES) {
+      const marques = CV.skills.map((i) => glyphMark(i, locale))
+      expect(new Set(marques).size, `savoir-faire (${locale}) : ${marques.join(' ')}`).toBe(
+        marques.length,
+      )
+    }
+  })
+
+  it('garde le savoir-être à six, ni plus ni moins', () => {
+    // La carte tient à la hauteur de la photo, dans la rangée du haut. Six
+    // étiquettes remplissent ses rangées ; une septième en ouvre une de plus,
+    // qui rallonge toute la rangée et pousse le CV hors de l'écran quand un
+    // accordéon s'ouvre (mesuré à 1000 × 720, du temps de la grille 3 × 2).
+    expect(CV.traits.length).toBe(6)
+  })
+})
+
+describe('une cartouche ne se laisse pas écraser', () => {
+  it('porte `flex: none`, parce que son `overflow: hidden` a ramené son minimum à zéro', () => {
+    // **Mesuré sur `dev` avant #173** : les huit cartouches perdaient jusqu'à
+    // 28 px de leur propre contenu, et aucune ne le disait. Avec le vrai
+    // parcours, jusqu'à 44 px — la ligne des clients passait à la trappe.
+    //
+    // La cause n'est pas la hauteur, c'est une règle de flexbox : `.cv` est une
+    // colonne flex, et le minimum automatique d'un élément flex vaut sa taille
+    // de contenu — SAUF s'il porte un `overflow` autre que `visible`, qui le
+    // ramène à zéro. Or `.job` porte `overflow: hidden`, posé pour couper le
+    // balayage aux angles arrondis. Rien n'empêchait donc la colonne de tasser
+    // ses cartouches au lieu de défiler, et un contenu tassé est COUPÉ, pas
+    // reflué : c'est pire qu'un débordement, qui au moins se voit et se défile.
+    const règle = tokens.slice(tokens.indexOf('.job {'), tokens.indexOf('.job:hover'))
+    expect(règle, '.job doit refuser de grandir ET de se compresser').toMatch(/flex:\s*none/)
+  })
+})
+
+describe('la photo', () => {
+  it('pointe un fichier qui existe', () => {
+    // Un `src` mort n'affiche rien et ne lève rien — aucun `onError` n'est
+    // câblé nulle part, c'est la donnée qui décide (même règle que les icônes,
+    // #168, et que les médias d'une fiche projet). L'absence de `photo` serait
+    // un repli légitime (le cadre hachuré) ; un chemin déclaré, lui, doit
+    // exister.
+    expect(CV.identity.photo).toBeDefined()
+    expect(existsSync(`public${CV.identity.photo}`)).toBe(true)
+  })
+})
+
+describe("l'âge", () => {
+  it('est dit en français et volontairement absent en anglais', () => {
+    // Un CV anglophone ne porte pas l'âge, et le mentionner ouvre un biais que
+    // la version française n'ouvre pas de la même façon (décision de l'auteur,
+    // 2026-09-11). L'export anglais du 2026-10-21 l'affiche pourtant —
+    // divergence signalée à l'auteur ; le site garde la règle.
+    //
+    // `null` et non `''` : une chaîne vide se lit comme un oubli, `null` dit
+    // qu'il n'y a rien à dire. Le composant saute la mention.
+    expect(t(CV.identity.age, 'fr')?.trim()).toBeTruthy()
+    expect(t(CV.identity.age, 'en')).toBeNull()
+  })
+
+  it("n'ouvre pas la ligne de méta du site classique avec un séparateur", () => {
+    // Le point cyan PRÉCÈDE chaque fait, donc c'est l'âge qui ouvre la ligne.
+    // Sans âge, la ligne commencerait par un séparateur orphelin.
+    expect(heros).toContain('ageAffiché')
+  })
+})
+
+describe('la localisation (#194)', () => {
+  it("s'affiche comme un fait : un libellé traduit, le lieu en valeur", () => {
+    // Décision utilisateur (2026-10-21) : la ligne dit « Basé à » puis
+    // « Lille, France », sans mention de mode — « remote » posé seul à droite
+    // ne voulait rien dire, et « Localisation » était trop long. Le lieu est
+    // un nom propre, neutre entre les langues ; le libellé, lui, se traduit.
+    expect(CV.location.trim()).not.toBe('')
+    for (const locale of LOCALES) {
+      expect(t(CV.locationLabel, locale).trim(), locale).not.toBe('')
+    }
+    expect(component).toContain('CV.locationLabel')
+  })
+})
+
+describe('le savoir-être en étiquettes (#194)', () => {
+  it('range les traits en puces texte, plus en vignettes à initiales', () => {
+    // Décision utilisateur (2026-10-21) : une initiale de qualité humaine
+    // n'identifie rien — « S » ne dit pas « Stratège » comme « Pg » dit
+    // Postgres — et la grille 3 × 2 coupait ou faisait déborder les mots
+    // longs. Le site classique range déjà les mêmes six mots en puces
+    // (`.classic-chip`) ; l'écran vertical adopte la même lecture.
+    expect(component).toContain('cv__traits')
+    expect(component).not.toContain('variant="traits"')
+  })
+})
+
+describe('« Le cap »', () => {
+  it('porte un titre de SECTION, pas un titre de carte', () => {
+    // Décision de l'auteur (2026-08-20) : c'est une section au même rang
+    // qu'Expériences et Formations, et c'est la marge du titre de section qui
+    // la détache du savoir-faire au-dessus.
+    const at = component.indexOf('CV.outlookTitle')
+    expect(at, 'CV.outlookTitle absent du composant').toBeGreaterThan(-1)
+    expect(component.slice(component.lastIndexOf('<h2', at), at)).toContain('cv__section-title')
+  })
+
+  it("porte l'accent froid, contrairement aux titres de carte", () => {
+    // La couleur porte la hiérarchie : trois sections en accent, les cartes
+    // qu'elles contiennent en crème sourd. Ni corps ni graisse en plus.
+    const rule = tokens.slice(
+      tokens.indexOf('.cv__section-title {'),
+      tokens.indexOf('}', tokens.indexOf('.cv__section-title {')),
+    )
+    expect(rule).toContain('rgba(var(--glow-rgb)')
+  })
+
+  it('vient avant les cartouches', () => {
+    // L'intention se lit d'abord, le parcours la justifie ensuite.
+    expect(component.indexOf('CV.outlookTitle')).toBeLessThan(component.indexOf('CV.jobsTitle'))
+    expect(component.indexOf('CV.jobsTitle')).toBeLessThan(component.indexOf('CV.formationsTitle'))
+  })
+
+  it('tient en quatre lignes', () => {
+    // Le budget est vertical, pas éditorial : à 13 px dans une carte de ~545 px,
+    // une ligne porte ~95 signes. Au-delà de quatre, le CV déborde de l'écran
+    // dès qu'un accordéon s'ouvre — mesuré, la marge n'est que de 33 px.
+    // Le plafond vaut pour les DEUX langues : c'est la hauteur rendue qui est
+    // contrainte, et elle ne connaît pas la langue.
+    for (const locale of LOCALES) {
+      expect(t(CV.outlookTitle, locale).trim(), locale).not.toBe('')
+      expect(t(CV.outlook, locale).trim(), locale).not.toBe('')
+      expect(t(CV.outlook, locale).length, locale).toBeLessThanOrEqual(400)
+    }
+  })
+})
+
+describe("l'anatomie du CV", () => {
+  it('vit dans le design system, pas dans le composant', () => {
+    for (const cls of [
+      '.cv {',
+      '.cv__card',
+      '.cv__card--traits',
+      '.cv__traits',
+      '.cv__trait {',
+      '.cv__fact',
+      '.cv__empty',
+      '.cv__tiles',
+      '.cv__tile-mark',
+      '.cv__outlook-text',
+      '.cv__section-title',
+      '.job {',
+      '.job--static',
+      '.job__missions',
+    ]) {
+      expect(tokens, `${cls} absent de tokens.css`).toContain(cls)
+    }
+  })
+
+  it("n'est plus redéfinie par la maquette", () => {
+    // La maquette ne garde qu'un commentaire dans son `<style>` ; y remettre
+    // une règle rouvrirait la porte à deux définitions divergentes.
+    const local = mockup.slice(mockup.indexOf('<style>'), mockup.indexOf('</style>'))
+    expect(local).not.toMatch(/^\s*\.(cv|job)[^*]*\{/m)
+  })
+
+  it("déroule l'accordéon sans plafond en dur", () => {
+    // `grid-template-rows: 0fr → 1fr` prend la hauteur du contenu. Une
+    // `max-height` en pixels rognerait la mission de trop en silence.
+    expect(tokens).toMatch(/\.job__missions\s*\{[^}]*grid-template-rows:\s*0fr/)
+    expect(tokens).not.toMatch(/\.job__missions[^}]*max-height:\s*\d/)
+  })
+})

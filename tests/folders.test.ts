@@ -9,6 +9,7 @@ import {
 import type { Project } from '@/content/projects'
 import { buildDrawerGroup } from '@/lib/cabinetDrawer'
 import { buildFolders, folderZ } from '@/lib/folders'
+import type { Localized } from '@/lib/locale'
 
 /**
  * Un dossier par projet (#80). Trois pannes possibles, toutes muettes :
@@ -65,16 +66,20 @@ const stubLabel = (tab: Object3D, project: Project): Object3D => {
   return o
 }
 
+/** Un contenu bilingue de test, identique dans les deux langues : ce fichier
+ *  vérifie la géométrie des dossiers, pas la traduction. */
+const both = (value: string): Localized => ({ fr: value, en: value })
+
 function project(slug: string): Project {
   return {
     slug,
     name: slug,
     tabLabel: slug,
-    tagline: 'x',
+    tagline: both('x'),
     year: '2026',
-    role: 'x',
+    role: both('x'),
     stack: ['x'],
-    highlights: ['x'],
+    highlights: { fr: ['x'], en: ['x'] },
   }
 }
 
@@ -85,16 +90,48 @@ afterEach(() => {
 })
 
 describe('folderZ', () => {
-  it('range le premier au fond et le dernier devant', () => {
-    expect(folderZ(0, 5)).toBeCloseTo(FOLDER_Z_BACK, 6)
-    expect(folderZ(4, 5)).toBeCloseTo(FOLDER_Z_FRONT, 6)
+  it('range le premier DEVANT, contre la poignée, et le dernier au fond', () => {
+    // **Le sens a été corrigé le 2026-09-11 (#180)**, et il était inversé :
+    // « Portfolio », premier du tableau, se retrouvait au fond du tiroir,
+    // derrière les quatre autres. Le dossier qu'on voit en ouvrant doit être
+    // le premier de la liste — l'ordre du tableau est celui de la LECTURE,
+    // pas celui de l'empilement vu du fond.
+    expect(folderZ(0, 5)).toBeCloseTo(FOLDER_Z_FRONT, 6)
+    expect(folderZ(4, 5)).toBeCloseTo(FOLDER_Z_BACK, 6)
   })
 
-  it('dérive le pas du nombre de projets', () => {
+  it('dérive le pas du nombre de projets, sans jamais dépasser le plafond', () => {
     // Coder le pas en dur ferait traverser la façade au dossier de devant dès
     // qu'on ajoute une fiche — c'est ce que le spike a montré à 0.09.
-    expect(folderZ(1, 5) - folderZ(0, 5)).toBeCloseTo(0.055, 6)
-    expect(folderZ(1, 3) - folderZ(0, 3)).toBeCloseTo(0.11, 6)
+    //
+    // Mesuré en VALEUR ABSOLUE : c'est l'écartement qui est dérivé, et son
+    // signe ne dit que la direction. Un test signé aurait échoué à la
+    // correction du sens (#180) pour une raison qui n'est pas la sienne.
+    //
+    // Le pas est PLAFONNÉ depuis le 2026-10-21 (retour utilisateur : à trois
+    // dossiers étalés sur toute la course, l'écart lisait comme trois objets
+    // sans rapport). Sous la capacité pleine, la rangée garde le pas de la
+    // rangée pleine et se centre entre les bornes.
+    expect(Math.abs(folderZ(1, 5) - folderZ(0, 5))).toBeCloseTo(0.055, 6)
+    expect(Math.abs(folderZ(1, 3) - folderZ(0, 3))).toBeCloseTo(0.055, 6)
+  })
+
+  it('centre la rangée plafonnée entre les bornes', () => {
+    // Même point d'équilibre que le dossier unique : une rangée qui ne remplit
+    // plus la course ne colle ni à la poignée ni au fond.
+    const milieu = (FOLDER_Z_BACK + FOLDER_Z_FRONT) / 2
+    expect((folderZ(0, 3) + folderZ(2, 3)) / 2).toBeCloseTo(milieu, 6)
+  })
+
+  it('enfonce chaque dossier un peu plus que le précédent', () => {
+    // Le sens, exprimé sans nommer les bornes : chaque dossier est plus loin
+    // de la poignée que celui qui le précède dans le tableau. C'est la règle
+    // que #180 a rétablie, et elle vaut à toutes les capacités.
+    for (let count = 2; count <= DRAWER_CAPACITY; count++) {
+      for (let i = 1; i < count; i++) {
+        expect(folderZ(i, count), `${i}/${count}`).toBeLessThan(folderZ(i - 1, count))
+      }
+    }
   })
 
   it('centre un dossier unique plutôt que de le coller au fond', () => {

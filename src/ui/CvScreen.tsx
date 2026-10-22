@@ -1,0 +1,450 @@
+import { useEffect, useRef, useState } from 'react'
+import { CAMERA_STOPS } from '@/config/cameraStops'
+import { CV, CV_JOBS_EMPTY, type CvGlyph } from '@/content/cv'
+import { UI } from '@/content/ui'
+import { CvMark } from '@/ui/CvMark'
+import { ResumeDownload } from '@/ui/ResumeDownload'
+import { type Locale, t, tm } from '@/lib/locale'
+import { railThumb } from '@/lib/scrollRail'
+import { useLocale } from '@/state/locale'
+import { useInteraction } from '@/state/interaction'
+import { useDecryptClock } from '@/lib/decrypt'
+import { Scrambled } from '@/ui/Scrambled'
+
+/**
+ * Le CV « affiché par l'écran vertical » (issue #93).
+ *
+ * Il recrée `design/screens/02-cv.html`, dont l'anatomie vit désormais
+ * dans `src/styles/tokens.css` avec celle de la bulle, de la barre et de la
+ * fiche : l'app et la maquette partagent une seule définition, et rien ne peut
+ * diverger en silence.
+ *
+ * **Ce n'est pas une phase.** `interaction.ts` pose la règle — chaque phase
+ * possède UN routage d'entrée — et le CV n'en a aucun : il ne capture ni la
+ * molette ni le clavier, il s'affiche pendant que le tour garde la main. Il se
+ * déduit donc de l'état existant, exactement comme `Experience` déduit la
+ * bulle visible : `parked` + l'arrêt `CV`. Corollaire assumé : **pas de classe
+ * `panel`**, la molette continue de commander le tour au-dessus du CV.
+ *
+ * Il n'est pas modal non plus. À `--z-bubble` (100) il passe SOUS la barre de
+ * menu (200) : « Résumé » est la porte par laquelle on arrive ici, elle doit
+ * rester la porte de sortie.
+ */
+
+/** `label` de l'arrêt qui affiche le CV — clé de `CAMERA_STOPS` et de `?stop=`.
+ *  `tests/cv.test.ts` vérifie qu'il existe encore, comme `menu.test.ts` le fait
+ *  pour les sections de la barre. */
+export const CV_STOP_LABEL = 'CV'
+
+/** Doit égaler `--t-cv-out` de tokens.css — `tests/cv.test.ts` est la seule
+ *  chose qui relie les deux. */
+/**
+ * Combien de missions l'écran vertical montre par poste (#173).
+ *
+ * **La donnée en porte plus, et c'est voulu** : le site classique les affiche
+ * toutes, le PDF aussi. Ici la hauteur est la ressource rare — chaque puce
+ * coûte ~21 px d'accordéon ouvert, et le CV débordait déjà au repos à
+ * 1512 × 945. Couper dans la donnée aurait privé les surfaces qui ont la place.
+ */
+export const MISSIONS_ON_SCREEN = 4
+
+export const CV_OUT_MS = 200
+
+/** Doit égaler `--t-decrypt` de tokens.css — `tests/cv.test.ts` relie les deux. */
+export const DECRYPT_MS = 1600
+
+/** Durée d'un titre déchiffré, et décalage d'un cran à l'autre de la cascade. */
+export const CASCADE_MS = 420
+export const CASCADE_STEP_MS = 60
+
+/*
+ * Le déchiffrage vit dans `src/ui/Scrambled.tsx` depuis #29 : le site
+ * classique affiche le même effet sur son nom d'accueil, et deux copies d'une
+ * animation identitaire finissent par diverger. La règle (figement de gauche à
+ * droite, espaces jamais brouillés, tirage déterministe) est là-bas, avec les
+ * gardes de `tests/cv.test.ts` qui la vérifient.
+ */
+
+/**
+ * Un titre de la cascade : `Scrambled` avec la durée de cet écran.
+ *
+ * Elle est déclarée ici, une fois, plutôt que recopiée sur les huit appels —
+ * `CASCADE_MS` est un réglage du CV, pas une propriété du déchiffrage, et le
+ * module partagé n'a pas à en avoir un avis par défaut.
+ */
+function CascadeTitle(props: { text: string; elapsed: number | null; delay?: number }) {
+  return <Scrambled {...props} duration={CASCADE_MS} />
+}
+
+/**
+ * Le nom, en haut de tout, avec son caret de bloc.
+ *
+ * Le caret ne vit que pendant le déchiffrement : c'est lui qui fait lire
+ * « console » plutôt que « titre animé », et le laisser après coup en ferait
+ * une décoration clignotante permanente.
+ *
+ * Le texte brouillé est `aria-hidden` et le vrai nom vit dans `aria-label` :
+ * une synthèse vocale lirait sinon une ligne de bruit.
+ */
+function CvName({
+  text,
+  elapsed,
+  locale,
+}: {
+  text: string
+  elapsed: number | null
+  locale: Locale
+}) {
+  const typing = elapsed !== null && elapsed < DECRYPT_MS
+  return (
+    // Le lien est sur la LIGNE DU NOM, et c'est ce qui le rend gratuit en
+    // hauteur : le nom est composé en 30 px, la pastille en 12 px avec ses
+    // marges internes, donc elle tient dans l'interligne déjà réservé. Une
+    // rangée à elle aurait poussé tout le CV vers le bas, et le haut du CV ne
+    // bouge jamais (voir `.cv::before`). C'est aussi la première chose visible
+    // sans défiler, ce que #161 demande.
+    <div className="cv__head">
+      <h1 className="cv__name" aria-label={text}>
+        <span aria-hidden="true">
+          <Scrambled text={text} elapsed={elapsed} duration={DECRYPT_MS} />
+          {typing && <i className="cv__caret" />}
+        </span>
+      </h1>
+      <ResumeDownload locale={locale} className="cv__download" />
+    </div>
+  )
+}
+
+/**
+ * La réglette de vignettes du savoir-faire. Le savoir-être l'a partagée
+ * jusqu'à #194 ; il s'affiche en étiquettes texte depuis (voir `CvTraits`),
+ * d'où le modificateur `--skills` resté seul.
+ *
+ * Sans `icon`, la vignette affiche l'INITIALE du nom : c'est le glyphe neutre
+ * en attendant les vrais SVG, pas un état d'erreur. Aucun `onError` n'est câblé
+ * — une icône cassée est pire qu'un vide assumé, et c'est la donnée qui décide,
+ * jamais le réseau. Même discipline que la couverture d'une fiche projet.
+ */
+function CvTiles({ items, locale }: { items: CvGlyph[]; locale: Locale }) {
+  return (
+    <div className="cv__tiles cv__tiles--skills">
+      {items.map((item) => {
+        const name = tm(item.name, locale)
+        return (
+          <div className="cv__tile" key={name}>
+            <span className="cv__tile-mark" aria-hidden="true">
+              <CvMark glyph={item} locale={locale} />
+            </span>
+            <span className="cv__tile-label">{name}</span>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+/**
+ * Le savoir-être en étiquettes texte (#194, décision utilisateur).
+ *
+ * Les vignettes à initiales disaient moins que les mots : « S » n'identifie
+ * pas « Stratège » comme « Pg » identifie Postgres, et la grille 3 × 2 coupait
+ * ou faisait déborder les mots longs. Le site classique range déjà les mêmes
+ * six mots en puces (`.classic-chip`) ; cet écran adopte la même lecture, aux
+ * unités du CV. Les étiquettes passent à la ligne d'elles-mêmes : aucun mot
+ * n'a de voisin à recouvrir, quelle que soit la langue.
+ */
+function CvTraits({ items, locale }: { items: CvGlyph[]; locale: Locale }) {
+  return (
+    <ul className="cv__traits">
+      {items.map((item) => {
+        // `tm` et pas `t` : un savoir-être se traduit — même champ qu'un nom
+        // de technologie, qui ne l'est pas. Voir `MaybeLocalized`.
+        const name = tm(item.name, locale)
+        return (
+          <li className="cv__trait" key={name}>
+            {name}
+          </li>
+        )
+      })}
+    </ul>
+  )
+}
+
+export function CvScreen() {
+  const phase = useInteraction((s) => s.phase)
+  const stopIndex = useInteraction((s) => s.stopIndex)
+  const root = useRef<HTMLElement>(null)
+  const rail = useRef<HTMLDivElement>(null)
+  const thumb = useRef<HTMLElement>(null)
+  const locale = useLocale((s) => s.locale)
+
+  const visible = phase === 'parked' && CAMERA_STOPS[stopIndex]?.label === CV_STOP_LABEL
+
+  // Un rang par titre, dans l'ordre où on les lit : la cascade descend l'écran.
+  // `cue(n)` donne le retard du n-ième, et la dernière cartouche ferme la
+  // marche — d'où le total, qui arrête l'horloge.
+  const cue = (rank: number) => rank * CASCADE_STEP_MS
+  const lastRank = 7 + CV.jobs.length + CV.formations.length
+  const elapsed = useDecryptClock(visible, Math.max(DECRYPT_MS, cue(lastRank) + CASCADE_MS))
+
+  // Démontage différé, comme la bulle et la fiche : `visible` à false lance le
+  // fondu (.cv--out), le démontage suit une fois le fondu fini. Démonter tout
+  // de suite emporterait la sortie avec le composant.
+  const [mounted, setMounted] = useState(visible)
+  useEffect(() => {
+    if (visible) {
+      setMounted(true)
+      return
+    }
+    const timer = window.setTimeout(() => setMounted(false), CV_OUT_MS)
+    return () => window.clearTimeout(timer)
+  }, [visible])
+
+  // --- Le passe-plat de la molette ------------------------------------------
+  //
+  // Le CV défile parce qu'il ne tient plus dans l'écran. Il ne prend donc la
+  // molette que s'il lui reste de la course DANS CE SENS-LÀ ; arrivé en butée,
+  // il laisse passer et le tour reprend la main au cran suivant. Sans cette
+  // nuance, on entrerait dans le CV sans pouvoir en ressortir en défilant.
+  //
+  // Écouteur NATIF, et c'est load-bearing : `CameraRig` écoute lui aussi en
+  // natif, sur `.stage`. React 19 délègue ses `onWheel` à la racine de l'arbre,
+  // qui est un ANCÊTRE de `.stage` — un `stopPropagation` synthétique
+  // arriverait donc après coup, le rig ayant déjà fait avancer le tour.
+  //
+  // Quand le contenu tient (grand écran), rien ne défile, rien n'est arrêté :
+  // le tour se comporte exactement comme avant.
+  useEffect(() => {
+    const el = root.current
+    if (!el) return
+    const onWheel = (e: WheelEvent) => {
+      const atTop = el.scrollTop <= 0
+      const atBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 1
+      const goingDown = e.deltaY > 0
+      if ((goingDown && !atBottom) || (!goingDown && !atTop)) e.stopPropagation()
+    }
+    el.addEventListener('wheel', onWheel)
+    return () => el.removeEventListener('wheel', onWheel)
+  }, [mounted])
+
+  // --- Le rail de défilement (#194) ----------------------------------------
+  //
+  // Impératif de bout en bout : la géométrie vient de `railThumb` (pure) et
+  // s'écrit en style inline. Un état React repeindrait tout l'écran à chaque
+  // cran de molette, à côté d'une scène 3D qui n'a rien demandé.
+  //
+  // `locale` est une dépendance parce qu'un CV traduit n'a pas la même
+  // hauteur ; les transitions (l'accordéon interpole `grid-template-rows`)
+  // notifient les changements de hauteur que ni `scroll` ni `resize` ne voient.
+  useEffect(() => {
+    const el = root.current
+    const track = rail.current
+    const bar = thumb.current
+    if (!el || !track || !bar) return
+    const paint = () => {
+      const pos = railThumb({
+        scrollTop: el.scrollTop,
+        scrollHeight: el.scrollHeight,
+        clientHeight: el.clientHeight,
+      })
+      track.style.visibility = pos ? '' : 'hidden'
+      if (!pos) return
+      bar.style.top = `${pos.offset * 100}%`
+      bar.style.height = `${pos.size * 100}%`
+    }
+    paint()
+    el.addEventListener('scroll', paint, { passive: true })
+    el.addEventListener('transitionrun', paint, true)
+    el.addEventListener('transitionend', paint, true)
+    window.addEventListener('resize', paint)
+    return () => {
+      el.removeEventListener('scroll', paint)
+      el.removeEventListener('transitionrun', paint, true)
+      el.removeEventListener('transitionend', paint, true)
+      window.removeEventListener('resize', paint)
+    }
+  }, [mounted, locale])
+
+  if (!mounted) return null
+
+  return (
+    <>
+      <section
+        ref={root}
+        className={visible ? 'cv' : 'cv cv--out'}
+        aria-label={t(UI.cv.region, locale)}
+      >
+        <CvName text={CV.identity.name} elapsed={elapsed} locale={locale} />
+
+        <div className="cv__row">
+          {/* Sans photo, le cadre hachuré EST l'illustration — même parti que la
+            couverture générique d'une fiche projet. Une <img> pointée sur un
+            fichier absent afficherait une icône cassée, ce qui est pire qu'un
+            vide assumé. */}
+          <div className="cv__photo">
+            {CV.identity.photo ? (
+              <img src={CV.identity.photo} alt={t(CV.identity.alt, locale)} />
+            ) : (
+              t(UI.cv.photo, locale)
+            )}
+          </div>
+
+          {/* Le savoir-être s'intercale entre la photo et les faits (2026-08-20) :
+            trois cartes de largeur égale, la photo donnant la hauteur. */}
+          <div className="cv__card cv__card--traits">
+            <h2 className="cv__card-title">
+              <CascadeTitle text={t(CV.traitsTitle, locale)} elapsed={elapsed} delay={cue(1)} />
+            </h2>
+            <CvTraits items={CV.traits} locale={locale} />
+          </div>
+
+          <div className="cv__card">
+            <h2 className="cv__card-title">
+              <CascadeTitle text={t(CV.factsTitle, locale)} elapsed={elapsed} delay={cue(2)} />
+            </h2>
+            {CV.facts.map((fact) => (
+              <div className="cv__fact" key={fact.label.fr}>
+                <b>{t(fact.label, locale)}</b>
+                <span>{tm(fact.value, locale)}</span>
+              </div>
+            ))}
+            {/* L'âge suit la règle de la ligne de méta classique : `null` en
+                anglais veut dire « rien à dire », et la ligne saute entière. */}
+            {t(CV.identity.age, locale) && (
+              <div className="cv__fact">
+                <b>{t(CV.ageLabel, locale)}</b>
+                <span>{t(CV.identity.age, locale)}</span>
+              </div>
+            )}
+            {/* Composée comme les faits : « Basé à » en libellé, le lieu
+                en valeur (décision utilisateur, 2026-10-21). Hors de `CV.facts`
+                pour la raison de l'âge — la ligne de méta de l'accueil
+                classique rend tous les faits. */}
+            <div className="cv__fact">
+              <b>{t(CV.locationLabel, locale)}</b>
+              <span>{CV.location}</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="cv__card">
+          <h2 className="cv__card-title">
+            <CascadeTitle text={t(CV.skillsTitle, locale)} elapsed={elapsed} delay={cue(3)} />
+          </h2>
+          <CvTiles items={CV.skills} locale={locale} />
+        </div>
+
+        {/* « Le cap » : la seule ligne du CV qui parle à la première personne,
+          d'où la police de la voix — celle des bulles du tour. Elle est placée
+          AVANT les cartouches (décision de l'auteur, 2026-08-20) : l'intention
+          se lit d'abord, le parcours la justifie ensuite.
+
+          Son titre est un titre de SECTION, pas un titre de carte : c'est une
+          section à part entière, au même rang qu'Expériences et Formations, et
+          la marge du titre est ce qui la détache du savoir-faire au-dessus. */}
+        <h2 className="cv__section-title">
+          <CascadeTitle text={t(CV.outlookTitle, locale)} elapsed={elapsed} delay={cue(4)} />
+        </h2>
+        <div className="cv__card">
+          <p className="cv__outlook-text">{t(CV.outlook, locale)}</p>
+        </div>
+
+        <h2 className="cv__section-title">
+          <CascadeTitle text={t(CV.jobsTitle, locale)} elapsed={elapsed} delay={cue(5)} />
+        </h2>
+
+        {/* Aucun poste : une phrase, jamais un écran vide. L'identité et les
+          langues restent là — seul le parcours manque, et il le dit. */}
+        {CV.jobs.length === 0 ? (
+          <p className="cv__empty">{t(CV_JOBS_EMPTY, locale)}</p>
+        ) : (
+          CV.jobs.map((job, i) => {
+            // Les quatre premières seulement (#173). La donnée en porte jusqu'à
+            // sept — le site classique les affiche toutes —, mais chaque puce
+            // coûte ~21 px de hauteur ouverte ici, et la hauteur est la ressource
+            // rare de cet écran.
+            const missions = job.missions && t(job.missions, locale).slice(0, MISSIONS_ON_SCREEN)
+            return (
+              <div
+                // Un poste sans mission est une cartouche STATIQUE, comme une
+                // formation : pas d'accordéon, donc pas de `tabIndex` non plus.
+                // Un arrêt de tabulation qui n'ouvre rien est un faux bouton.
+                className={missions ? 'job' : 'job job--static'}
+                key={`${tm(job.company, 'fr')}-${job.period}`}
+                tabIndex={missions ? 0 : undefined}
+              >
+                <div className="job__head">
+                  <span className="job__title">
+                    <CascadeTitle
+                      text={t(job.title, locale)}
+                      elapsed={elapsed}
+                      delay={cue(6 + i)}
+                    />
+                  </span>
+                  <span className="job__company">{tm(job.company, locale)}</span>
+                  <span className="job__period">{job.period}</span>
+                </div>
+                {job.clients && (
+                  <p className="job__clients">
+                    {/* L'espace est EXPLICITE : sans lui le texte du nœud se lit
+                      « ClientsMidas » pour une synthèse vocale, que la marge
+                      CSS du libellé ne corrige pas — elle ne sépare que les
+                      pixels. */}
+                    <span className="job__clients-key">{t(CV.clientsLabel, locale)}</span>{' '}
+                    {tm(job.clients, locale)}
+                  </p>
+                )}
+                {/* L'accordéon est pur CSS (survol / focus-within, --t-accordion) :
+                  un état React ici n'ajouterait qu'un rendu par mouvement de
+                  souris pour reproduire ce que le sélecteur fait seul. */}
+                {missions && (
+                  <div className="job__missions">
+                    <ul>
+                      {missions.map((mission) => (
+                        <li key={mission}>{mission}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            )
+          })
+        )}
+
+        <h2 className="cv__section-title">
+          <CascadeTitle
+            text={t(CV.formationsTitle, locale)}
+            elapsed={elapsed}
+            delay={cue(6 + CV.jobs.length)}
+          />
+        </h2>
+        {/* Mêmes cartouches, MOINS l'accordéon : un diplôme n'a pas de missions à
+          dérouler. `--static` retire aussi la réaction au survol — un fond qui
+          s'éclaircit sur quelque chose qui n'ouvre rien est une promesse non
+          tenue, et il n'y a pas de `tabIndex` pour la même raison. */}
+        {CV.formations.map((formation, i) => (
+          <div className="job job--static" key={`${formation.school}-${formation.period}`}>
+            <div className="job__head">
+              <span className="job__title">
+                <CascadeTitle
+                  text={t(formation.title, locale)}
+                  elapsed={elapsed}
+                  delay={cue(7 + CV.jobs.length + i)}
+                />
+              </span>
+              <span className="job__company">{formation.school}</span>
+              <span className="job__period">{formation.period}</span>
+            </div>
+          </div>
+        ))}
+      </section>
+
+      {/* FRÈRE de la section, pas enfant : dans le conteneur qui défile, le
+          rail défilerait avec le contenu. Décoratif pur — `aria-hidden`, la
+          position de lecture n'est pas une information pour une synthèse. */}
+      <div ref={rail} className={visible ? 'cv-rail' : 'cv-rail cv-rail--out'} aria-hidden="true">
+        <i ref={thumb} className="cv-rail__thumb" />
+      </div>
+    </>
+  )
+}

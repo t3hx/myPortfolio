@@ -1,22 +1,19 @@
 import { Html } from '@react-three/drei'
-import {
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-  type CSSProperties,
-  type ReactNode,
-  type RefObject,
-} from 'react'
+import { useCallback, useEffect, useRef, useState, type CSSProperties, type RefObject } from 'react'
 import { Vector3, type Camera, type Object3D } from 'three'
 import { clampToSafeArea } from '@/lib/bubbleAnchors'
+import { useNow } from '@/lib/clock'
+import { plainLength } from '@/lib/richText'
+import { typedLength } from '@/lib/typewriter'
+import { useInteraction } from '@/state/interaction'
+import { BubbleCard } from '@/ui/BubbleCard'
 
 /**
  * Bulle narrative ancrée par projection écran (issue #47).
  *
  * L'anatomie visuelle (verre fumé, kicker, phrase Newsreader) vient de
- * docs/design/tokens.css — ce composant recrée le markup exact des maquettes
- * de docs/design/screens/ ; il n'apporte que le comportement :
+ * src/styles/tokens.css — ce composant recrée le markup exact des maquettes
+ * de design/screens/ ; il n'apporte que le comportement :
  *
  * - `<Html>` projette `anchor` (un point monde) à chaque frame : la bulle suit
  *   l'objet pendant les mouvements de caméra.
@@ -42,6 +39,15 @@ import { clampToSafeArea } from '@/lib/bubbleAnchors'
  */
 
 /** Doit suivre --t-bubble-out (tokens.css) — synchro verrouillée par tests/bubble.test.ts. */
+/**
+ * L'entrée de la bulle, en ms. Doit égaler `--t-bubble-in` de tokens.css, et
+ * `tests/bubble.test.ts` est la seule chose qui relie les deux.
+ *
+ * Elle est exportée pour la barre de menu (#26), qui n'apparaît qu'une fois la
+ * PREMIÈRE bulle posée : le mobilier arrive après la parole, pas avec elle.
+ */
+export const BUBBLE_IN_MS = 480
+
 export const BUBBLE_OUT_MS = 200
 
 /** Scratch : la projection tourne à chaque frame, pour chaque bulle montée. */
@@ -59,13 +65,24 @@ export interface BubbleProps {
   /** `max-width` de la table de placement, en px content-box ; `null` = libre. */
   maxWidth?: number | null
   /** Ligne de rappel de 44 px vers l'objet, du côté indiqué. */
-  tick?: 'left' | 'right'
+  tick?: 'left' | 'right' | 'top'
   /** Variante `--tilted` : rotation en degrés (guitare : −11,15°). */
   tilt?: number
   /** Classes supplémentaires ajoutées à `.bubble`. */
   className?: string
-  /** La phrase — une seule, voix Newsreader italique. */
-  children: ReactNode
+  /**
+   * Il reste une page après celle-ci. Affiche le chevron « la suite » — mais
+   * seulement une fois la frappe finie : tant que le texte s'écrit, la suite
+   * n'est pas encore la question, et l'annoncer inviterait à couper la phrase
+   * qu'on est en train de lire.
+   */
+  hasNext?: boolean
+  /**
+   * La phrase à écrire. **Une chaîne, pas un `ReactNode`** depuis #121 : la
+   * machine à écrire a besoin des caractères, et un nœud React ne se coupe pas
+   * en deux à la lettre près.
+   */
+  children: string
 }
 
 export function Bubble({
@@ -77,6 +94,7 @@ export function Bubble({
   tick,
   tilt,
   className,
+  hasNext = false,
   children,
 }: BubbleProps) {
   // Démontage différé : `visible` à false lance le fondu (.bubble--out), le
@@ -91,6 +109,39 @@ export function Bubble({
     const timer = window.setTimeout(() => setMounted(false), BUBBLE_OUT_MS)
     return () => window.clearTimeout(timer)
   }, [visible])
+
+  /**
+   * La frappe. Elle lit la MÊME origine que l'arbitrage des gestes — l'instant
+   * où la page a commencé — au lieu d'avoir son horloge et de publier son état.
+   * C'est ce qui rend le clic fiable : la bulle et l'entrée ne peuvent pas être
+   * d'avis différents sur « est-ce que ça écrit encore », puisque ni l'une ni
+   * l'autre ne le décide.
+   */
+  const startedAt = useInteraction((st) => st.dialogueStartedAt)
+  const done = useInteraction((st) => st.dialogueDone)
+  const revealed = useInteraction((st) => st.revealed)
+  // La bulle attend aussi la fin de l'intro, plus une seconde (#143) : à Home
+  // deux choses ne parlent pas en même temps, et l'écran parle en premier.
+  const released = useInteraction((st) => st.introReleased)
+  // La durée vient du STORE, pas d'un `typeDuration(children)` recalculé ici.
+  // Recalculée, elle ignorait le « mouvement réduit » — que l'appelant exprime
+  // par des durées nulles — et la bulle écrivait quand même.
+  const duration = useInteraction((st) => st.dialogueDurations[st.dialoguePage] ?? 0)
+
+  // Le minuteur est le seul signal de fin, et il se recale sur `startedAt` :
+  // c'est la seule clé qui change à CHAQUE page, y compris entre deux pages de
+  // longueur identique — où la durée, elle, ne bougerait pas.
+  const [finished, setFinished] = useState(false)
+  useEffect(() => {
+    setFinished(duration <= 0)
+    if (duration <= 0) return
+    const timer = window.setTimeout(() => setFinished(true), duration)
+    return () => window.clearTimeout(timer)
+  }, [startedAt, duration])
+
+  const now = useNow(visible && revealed && released && !done && !finished)
+  const shown =
+    done || finished ? plainLength(children) : typedLength(children, now - startedAt, duration)
 
   // La taille rendue de la bulle, relevée aux seuls changements de taille : la
   // lire à chaque frame forcerait un calcul de mise en page par frame.
@@ -136,7 +187,10 @@ export function Bubble({
   // conteneur du canvas`) et ne se re-parente jamais si le ref se remplit
   // après. Aujourd'hui le Suspense du glb garantit l'ordre ; ce garde le
   // garantit par le code (un montage trop tôt attend le re-render suivant).
-  if (!mounted || !portal.current) return null
+  // Tant que le préchargeur couvre l'écran, la bulle n'existe pas : une frappe
+  // lancée derrière lui s'écrit sans spectateur, et la phrase était déjà à
+  // moitié faite quand elle devenait visible (mesuré : 42 caractères sur 69).
+  if (!mounted || !revealed || !released || !portal.current) return null
 
   const cls = [
     'bubble',
@@ -151,6 +205,20 @@ export function Bubble({
   // la rotation passe par la propriété individuelle `rotate`, jamais par
   // `transform`, que l'animation `bubble-in` remplacerait (DESIGN.md).
   const style: CSSProperties = {
+    /**
+     * **La largeur ne suit PAS l'unité du dialogue, et c'est la correction du
+     * 2026-08-25.** Elle la suivait, et la bulle grossissait alors dans les deux
+     * sens : à 2560 celle de l'étagère venait mordre le montant de la
+     * bibliothèque, ce qui ne doit jamais arriver — une bulle DÉSIGNE son sujet,
+     * elle ne le recouvre pas.
+     *
+     * La largeur est composée contre la SCÈNE, pas contre le texte : la table
+     * de placement de la session design la mesure dans le cadre où l'objet
+     * occupe une place donnée. Le texte, lui, n'a d'autre contrainte que d'être
+     * lisible. Les deux n'ont donc pas à grandir ensemble — la boîte grandit en
+     * HAUTEUR, où elle n'a personne à recouvrir, et le nombre de lignes change.
+     * C'est le prix, et il est moins cher que le sujet caché.
+     */
     maxWidth: maxWidth ?? 'none',
     ...(tilt !== undefined ? { '--bubble-rotate': `${tilt}deg` } : {}),
   } as CSSProperties
@@ -168,21 +236,7 @@ export function Bubble({
       {/* Markup des maquettes : kicker (point + étiquette) puis phrase, ou
           variante « sans titre » point + phrase sur une ligne (home). */}
       <article ref={measureBox} className={cls} role="note" style={style}>
-        {tick && <span className={`bubble__tick bubble__tick--${tick}`} aria-hidden="true" />}
-        {kicker ? (
-          <>
-            <header className="bubble__kicker">
-              <span className="bubble__dot" />
-              <span className="bubble__label">{kicker}</span>
-            </header>
-            <p className="bubble__text">{children}</p>
-          </>
-        ) : (
-          <div className="bubble__inline">
-            <span className="bubble__dot" />
-            <p className="bubble__text">{children}</p>
-          </div>
-        )}
+        <BubbleCard kicker={kicker} text={children} shown={shown} tick={tick} hasNext={hasNext} />
       </article>
     </Html>
   )

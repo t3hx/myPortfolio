@@ -1,66 +1,47 @@
-# CI — sur chaque PR, et sur chaque poussée du tronc `dev`.
+# CI — sur chaque PR, et déploiement à chaque fusion sur `main` (trunk-based).
 #
-# CE FICHIER EST PRÉVU POUR ÊTRE COPIÉ TEL QUEL d'un projet à l'autre
-# (myPortfolio, owlog-app, odysong-app). Il tient grâce à un contrat simple :
+# Ce fichier n'appelle que le pipeline commun de `t3hx/workflows` : il ne
+# contient aucune étape. Le contrat reste le même qu'avant : le workflow dit
+# CE QUI tourne, le `package.json` dit COMMENT (`pnpm run --if-present`).
+# Toute particularité de ce dépôt vit dans ses scripts, ou dans un workflow à
+# part comme `render-diff.yml`, jamais dans le pipeline commun.
 #
-#   le workflow dit CE QUI tourne, le package.json dit COMMENT.
-#
-# Chaque étape passe par `pnpm run --if-present <script>` : un script absent
-# n'est pas une erreur, l'étape réussit en silence. Un projet sans linter ni
-# tests (myPortfolio aujourd'hui) et un monorepo qui fait `pnpm -r lint` et des
-# tests d'intégration Postgres (owlog-app) partagent donc le même fichier, sans
-# la moindre condition ici.
-#
-# Corollaire à respecter : toute particularité d'un projet vit dans SES
-# scripts, jamais dans ce fichier. Un garde-fou sur des tests sautés, une base
-# jetable à démarrer, un ordre de build : tout cela se met dans le script
-# `test` ou `build` du dépôt concerné.
-#
-# `main` est délibérément absent des déclencheurs `push` : le workflow de
-# déploiement appelle cette CI via `workflow_call`, et l'ajouter ici la ferait
-# tourner deux fois à chaque fusion.
+# Le pipeline se modifie dans `t3hx/workflows`, jamais ici. Ce dépôt l'appelle
+# par son tag `v1` : un changement du dépôt commun n'arrive ici que lorsque
+# `v1` est déplacé.
 name: ci
 
 on:
   pull_request:
   push:
-    branches: [dev]
-  workflow_call:
+    branches: [main]
 
-# Une nouvelle poussée sur la même référence annule le run précédent encore en vol.
+# Une PR : une nouvelle poussée annule le run en vol. `main` : les mises en
+# ligne passent en file, jamais interrompues — une mise en ligne à moitié faite
+# est pire qu'une mise en ligne en retard.
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
 
 jobs:
   verify:
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    steps:
-      - uses: actions/checkout@v7
+    uses: t3hx/workflows/.github/workflows/verify.yml@v1
+    with:
+      node-version: '22'
 
-      # pnpm d'abord : setup-node lit le champ `packageManager` du package.json,
-      # mais son cache a besoin du binaire déjà présent.
-      - uses: pnpm/action-setup@v6
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 22
-          cache: pnpm
-
-      - name: Installer (lockfile gelé)
-        run: pnpm install --frozen-lockfile
-
-      - name: Lint
-        run: pnpm run --if-present lint
-
-      # Étape distincte du build : `vite build` ne fait que transpiler, il ne
-      # vérifie pas les types. Les projets dont le `build` typa déjà (owlog)
-      # n'ont simplement pas de script `type-check`, et l'étape se saute.
-      - name: Typage
-        run: pnpm run --if-present type-check
-
-      - name: Build de production
-        run: pnpm run --if-present build
-
-      - name: Tests
-        run: pnpm run --if-present test
+  deploy:
+    if: github.event_name == 'push'
+    needs: verify
+    uses: t3hx/workflows/.github/workflows/deploy.yml@v1
+    # Un workflow appelé ne peut pas avoir plus de droits que son appelant
+    permissions:
+      contents: write
+      packages: write
+    with:
+      image: ghcr.io/t3hx/myportfolio
+      prod-url: ${{ vars.PROD_URL }}
+      origin-ip: ${{ vars.VPS_TAILSCALE_IP }}
+    secrets: inherit

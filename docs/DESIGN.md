@@ -1,0 +1,324 @@
+# DESIGN.md — UI 2D du portfolio 3D
+
+Direction retenue : **« Lueur » — verre fumé & lueur froide.**
+Source de vérité des reviews design. Maquettes de référence : `screens/*.html`.
+
+## La direction, et pourquoi
+
+La scène porte la personnalité ; l'UI se contente d'un seul matériau et d'un seul accent :
+
+- **Un matériau : le verre fumé teinté bois-brûlé.** Fond `rgba(24,17,12, .5–.74)` + `backdrop-filter: blur(22px)`. Il garantit le contraste sur n'importe quel arrière-plan (du bois clair du bureau au noir du chat) sans jamais poser d'aplat mort : la scène reste perceptible à travers.
+- **Un accent : le cyan des cordes, du clavier et des yeux du chat** (`#8FDBE4`). Utilisé uniquement en points lumineux, liserés et halos — jamais en surface.
+- **Deux voix typographiques :** Newsreader italique pour ce que « dit » la pièce (les bulles, la microcopie du preloader) ; Space Grotesk pour ce qui s'opère (menu, étiquettes, méta). Les deux couvrent les accents FR ; les gabarits absorbent +15–20 % de longueur FR/EN.
+- La palette est **extraite à la pipette des rendus** (calibrés comme le rendu WebGL) — cohérence scène/UI par construction.
+
+## Tokens
+
+Fichier prêt à l'emploi : `tokens.css` (custom properties + composants). Résumé :
+
+| Token        | Valeur                                           | Usage                           |
+| ------------ | ------------------------------------------------ | ------------------------------- |
+| --ink-glass  | rgb(24 17 12) à .5–.74                           | fond bulle/barre                |
+| --cream      | #EFE5D3                                          | texte, icônes                   |
+| --glow       | #8FDBE4                                          | accent (points, logo, FR actif) |
+| --glow-deep  | #6FD8E6                                          | halo survol                     |
+| --font-voice | Newsreader italique 19/28,5                      | phrase des bulles               |
+| --font-ui    | Space Grotesk 11/caps/+0.2em                     | kicker, menu                    |
+| Espace       | 4 · 8 · 12 · 16 · 24 · 32 · 48                   |                                 |
+| Rayons       | 10 (bulle) · 18 (item) · 26 (barre)              |                                 |
+| Z            | canvas 0 < bulles 100 < barre 200 < panneaux 300 | contrainte code                 |
+
+## Anatomie — bulle
+
+Un emplacement, pas une forme de BD : panneau de verre, pas de queue.
+
+- Panneau : padding 16/22/15, rayon 10, bord `cream .14`, ombre `0 14px 44px rgba(0,0,0,.38)`.
+- Kicker : point accent 7 px (lueur 10 px) + `NN — Objet` en caps 11.
+- Phrase : une seule, Newsreader italique 19/28,5, `#F2E9DA`, `text-wrap: pretty`.
+- Sans titre (home) : point + phrase alignés sur une ligne (`.bubble__inline`).
+- Ligne de rappel optionnelle vers l'objet : 44×1 px en dégradé crème (`.bubble__tick`).
+- Survol (bulles interactives) : halo accent — bord `glow-deep .6`, anneau 1,5 px, lueur externe 40 px, lueur interne légère. 200 ms.
+- Variantes : `--centered` (home, desk) ; `--tilted` (guitare : `rotate(-11.15deg)`, mesuré au pixel sur le bord de l'ampli, ombre courte `0 12px 26px`).
+- Le texte vit dans le DOM ; la racine overlay est `pointer-events: none`, seuls les îlots réactivent.
+
+### Le rappel vers le sujet (2026-08-24)
+
+Chaque bulle tend une ligne de 44 px vers ce dont elle parle — un dégradé crème qui s'éteint en s'éloignant. **Le côté suit la position de la bulle dans le cadre** : posée à gauche (`center.x < 0,5`), elle tend son rappel vers la droite, et l'inverse. C'est la seule règle : la ligne relie la bulle à son sujet, donc elle part du côté où le sujet se trouve.
+
+Deux arrêts seulement l'avaient — le CV et les posters, maquettés ainsi par la session design. Les autres l'ont reçue par souci de cohérence : le rappel n'était pas une variante de deux bulles, c'était une anatomie que huit avaient perdue en route.
+
+**L'accueil est la seule exception.** Sa bulle est la variante sans titre, centrée en bas, et elle ne désigne aucun objet — elle dit « faites défiler ». Un rappel horizontal y pointerait vers rien.
+
+### Les consignes (#129, 2026-08-24)
+
+Certaines phrases ne racontent pas la pièce : elles **demandent** quelque chose au visiteur. Ces mots-là portent l'accent, et un balayage blanc les parcourt toutes les trois secondes.
+
+**Le marquage vise des MOTS, pas une phrase entière**, et c'est ce qui a décidé de sa forme. Une consigne vit presque toujours au milieu d'un texte qui, lui, raconte : sur l'accueil, « Bienvenue » et « chaque objet ici a une histoire » sont de la narration, et seul « faites défiler » demande quelque chose. Un drapeau posé sur la page aurait teinté les trois.
+
+La syntaxe est `**ainsi**`, dans le texte lui-même. **Ce n'est pas du Markdown** : rien d'autre n'est interprété, et un `**` non refermé reste un `**` — deviner où une consigne finirait, ce serait inventer une intention que personne n'a écrite. Le texte livré garde ses marqueurs, et le contrôle verbatim des maquettes compare le texte **nu** : c'est ce qui permet de marquer des mots sans faire diverger la copy de sa maquette.
+
+|          |                                                                                            |
+| -------- | ------------------------------------------------------------------------------------------ |
+| Couleur  | `--glow` — **de l'information** : elle distingue une demande d'un récit, et vaut à l'arrêt |
+| Balayage | 3200 ms, `--t-cue-laser` — **du mouvement** : il traverse en 22 % du cycle, puis attend    |
+
+Trois choses tiennent l'effet :
+
+- **Le laser est un dégradé découpé sur le texte** (`background-clip: text`) et déplacé, plutôt qu'un calque posé par-dessus. Un calque demanderait de connaître la géométrie exacte des mots, qui change à chaque retour à la ligne, à chaque traduction et à chaque largeur de bulle.
+- **Son axe est horizontal, pas incliné.** Mesuré : à 100°, sur un mot large de quelques dizaines de pixels et haut d'une ligne, la bande traversait surtout par le haut et par le bas et le blanc n'atteignait jamais franchement les lettres — le mot restait cyan au sommet du balayage.
+- **La couleur de base est répétée aux deux extrémités du dégradé**, sinon le retour du balayage se lit comme un saut.
+- **La bande claire est étroite (43 → 57 %) et doublée d'une lueur** (2026-08-24, à la demande de l'auteur : « ça manque de punch »). Étalée sur un tiers du dégradé, elle arrivait par une montée si douce qu'on ne voyait pas passer un reflet — on voyait le mot s'éclaircir puis s'assombrir ; resserrée, la transition a un bord, et un bord se lit comme un objet qui traverse. La lueur (`cue-bloom`, exactement synchrone, éteinte hors traversée) a **deux couches** : blanche et serrée, elle détache les lettres de ce qu'il y a derrière — un halo cyan autour d'un mot cyan ne fait que l'épaissir ; cyan et large, elle donne la lueur, celle qui déborde le mot. Il faut les deux pour que l'effet se voie aussi bien sur l'encre de l'accueil classique que sur le verre fumé d'une bulle, où un halo blanc seul se perd dans le panneau.
+
+**Le balayage traverse vite et attend longtemps** : c'est un reflet qui passe, pas une pulsation — l'inverse exact du témoin du télescope, qui tapote et doit garder un rythme régulier. Ici, un rythme régulier ferait clignoter la phrase.
+
+Le site classique (#29) porte la même consigne sur son « défiler », et lui seul : son accroche, qui **raconte**, garde la couleur de la voix et n'est que TRAVERSÉE par un faisceau cyan, une fois — l'inverse exact du dégradé d'une consigne, dont le cyan est le fond et le clair le cœur. Peindre l'accroche en cyan lui aurait fait dire, dans ce vocabulaire, « ceci vous demande quelque chose ».
+
+Sous `prefers-reduced-motion`, **le balayage part et la couleur reste**. C'est la distinction qui compte : une animation qui se répète toutes les trois secondes est le cas d'école de ce que le réglage vise, alors que la couleur porte une information qu'on ne peut pas retirer sans appauvrir la phrase.
+
+### L'aura d'arrivée (#128, 2026-08-24)
+
+Une bulle qui apparaît en fondu ne dit pas à l'œil **où regarder**. Une aura se dessine autour d'elle à son arrivée, puis s'éteint : le temps de tracer le contour, le regard est allé s'y poser.
+
+**Deux traits, l'un du centre haut, l'autre du centre bas, dans le sens des aiguilles d'une montre.** Ils se rejoignent sur les deux côtés, et le contour se referme d'un coup. Puis l'aura s'affaisse — elle se retire d'un cheveu vers la bulle en s'éteignant, plutôt que de disparaître en clignotant.
+
+|              |                                                                           |
+| ------------ | ------------------------------------------------------------------------- |
+| Tracé        | **900 ms**, `--t-aura-draw`                                               |
+| Affaissement | 320 ms, `--t-aura-fade`, enchaîné                                         |
+| Trait        | 1,5 px `--glow-deep`, halo externe 18 px et interne 12 px en `--glow-rgb` |
+
+Quatre choses tiennent cette animation, et aucune n'est cosmétique :
+
+- **Un seul dégradé conique sert de masque**, avec deux secteurs opposés qui s'ouvrent ensemble. Il est centré sur la boîte, donc il épouse n'importe quelle taille de bulle **sans qu'on ait à la mesurer**. Le compromis assumé : le balayage est _angulaire_, pas proportionnel au périmètre — sur une bulle large, le trait file vite le long des petits côtés. La version fidèle au périmètre demanderait deux chemins SVG calculés sur des dimensions mesurées, remises dans un état React et suivies ; pour 900 ms, l'angle suffit.
+- **`@property` est obligatoire.** Une propriété personnalisée non déclarée ne s'interpole pas dans des `@keyframes` : elle _saute_ d'une valeur à l'autre. Le viseur du télescope a déjà payé ce piège.
+- **Le tracé est quasi linéaire, et c'est une correction mesurée.** Avec `--ease-out`, le contour atteignait 148° sur 180 au bout de 284 ms — 82 % du dessin dans le premier tiers, puis un rampement invisible : ça se lisait comme un éclair, pas comme un tracé. L'affaissement, lui, garde `--ease-out`.
+- **Les deux secteurs se chevauchent de 3°.** À l'angle exact ils se touchent sans se recouvrir, et l'anticrénelage laisse une couture visible au centre haut et au centre bas — précisément les deux points d'où le tracé est parti.
+
+L'encadré de la lune, dans la visée du télescope, porte **exactement la même anatomie** : aura, rappel, titre, texte qui s'écrit. Les deux balisages étaient recopiés l'un de l'autre, et ça s'est vu comme ça se voit toujours — l'un a reçu l'aura, l'autre non, et la lune s'est retrouvée avec un « traitement particulier » que personne n'avait décidé. Ils partagent désormais un seul composant.
+
+Elle joue **une fois par arrivée** : tourner une page du dialogue ne remonte pas la bulle, donc l'aura ne rejoue pas en cours de lecture — elle désigne l'arrivée, pas la phrase. Et elle est **coupée** sous `prefers-reduced-motion` : auto-déclenchée, elle n'apporte aucune information que la bulle ne porte pas déjà.
+
+Sa durée est plus courte que la frappe de la phrase (1,2 à 2 s) **exprès** : les deux partent au même instant, et si elles duraient pareil elles se disputeraient l'attention. L'aura attire l'œil, puis laisse lire.
+
+### Placement par arrêt (ancré au sujet, marges safe-area, jamais en px absolus)
+
+| Écran         | Position (repère 1280×720) | Largeur max    | Note                                                   |
+| ------------- | -------------------------- | -------------- | ------------------------------------------------------ |
+| home          | centrée, top 85 %          | libre (nowrap) | sans titre, point seul                                 |
+| 01 desk       | centrée, top 75 %          | 460            | deux lignes                                            |
+| 02 cv         | left 1,6 %, top 20 %       | 260            | centrée dans la marge (écran : x 24,5→75,3 %) ; tick → |
+| 03 cabinet    | left 2,5 %, top 76 %       | 300            | coin bas-gauche                                        |
+| 04 bookshelf  | left 2 %, top 55 %         | 240            | alignée sur la séparation d'étagère                    |
+| 05 cat        | left 4 %, top 7 %          | 340            | fond quasi noir : le verre suffit                      |
+| 06 guitar     | left 52,5 %, top 31,5 %    | 380            | rotation −11,15°, parallèle à l'ampli                  |
+| 07 scoreboard | left 1,2 %, top 82 %       | 340            | sur l'océan                                            |
+| 08 posters    | left 2,5 %, top 38 %       | 330            | hors halo du spot ; tick →                             |
+| 09 telescope  | left 62 %, top 3,5 %       | 340            | coin haut-droit, dans le ciel                          |
+| 10 moon       | left 1,2 %, top 82 %       | 330            | coin bas-gauche, hors lune                             |
+
+**Numérotation — tranchée avec #48 (2026-08-18) : c'est l'ordre du TOUR qui numérote, pas celui des maquettes.** Les écrans ci-dessus ont été capturés dans leur propre ordre (01 bureau, 02 CV…) alors que le tour, lui, va Accueil → CV → bureau → mappemonde → étagère → commode → chat → guitare → posters → télescope → lune. Le kicker se calcule donc à l'exécution depuis `CAMERA_STOPS` (accueil non numéroté) : réordonner la visite renumérote tout seul, et les numéros gravés dans les maquettes sont périmés par construction — leur texte, lui, fait toujours foi (`tests/bubbleAnchors.test.ts` le vérifie mot pour mot).
+
+**Le placement est implémenté par dé-projection, pas en CSS.** Les fractions du tableau donnent la DIRECTION du point monde ancré, l'objet visé en donne la profondeur (donc la parallaxe au départ de la caméra) — voir `src/lib/bubbleAnchors.ts`. Les onze positions ont été re-mesurées au navigateur : elles retombent à moins de 0,1 px des maquettes en 1280×720. Hors 16:9, une marge de sécurité de 12 px (la plus serrée du design : celle de la barre de menu) empêche les bulles de bord de sortir du cadre — une bulle garde sa largeur en pixels quand le cadre, lui, rétrécit.
+
+## Anatomie — barre de menu
+
+- 52 px de large, collée à **12 px** du bord droit, centrée verticalement, rayon 26.
+- Repos : **opacité .4** ; survol / focus-within : **.75** (180 ms). Jamais invisible.
+- De haut en bas : logo triangle accent (12 px, lueur, statique — il ne respire que sur les écrans de chargement) · filet · **Accueil / Résumé / Projets en texte vertical** (`writing-mode: vertical-rl` + `rotate(180deg)` — se lit tête penchée à gauche) · filet · in · gh · toggle FR/EN.
+- Item actif : cartouche crème .09 **+ point accent 4,5 px** au-dessus du mot (flux flex, padding symétrique).
+- Survol d'item : cartouche crème .09, 140 ms.
+- Cibles 36–40 px (≥ 44 px avec zone étendue) ; Tab = focus (état survol), ↑↓ entre items.
+
+## Anatomie — fiche projet
+
+Maquettes : `screens/03b-project.html` (fiche) et `screens/03c-project-empty.html` (tiroir vide).
+
+**Réagencée le 2026-09-08 (#126) autour d'une vidéo et de plusieurs captures.**
+L'anatomie précédente — datée du 2026-08-10, session design d'origine — posait
+une couverture portrait de 300 px à gauche et donnait la colonne fluide au
+texte. Elle avait été dessinée **avant** qu'on sache ce qu'un projet aurait
+vraiment à montrer : une illustration, un titre, une accroche et deux faits.
+Elle disait ce qu'un projet _est_ ; elle ne montrait pas ce qu'il _fait_. Rien
+de ce qu'elle contenait n'a disparu — tout a changé de colonne.
+
+**La fiche reste une bulle à l'échelle de l'écran** : même anatomie en trois
+temps — kicker à point accent · titre · une seule phrase en Newsreader italique
+— même matériau, même accent. Ce qui change est l'échelle, et la raison en est
+mécanique : la scène a disparu du cadre, le dossier la remplit entièrement.
+
+- **Le verre reste du verre**, à la densité haute de la plage : `rgba(24,17,12, .74)` +
+  `blur(26px) saturate(.9)`, plein cadre. Un panneau opaque effacerait le carton
+  crème du dossier qu'on vient de mettre 850 ms à amener sous le nez du visiteur ;
+  le `backdrop-filter` le laisse transparaître, ce qui est exactement ce pour quoi
+  la direction l'a retenu. Un dégradé radial crème à .07 empêche le verre de lire
+  comme un aplat mort.
+- **Composition en deux colonnes, la démonstration d'abord** : `min(1240px, 88%)`
+  centrée, **médias en colonne fluide** à gauche, **texte en 420 px fixes** à
+  droite, gouttière 48. L'inversion est le cœur du réagencement : un projet se
+  juge sur ce qu'il fait, et la colonne large appartient donc à ce qu'on regarde.
+
+### La colonne des médias
+
+- **Une scène, une légende, une pellicule.** La scène ne montre **qu'un média à
+  la fois** — c'est ce qui la distingue d'une grille de vignettes : on regarde
+  une chose, la pellicule dit ce qu'il y a d'autre. Ratio **16/9**, celui d'une
+  capture d'écran d'application ; bord crème .12, rayon 10, fond noir .28.
+- **Les images sont en `contain`, jamais en `cover`.** Une capture d'interface
+  qu'on rogne est une capture qui ment sur ce qu'elle montre. Les vignettes, à
+  l'inverse, rognent : elles indexent, elles ne démontrent pas.
+- **La scène est bornée par la HAUTEUR de la fenêtre**, via
+  `width: min(100%, calc((100vh - 240px) * 16 / 9))`. Sur un écran large et
+  court, une scène calculée sur la seule largeur de colonne pousserait la
+  pellicule hors du cadre ; un `max-height` ne réglerait rien, il aplatirait le
+  ratio au lieu de réduire les deux dimensions. Mesuré : inerte à 1280 × 720
+  comme à 1920 × 1080, elle ne mord qu'en dessous.
+- **Légende** : le texte de l'`alt` du média, en type de méta centré sous la
+  scène. Une seule phrase, écrite une seule fois, lue par l'œil comme par le
+  lecteur d'écran. Une capture dont personne ne peut dire ce qu'elle prouve ne
+  prouve rien.
+- **Pellicule** : vignettes 96 px en 16/9, gouttière 10, centrées, qui passent à
+  la ligne plutôt que de défiler — une rangée qui déborde cache des captures
+  sans le dire. **Elle ne paraît qu'à partir de DEUX médias** : à une vignette,
+  elle répète la scène en plus petit et donne à cliquer sur ce qu'on regarde
+  déjà. Six médias tiennent sur une ligne dans le cadre de 1280, d'où
+  `SHOTS_MAX = 5` — la limite est une largeur, pas un goût.
+- **La vignette courante porte l'accent plein, le survol le halo.** L'une dit où
+  l'on est, l'autre où l'on irait ; deux états qui se ressembleraient ne diraient
+  plus lequel des deux on regarde.
+- **La vidéo ne part jamais toute seule.** Pas de lecture automatique, pas de
+  répétition, `preload="none"` — aucun octet ne part avant le clic. Sur cinq
+  fiches, la simple ouverture du tiroir coûterait sinon plusieurs mégaoctets que
+  personne n'a demandés. Les contrôles sont ceux du navigateur : ils affichent
+  déjà un grand bouton de lecture sur l'affiche, ils savent le plein écran, la
+  progression et le son.
+- **Sous `prefers-reduced-motion`, la vidéo reste lisible**, et c'est le critère
+  du système appliqué tel quel : ce qui part tout seul est neutralisé, ce qu'un
+  geste déclenche est conservé. Rien ici n'est autonome, il n'y a donc rien à
+  couper — et la retirer priverait de la démonstration les seules personnes qui
+  avaient demandé moins de mouvement, comme couper la main du télescope les
+  aurait privées de son affordance.
+- **Le repli descend trois marches, et aucune n'est une erreur** : le média
+  choisi, sinon l'illustration fixe de la fiche (`cover`), sinon le placeholder
+  hachuré. Aucun `onError` n'est câblé nulle part — même règle que les icônes du
+  CV, **c'est la donnée qui décide**. `cover` a changé de rôle sans changer de
+  nom : elle était LA couverture, elle est le dernier recours de la scène.
+- **Une vidéo sans affiche n'a aucune image à montrer** avant d'être chargée,
+  puisqu'elle ne se charge qu'au geste : sa vignette affiche alors son rang, et
+  non un carré noir qui se lirait comme un échec.
+- **L'hébergement est une donnée, pas du code.** Le `src` est une adresse et
+  rien d'autre : une URL absolue en https servie par le **VPS** (décision de
+  l'auteur, 2026-09-08 — le `.glb` pèse déjà 3 Mo, l'image Docker n'a pas à
+  porter une vidéo par projet) ou un chemin absolu servi depuis `public/`. Le
+  composant ne sait pas laquelle des deux il tient. À savoir : **une vidéo
+  affichée sur une page publique n'est jamais privée** — « non répertorié » veut
+  dire « qui a le lien la regarde », et le lien est dans le DOM. Servir depuis le
+  VPS ne rend pas la vidéo secrète, ça rend son adresse révocable.
+
+### La colonne de texte
+
+Inchangée dans son anatomie, plus étroite et plus haute :
+
+- **Titre** : Space Grotesk 500, `--fs-display` 44/1,05, `-.015em`. Le nom d'un
+  projet relève de ce qui s'opère, pas de ce que la pièce dit — la voix italique
+  est réservée à la phrase, une seule, comme dans une bulle. **`--fs-display` est
+  un échelon neuf de l'échelle typo** (11 · 12 · 19 · 26 · **44**), ajouté ici
+  volontairement : les six autres échelons servent des îlots posés sur la scène,
+  celui-ci sert le seul écran qui occupe tout le cadre. Aucun autre écran n'a le
+  droit de s'en servir sans la même raison.
+- **Méta** (année, rôle) entre deux filets crème .12 ; **stack** en pastilles mono
+  11,5 ; **faits saillants** en liste dont la puce est le point accent du kicker —
+  un seul signe dans tout le système.
+- **Liens** : bouton verre, halo accent au survol et au focus (mêmes valeurs que
+  `.bubble--interactive`). Une fiche sans lien n'affiche **rien** : trois des cinq
+  dépôts sont privés, et la règle de `MENU_SOCIALS` vaut ici — jamais de porte
+  fermée à clé.
+- **Elle défile pour elle seule** quand elle déborde. La fiche porte `.panel`,
+  donc `CameraRig` ignore déjà toute molette qui la vise : ce conteneur n'a rien
+  à câbler, contrairement au CV qui, lui, arbitre cran par cran parce qu'il ne
+  porte pas la classe.
+
+**La fiche couvre la barre de menu** — l'empilement `panneaux 300 > barre 200` est
+une contrainte de code, pas un choix pris ici. Elle est donc **modale par
+construction**, et sa sortie doit être la chose la plus évidente après le titre :
+deux sorties toujours, `Échap` affiché en pastille mono avec ce qu'il fait (#136)
+et un bouton rond en haut à droite. Jamais une seule des deux. Rien dans la fiche
+n'écoute le clavier, et c'est ce qui garantit qu'aucune visionneuse n'avalera la
+seule issue.
+
+### Le tiroir vide n'ouvre aucune fiche
+
+À zéro projet il n'y a **aucun dossier à cliquer**, donc aucun panneau ne s'ouvre
+jamais : un écran vide plein cadre serait une porte qui ne s'ouvre pas. Le repli
+vit là où l'utilisateur se trouve — devant le tiroir ouvert et vide — et le
+système n'admet qu'un seul bloc de texte à la fois. **C'est donc la bulle de la
+commode, à sa place habituelle, avec une autre phrase.** Aucun composant nouveau,
+et #83 s'en trouve réduit d'autant.
+
+### L'étiquette des dossiers 3D
+
+Le seul texte du projet qui vive dans une **texture** et non dans le DOM
+(exception tranchée le 2026-08-18 : c'est une affordance, comme l'icône d'un
+bouton, et le nom existe aussi dans la fiche accessible).
+
+| Point      | Valeur                                                            | Pourquoi                                                                                                           |
+| ---------- | ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| Fonte      | `--font-ui` (Space Grotesk) 600                                   | les micro-étiquettes sont déjà son travail                                                                         |
+| Casse      | **phrase, sans interlettrage**                                    | les caps à +0.2em mangeraient la largeur : 430 px utiles seulement                                                 |
+| Encre      | `#2B2418`                                                         | brun chaud sur carton crème ; `--ink` est un fond d'écran, il virerait au trou noir sur du papier                  |
+| Corps      | 66 px dans une texture de 512, **réduit jusqu'à ce que ça entre** | mesuré : « Portfolio » (9 signes) tient à 78 px, « myPortfolio » (11) déborde ; un compte de signes reste un proxy |
+| Visibilité | **permanente**, pas au survol                                     | c'est ce qui rend le tiroir lisible d'un coup d'œil, et le survol sert déjà à désigner                             |
+
+## Écrans hors visite
+
+- **0a Pré-sélection** : fond radial braise→encre, logo (triangle pointe en bas depuis le 2026-08-10, respirant en 2,6 s — propagé au menu et au preloader avec #65 : le losange n'existe plus nulle part), question en Newsreader italique 30, deux cartes verre 340 px — aucun halo au repos : la carte survolée ou focusée l'allume et il respire en boucle au rythme du logo du preloader (2,6 s ease-in-out). Note mono : choix mémorisé.
+- **0b Pré-loader** : logo triangle en respiration 2,6 s (opacité **et** portée de la lueur, comme sur 0a — sur 16 px l'opacité seule ne se lit pas), barre 340×2 px (piste crème .14, fil dégradé→accent, point de tête lumineux), microcopie Newsreader (« On allume les lampes… ») + pourcentage mono.
+- **02 CV** : contenu « affiché par l'écran », sept blocs empilés dans le moniteur vertical (élargi le 2026-08-20, à la demande de l'auteur) —
+  1. le **nom**, en haut de tout, en chasse fixe et **déchiffré à l'arrivée** (1600 ms, `--t-decrypt`), suivi d'un **caret de bloc** qui ne vit que pendant le déchiffrement — c'est lui qui fait lire « console » plutôt que « titre animé ». Les caractères se figent de gauche à droite, les espaces ne sont jamais brouillés : ce sont eux qui gardent la silhouette du nom. La chasse fixe n'est pas décorative — en proportionnelle, chaque glyphe tiré au sort change la largeur du mot et le nom gigote ;
+  2. une rangée **photo · savoir-être · langues & permis**, la photo (148 × 180, placeholder hachuré) en donnant la hauteur ;
+  3. la réglette **savoir-faire** ;
+  4. **« Le cap »**, la vision — section à part entière, titre au même rang qu'Expériences et Formations, placée AVANT le parcours : l'intention se lit d'abord, les expériences la justifient ensuite. Seul bloc écrit dans la police de la _voix_ (Newsreader italique, celle des bulles), parce que c'est la seule ligne qui parle à la première personne ;
+  5. **Expériences** : cartouches poste—entreprise—période en **accordéon au survol** (260 ms), quatre missions minimum chacune ;
+  6. **Formations** : mêmes cartouches, **sans accordéon** — un diplôme n'a pas de missions à dérouler, et `--static` retire donc aussi la réaction au survol : un fond qui s'éclaircit sur quelque chose qui n'ouvre rien est une promesse non tenue.
+
+  Les deux réglettes partagent **une seule anatomie** : une marque carrée, un nom dessous. Sans SVG fourni, la marque est l'**initiale du nom** en crème monochrome — le glyphe neutre en attendant les vraies icônes, jamais un état d'erreur (aucun `onError`). Avec un SVG, elle est rendue en `<img>` donc **en couleur** : une marque monochrome ne ressemble pas à la marque, et l'asymétrie est voulue.
+
+  **Tous les titres se déchiffrent en cascade** (420 ms, `--t-cascade`, décalés de 60 ms du haut vers le bas) — titres de carte, titres de section et intitulés de cartouches. Une **seule horloge** pilote l'ensemble : quinze titres avec chacun sa boucle `rAF` et son état, ce serait quinze rendus React par image à côté d'une scène 3D. Le tirage des glyphes est **déterministe**, dérivé de l'image et de la position, parce que le composant est rendu pendant la phase de rendu de React. Étant autonome, la cascade est **coupée** — pas raccourcie — sous `prefers-reduced-motion`.
+
+  **Les titres de section portent l'accent froid**, les titres de carte restent crème sourd : c'est la couleur qui porte la hiérarchie, sans ajouter ni corps ni graisse.
+
+  **Le survol d'une cartouche déclenche un balayage** (700 ms, `--t-sweep`) : un liseré froid la traverse une fois. Il n'annonce pas une ouverture — les formations l'ont aussi, elles qui ne s'ouvrent pas — il accuse réception du pointeur. Déclenché par un geste, il est donc **conservé** sous mouvement réduit.
+
+  **Le haut du CV ne bouge jamais.** Il n'est donc **pas centré** : centré, tout ce qui le fait grandir le fait remonter — c'est de l'arithmétique, la moitié de ce qu'un accordéon ajoute est reprise en haut, et aucune réserve ne corrige ça exactement puisque les quatre accordéons n'ont pas la même hauteur (78 à 91 px). Il est ancré en haut, sous une **entretoise incompressible** (`.cv::before`, `flex: 0 0 auto`, `min(13vh, 220px)`) qui lui donne l'air centré au repos. Le mot qui compte est _incompressible_ : une entretoise en `0 1 auto` tient tant que rien ne déborde puis cède — mesuré, 9 px rendus au premier accordéon à 1512 × 945, où le CV déborde déjà au repos, et une seconde entretoise en bas n'y change rien puisqu'à cette taille elle est déjà à zéro. **Mesuré après : 0 px sur les huit cartouches, à 1795 × 1300, 1512 × 945 et 1280 × 720.** Le prix est une entretoise qui reste en place quand ça défile : on défile un peu plus longtemps, mais rien ne saute sous le curseur.
+
+  Corollaire : **plus aucune règle de mise en page ne dépend d'un survol.** La tentative précédente réglait une marge via `:has(.job:hover)`, qui se déclenchait aussi sur les **formations** — survoler un diplôme, qui n'ouvre rien, déplaçait tout le CV.
+
+  **Le projet est pensé plein écran d'abord** (décision de l'auteur, 2026-08-20) : sur un écran plein, les six sections (~910 px fermé, ~990 accordéon ouvert) tiennent et se **centrent**. Dans un cadre de 720, elles ne tiennent pas — et le mobile reste une question ouverte, non traitée ici. Trois règles en découlent, toutes vérifiées par `tests/cv.test.ts` :
+
+  - `justify-content: **safe center**`, jamais `center` seul : centré tant que ça rentre, ancré en haut dès que ça déborde. Un `center` seul déborderait des **deux** côtés, et un conteneur ne défile jamais vers le négatif — la moitié haute du CV deviendrait inatteignable. Un navigateur qui ignore le mot-clé `safe` jette la déclaration et retombe sur `flex-start`, c'est-à-dire au bon endroit. Contrepartie assumée : quand il y a la place de centrer, ouvrir un accordéon décale le bloc de 40 px ;
+  - il porte `pointer-events: auto` : un élément transparent au pointage ne reçoit pas la molette, elle irait au canevas ;
+  - il ne porte **pas** la classe `panel`. `panel` ferait ignorer au tour _toute_ molette passant ici, et on ne pourrait plus quitter l'arrêt en défilant. C'est `CvScreen` qui arbitre cran par cran : il prend la molette tant qu'il lui reste de la course dans ce sens, et la rend au tour en butée. L'écouteur est **natif**, parce que `CameraRig` l'est aussi et que React délègue ses `onWheel` à un ancêtre de `.stage`.
+
+- **Les variantes positionnelles passent par `translate` / `rotate`, jamais par `transform`.** `bubble-in` anime `transform` en fill-mode `both`, et une animation bat toute la cascade — styles inline compris. Un `transform: translateX(-50%)` posé sur `.bubble` est donc écrasé par la valeur finale du keyframe : mesuré, la bulle d'accueil sortait de 10 px hors d'un viewport 1280 (centre décalé de +325 px) et la guitare rendait à plat, rotation annulée. Les propriétés individuelles se composent avec `transform` au lieu d'être remplacées, ce qui règle le conflit sans wrapper.
+- **Les largeurs de la table de placement sont en `content-box`** — le pack ne pose aucun reset. `01-desk` à `max-width: 460` mesure 506 px de bord à bord (padding 22 × 2 + bord 1 × 2). Avec le `box-sizing: border-box` qu'un projet React pose par défaut, retrancher 46 px ou les largeurs rétrécissent d'autant.
+- **Les polices sont chargées depuis le CDN Google dans les maquettes** (commodité de prototype). L'app, elle, les sert depuis `public/fonts/` (#140) : sous-ensembles latins des sources OFL, déclarés dans `src/styles/fonts.css`, Newsreader avec son axe optique. Rien ne part vers Google.
+- **Les fonds sont `docs/renders/refs/*.png`**, partagés avec la boucle de comparaison de rendus. Dans l'app, le canvas WebGL les remplace ; ils ne sont là que pour juger les placements sur les vraies focales.
+- **`.panel` est un marqueur de COMPORTEMENT, pas une apparence.** `CameraRig`
+  ignore toute molette dont la cible est dedans : c'est le seul rôle de cette
+  classe. `src/styles.css` lui attachait pourtant l'apparence du panneau de
+  démonstration du HUD du spike — `width: min(420px, 90vw)`, collé à droite,
+  fond bleu. La fiche projet, qui réclame `.panel` pour la molette, en héritait :
+  mesuré, elle sortait à 420 px de large au lieu de 1280. L'apparence du HUD vit
+  désormais sous `.hud-panel`, et `.panel` ne porte plus aucun style.
+- **Le halo de survol est spécifié mais non maquetté** : aucun écran de `screens/` ne porte `.bubble--interactive`, faute d'objet cliquable arrêté au moment de la session. Le CSS existe et vaut spécification — ce n'est pas une maquette qu'on aurait oubliée. **Tranché avec #47 : aucune bulle n'est interactive** — la bulle était purement narrative, n'ouvrait rien, et laissait passer molette et clics (`pointer-events: none`). `.bubble--interactive` restait une spécification dormante.
+
+  **RENVERSÉ le 2026-08-24 (#122).** La bulle est devenue une boîte de dialogue : elle dit plusieurs phrases, et c'est le visiteur qui les fait défiler — clic ou molette. Elle ne devient pas cliquable pour autant, et c'est la nuance qui compte : elle garde `pointer-events: none`, et **c'est la scène qui écoute**. La règle est « la scène d'abord, le dialogue sinon » — un clic qui vise un objet interactif lui appartient (le télescope décolle, un dossier s'envole), partout ailleurs il fait parler l'arrêt. Une bulle qui capterait ses propres clics avalerait ceux destinés à l'objet qu'elle désigne, puisqu'elle est ancrée juste à côté de lui.
+
+  Ce qui ne change pas : la bulle **n'ouvre toujours rien**. Elle raconte, et le seul pouvoir qu'on lui a donné est celui de continuer sa phrase. `.bubble--interactive` reste dormante.
+
+## Contraintes respectées (rappel code)
+
+- Empilement 0/100/200/300 ; racine overlay `pointer-events: none`.
+- Contraste ≥ 4,5:1 : crème #EFE5D3 sur verre encre .5+ tient sur tous les rendus, y compris bois clair.
+- Cibles ≥ 44 px, navigation clavier complète.
+- CSS main : tokens (valeurs + échelles), pas de classes utilitaires.
+- Overlays ancrés au sujet cadré (%, safe-area), paysage 16:10 → ultrawide.

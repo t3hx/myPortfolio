@@ -6,7 +6,7 @@
  *
  * Un seul logo dans le produit (issue #65) : pré-sélection, menu et preloader
  * rendent CE composant. La forme et son habillage vivent dans `.logo`
- * (`docs/design/tokens.css`) ; `className` n'apporte que la taille et la
+ * (`src/styles/tokens.css`) ; `className` n'apporte que la taille et la
  * respiration propres à la surface (`presel__logo`, `menu__logo`,
  * `preload__logo`).
  */

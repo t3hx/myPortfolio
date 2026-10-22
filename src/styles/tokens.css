@@ -1,0 +1,1682 @@
+/* ===== Portfolio 3D — Design tokens & composants UI 2D =====
+   Direction « Lueur » — verre fumé & lueur froide.
+   Palette extraite à la pipette des rendus Blender (calibrés = rendu WebGL). */
+
+:root {
+  /* Couleurs */
+  --ink: #0D0A07;               /* fond de secours, jamais visible en scène */
+  --ink-glass: 24, 17, 12;      /* base RGB du verre fumé (utilisée à .5–.74) */
+  --cream: #EFE5D3;             /* texte, icônes */
+  --cream-rgb: 239, 229, 211;
+  --glow: #8FDBE4;              /* accent — cordes, clavier, yeux du chat */
+  --glow-rgb: 143, 219, 228;
+  --glow-deep: #6FD8E6;         /* accent saturé — halo survol */
+  --glow-deep-rgb: 111, 216, 230;
+
+  /* L'intro (#147). Deux couleurs qui n'appartiennent qu'à elle, et qui sont
+     ici parce qu'elles ont été ARBITRÉES : l'accent a été tranché en le voyant
+     projeté sur l'écran dans la scène, parmi #8FDBE4, #00C0E8 et #BFF7FF.
+     `?accent=` reste, comme `?lw=`, pour en comparer une autre sans toucher au
+     code ; `IntroStage` écrit la valeur courante sur le calque, et c'est
+     celle-ci qu'il écrit par défaut.
+
+     Le doré est celui des trois mots de phase et de leurs tirets. Il est DÉRIVÉ
+     du crème — la seule couleur non cyan de la palette — dont il garde la
+     teinte (39 → 41°) en montant la saturation (47 → 68 %) et en baissant la
+     clarté (88 → 75 %) : il se démarque donc de l'accent, à 149° de teinte de
+     lui, sans sortir de la palette.
+
+     Les deux sont redéclarées dans `config/intro.ts`, que le canvas lit — il
+     peint en JavaScript et n'a pas de CSS. `tests/intro.test.ts` échoue si les
+     deux définitions divergent. */
+  --intro-accent: #00C0E8;
+  --intro-gold: #EBCF94;
+
+  /* Typo */
+  --font-ui: 'Space Grotesk', sans-serif;      /* menu, micro-étiquettes */
+  --font-voice: 'Newsreader', serif;           /* la voix des bulles, italique */
+  --fs-kicker: 11px;   /* caps, letter-spacing .2em */
+  --fs-meta: 12px;
+  --fs-body: 19px;     /* bulle, line-height 1.5 */
+  --fs-title: 26px;
+  --fs-display: 44px;  /* titres plein cadre (fiche projet) — voir DESIGN.md */
+
+  /* Espacement : 4 8 12 16 24 32 48 */
+  /* La portée d'une lueur de survol (flou 40 + étalement 5), arrondie à la
+     gouttière : la place qu'un conteneur défilant doit lui laisser. */
+  --halo-room: 48px;
+  --s-1: 4px; --s-2: 8px; --s-3: 12px; --s-4: 16px; --s-5: 24px; --s-6: 32px; --s-7: 48px;
+
+  /* Rayons */
+  --r-bubble: 10px;
+  --r-bar: 26px;
+  --r-item: 18px;
+
+  /* Empilement (contrainte code) */
+  --z-canvas: 0; --z-intro: 50; --z-bubble: 100; --z-bar: 200; --z-panel: 300; --z-preload: 400;
+
+
+  /* Motion — budgets */
+  --t-bubble-in: 480ms;   /* cubic-bezier(.2,.8,.2,1), reveal bas→haut */
+  /* L'aura (#128) : 900 ms de tracé, arbitré avec l'auteur. C'est nettement
+     moins que la frappe de la phrase (1,2 à 2 s à 20 ms/caractère), et c'est
+     voulu — l'aura attire l'œil, PUIS laisse lire. Les deux partent au même
+     instant ; si elles duraient pareil, elles se disputeraient l'attention. */
+  --t-aura-draw: 900ms;
+  --t-aura-fade: 320ms;
+  --t-bubble-out: 200ms;  /* fade simple avant départ caméra (1200 ms) */
+  --t-preload-out: 320ms; /* fondu du preloader — couvre la 1re frame du canvas */
+  --t-bar: 180ms;         /* opacité .4 → .75 */
+  --t-item: 140ms;
+  --t-halo: 200ms;        /* halo accent au survol / focus */
+  --t-accordion: 260ms;
+  --t-sheet-in: 320ms;    /* relais fiche ← dossier, démarré à 70 % du vol (#78) */
+  --t-sheet-out: 200ms;   /* même sortie qu'une bulle */
+  --t-cv-in: 480ms;       /* le CV paraît avec la bulle de son arrêt */
+  --t-cv-out: 200ms;      /* même sortie qu'une bulle — voir CV_OUT_MS */
+  --t-decrypt: 1600ms;    /* déchiffrement du nom — voir DECRYPT_MS */
+  --t-cascade: 420ms;     /* déchiffrement d'un titre — voir CASCADE_MS */
+  /* Le balayage d'une consigne : il traverse vite, puis attend. */
+  --t-cue-laser: 3200ms;
+  --t-beam: 1800ms;      /* le faisceau qui TRAVERSE une phrase, une fois */
+  --t-ping: 1500ms;       /* le tapotement de la main qui désigne un objet */
+  --t-scope-in: 620ms;    /* ouverture de la visée du télescope */
+  --t-scope-out: 260ms;   /* fermeture — voir SCOPE_OUT_MS */
+  --t-sweep: 700ms;       /* balayage d'une cartouche au survol */
+  --t-intro-delay: 800ms; /* découverte → départ de l'intro — voir INTRO_DELAY_MS */
+  --t-intro-bubble: 1000ms; /* dernière image → la bulle parle — voir INTRO_BUBBLE_DELAY_MS */
+  --ease-out: cubic-bezier(.2, .8, .2, 1);
+}
+
+/* ===== Scène / overlay ===== */
+.stage {
+  position: fixed; inset: 0; overflow: hidden;
+  background: #18110C center / cover no-repeat;
+  font-family: var(--font-ui); color: var(--cream);
+}
+/* La racine de l'overlay n'intercepte JAMAIS la molette. */
+.overlay-root { position: absolute; inset: 0; pointer-events: none; z-index: var(--z-bubble); }
+
+/* ===== Bulle ===== */
+.bubble {
+  position: absolute; z-index: var(--z-bubble); pointer-events: none;
+  max-width: 380px;
+  background: linear-gradient(160deg, rgba(var(--ink-glass), .72), rgba(var(--ink-glass), .6));
+  backdrop-filter: blur(22px) saturate(1.25);
+  -webkit-backdrop-filter: blur(22px) saturate(1.25);
+  border: 1px solid rgba(var(--cream-rgb), .14);
+  border-radius: var(--r-bubble);
+  padding: 16px 22px 15px;
+  box-shadow: 0 14px 44px rgba(0, 0, 0, .38);
+  animation: bubble-in var(--t-bubble-in) var(--ease-out) both;
+}
+/* La transition vit sur la règle de base, pas dans :hover — sinon le halo
+   monte en 200 ms et retombe en 0 ; DESIGN.md spécifie 200 ms des deux côtés. */
+.bubble--interactive {
+  pointer-events: auto;
+  transition: box-shadow 200ms var(--ease-out), border-color 200ms var(--ease-out);
+}
+.bubble--interactive:hover, .bubble--interactive:focus-within {
+  border-color: rgba(var(--glow-deep-rgb), .6);
+  box-shadow: 0 0 0 1.5px rgba(var(--glow-deep-rgb), .35),
+              0 0 40px 5px rgba(var(--glow-deep-rgb), .42),
+              inset 0 0 24px rgba(var(--glow-deep-rgb), .14),
+              0 14px 44px rgba(0, 0, 0, .38);
+}
+/* Variantes positionnelles — via `translate` / `rotate`, JAMAIS via `transform`.
+   L'animation `bubble-in` anime `transform` en fill-mode `both` : une animation
+   gagne contre la cascade (styles inline compris), donc un `transform` posé ici
+   serait écrasé par la valeur finale du keyframe et la variante rendrait à plat.
+   Les propriétés individuelles sont composées avec `transform`, pas remplacées. */
+/* Variante centrée (home, desk) */
+.bubble--centered { left: 50%; translate: -50% 0; }
+/* Variante inclinée (guitare) : suit le bord supérieur de l'ampli, ombre courte */
+.bubble--tilted { rotate: var(--bubble-rotate, 0deg); box-shadow: 0 12px 26px rgba(0, 0, 0, .5); }
+
+.bubble__kicker { display: flex; align-items: center; gap: 10px; margin-bottom: 7px; }
+.bubble__dot {
+  width: 7px; height: 7px; border-radius: 50%; flex: none;
+  background: var(--glow); box-shadow: 0 0 10px rgba(var(--glow-rgb), .85);
+}
+.bubble__label {
+  font-size: var(--fs-kicker); font-weight: 500; letter-spacing: .2em;
+  text-transform: uppercase; color: rgba(var(--cream-rgb), .66);
+}
+.bubble__text {
+  font-family: var(--font-voice); font-style: italic;
+  font-size: var(--fs-body); line-height: 1.5; color: #F2E9DA; text-wrap: pretty;
+}
+/* Sans titre (home) : point + phrase sur une ligne */
+.bubble__inline { display: flex; align-items: center; gap: 14px; }
+.bubble__inline .bubble__text { white-space: nowrap; }
+/* L'AURA (#128) — elle se dessine autour de la bulle à son arrivée, puis
+   s'éteint. Une bulle qui apparaît en fondu ne dit pas à l'œil OÙ regarder ; le
+   temps de tracer le contour, le regard est allé s'y poser.
+
+   **Deux traits, l'un du centre haut, l'autre du centre bas, sens horaire.**
+   Ils se rejoignent donc sur les deux côtés, et le contour se referme d'un
+   coup. C'est un seul dégradé conique qui l'exprime : deux secteurs opposés qui
+   s'ouvrent ensemble, et qui servent de MASQUE au trait. Rien à mesurer, rien à
+   recalculer — le masque est centré sur la boîte, donc il épouse n'importe
+   quelle taille de bulle sans qu'on lui dise laquelle.
+
+   Le compromis est là et il est assumé : le balayage est ANGULAIRE, pas
+   proportionnel au périmètre. Sur une bulle large, le trait file vite le long
+   des petits côtés et lentement le long des grands. La version fidèle au
+   périmètre demanderait deux chemins SVG dont le `d` est calculé à partir des
+   dimensions mesurées — donc de mesurer la boîte, de la remettre dans un état
+   React et de la suivre. Pour 900 ms, l'angle suffit.
+
+   `@property` est OBLIGATOIRE : une propriété personnalisée non déclarée ne
+   s'interpole pas dans des `@keyframes`, elle SAUTE d'une valeur à l'autre. Le
+   viseur du télescope a déjà payé ce piège (#106).
+
+   Sous « mouvement réduit », elle n'existe pas : auto-déclenchée, et elle
+   n'apporte aucune information que la bulle ne porte pas déjà. */
+@property --aura-sweep {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: 0deg;
+}
+
+.bubble__aura {
+  position: absolute; inset: -1px; pointer-events: none;
+  border: 2px solid var(--glow-deep);
+  border-radius: inherit;
+  /* Le HALO. Quatre ombres empilées plutôt qu'une, chacune plus large et plus
+     transparente : c'est la façon d'obtenir une retombée DOUCE vers l'alpha,
+     là où une ombre unique donne un cerne net qui s'arrête d'un coup. Une
+     seule et large paraissait posée sur la bulle ; quatre lui donnent une
+     lumière qui se dissipe.
+
+     Pas de `filter: blur()` : le filtre s'applique AVANT le masque, donc le
+     trait flouté serait recoupé net par le secteur qui progresse — le bord
+     d'attaque du tracé redeviendrait dur, ce qu'on cherche justement à éviter. */
+  box-shadow:
+    0 0 4px rgba(var(--glow-rgb), .95),
+    0 0 12px rgba(var(--glow-rgb), .7),
+    0 0 28px rgba(var(--glow-rgb), .48),
+    0 0 56px rgba(var(--glow-rgb), .3),
+    0 0 100px rgba(var(--glow-rgb), .16),
+    /* L'ombre INTERNE est ce qui mordait sur le texte : à .3 sur 18 px, elle
+       teintait le verre fumé jusque sous les mots et la bulle paraissait
+       rétrécie de l'intérieur. Un halo se voit DEHORS ; dedans, il n'a qu'à
+       poser un liseré. */
+    inset 0 0 8px rgba(var(--glow-rgb), .12);
+  /* Les deux secteurs opposés. Le second part à 180deg : c'est ce qui fait le
+     départ « centre bas », et les deux tournent dans le même sens. */
+  --aura-mask: conic-gradient(
+    from 0deg,
+    #000 0deg var(--aura-sweep),
+    transparent var(--aura-sweep) 180deg,
+    #000 180deg calc(180deg + var(--aura-sweep)),
+    transparent calc(180deg + var(--aura-sweep))
+  );
+  /* Doublé comme `backdrop-filter` l'est plus haut : Safari n'a pas encore
+     `mask-image` sans préfixe. */
+  mask-image: var(--aura-mask);
+  -webkit-mask-image: var(--aura-mask);
+  /* Le TRACÉ est quasi linéaire, et c'est une correction mesurée : avec la
+     courbe d'assouplissement du design system (`--ease-out`, très chargée en
+     début), le contour atteignait 148° sur 180 au bout de 284 ms — 82 % du
+     dessin dans le premier tiers du temps, puis un rampement invisible. Ça ne
+     se lisait pas comme un tracé mais comme un éclair. Une main qui dessine
+     avance à vitesse à peu près constante ; on garde juste de quoi partir et
+     finir en douceur.
+
+     L'affaissement, lui, garde `--ease-out` : là, il s'agit bien de partir
+     vite et de s'éteindre lentement. */
+  animation:
+    aura-draw var(--t-aura-draw) cubic-bezier(0.35, 0.1, 0.6, 0.95) both,
+    aura-fade var(--t-aura-fade) var(--ease-out) var(--t-aura-draw) both;
+}
+
+/* Le tracé : les deux secteurs s'ouvrent d'un demi-tour chacun, donc le
+   contour est complet quand ils se rejoignent. */
+@keyframes aura-draw {
+  from { --aura-sweep: 0deg; }
+  /* 183 et non 180 : à l'angle exact, les deux secteurs se touchent sans se
+     recouvrir, et l'anticrénelage laisse une couture visible au centre haut et
+     au centre bas — soit précisément les deux points d'où le tracé est parti.
+     Trois degrés de chevauchement les referment, et personne ne peut voir
+     trois degrés de trop sur un contour déjà complet. */
+  to   { --aura-sweep: 183deg; }
+}
+
+/* L'affaissement : le trait s'éteint et se retire d'un cheveu vers la bulle,
+   pour ne pas disparaître en clignotant. */
+@keyframes aura-fade {
+  from { opacity: 1; transform: scale(1); }
+  to   { opacity: 0; transform: scale(.985); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bubble__aura { display: none; }
+}
+
+/* Le chevron « la suite » (#122). Une bulle qui a fini de parler et une bulle
+   qui attend qu'on tourne la page sont identiques : rien dans le texte ne dit
+   qu'il en reste. Un signe, jamais un mot — le dialogue est la voix du lieu, et
+   une consigne d'interface y détonnerait.
+
+   En bas à DROITE, dans la marge de la boîte : c'est là que finit la lecture,
+   donc là que l'œil arrive quand il a fini. Il respire pour se distinguer d'un
+   point de ponctuation.
+
+   Sous « mouvement réduit », il cesse de respirer mais RESTE : c'est une
+   affordance, pas une décoration. La couper priverait d'information ceux qui
+   demandent moins de mouvement — même arbitrage que le point du télescope,
+   dont le halo s'arrête et dont le point demeure. */
+.bubble__next {
+  position: absolute; right: 14px; bottom: 10px;
+  width: 7px; height: 7px;
+  border-right: 1.5px solid var(--glow); border-bottom: 1.5px solid var(--glow);
+  transform: rotate(45deg);
+  animation: bubble-next 1.6s ease-in-out infinite;
+}
+@keyframes bubble-next {
+  0%, 100% { opacity: .35; transform: rotate(45deg) translate(0, 0); }
+  50%      { opacity: .95; transform: rotate(45deg) translate(1.5px, 1.5px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bubble__next { animation: none; opacity: .8; }
+}
+
+/* LA CONSIGNE (#129), et depuis #136 une classe du DESIGN SYSTEM plutôt qu'une
+   pièce de la bulle : elle marque aussi bien un mot au milieu d'une phrase que
+   l'indice de sortie d'un panneau ou le « défiler » du site classique. Trois
+   surfaces, une seule définition — la recette était recopiée dans
+   `classic.css`, elle ne l'est plus.
+
+   Le tempo est réglable par `--t-cue-laser` : une consigne au milieu d'un récit
+   respire (3,2 s), une consigne seule dans un coin doit rester repérable et
+   repasse plus vite. Ce qui ne change pas, c'est la FORME — traverser vite,
+   attendre longtemps.
+
+   LA CONSIGNE (suite). Certaines phrases ne racontent pas la pièce : elles
+   demandent quelque chose au visiteur. Ces mots-là portent l'accent, et un
+   balayage blanc les parcourt régulièrement.
+
+   Deux moyens pour une seule idée, et ils ne jouent pas le même rôle : la
+   COULEUR est de l'information — elle distingue une demande d'un récit et vaut
+   même à l'arrêt —, le BALAYAGE est du mouvement, et il ne fait qu'attirer
+   l'œil une fois de temps en temps.
+
+   Le laser est un dégradé large découpé sur le texte (`background-clip: text`)
+   et déplacé, plutôt qu'un élément posé par-dessus : un calque en surimpression
+   demanderait de connaître la géométrie exacte des mots, qui change à chaque
+   retour à la ligne, à chaque traduction et à chaque largeur de bulle.
+
+   La couleur de base est répétée aux deux extrémités du dégradé pour que la
+   boucle ne se voie pas : sans ça, le retour du balayage se lit comme un saut. */
+.cue {
+  color: var(--glow);
+  /* L'axe est HORIZONTAL et non incliné : sur un mot large de quelques dizaines
+     de pixels et haut d'une ligne, une bande inclinée traverse surtout par le
+     haut et par le bas, et le blanc n'atteint jamais franchement les lettres.
+     Mesuré : à 100deg, le mot restait cyan au sommet du balayage. */
+  /* La bande claire est ÉTROITE (43 → 57 %), pas large (34 → 66 % au premier
+     jet). Étalé sur un tiers du dégradé, le blanc arrivait par une montée si
+     douce qu'on ne voyait pas passer un reflet : on voyait le mot s'éclaircir
+     puis s'assombrir. Resserrée, la transition a un bord, et un bord est ce
+     qui se lit comme un objet qui traverse. */
+  background-image: linear-gradient(
+    90deg,
+    var(--glow) 0%,
+    var(--glow) 43%,
+    #fff 50%,
+    var(--glow) 57%,
+    var(--glow) 100%
+  );
+  background-size: 220% 100%;
+  background-position: 130% 0;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  /* DEUX animations, exactement synchrones parce qu'elles partagent leur durée.
+     Le dégradé seul ne pouvait pas se démarquer davantage : son point le plus
+     clair est déjà #fff, et sur un fond de verre fumé le blanc pur ne se
+     distingue pas tant du cyan. Ce qui manquait n'était pas de la clarté mais
+     de la LUEUR — le halo est ce qui fait lire « allumé » plutôt que
+     « plus clair ». Il déborde les lettres, donc il se voit là où la couleur
+     ne peut plus rien. */
+  animation:
+    cue-laser var(--t-cue-laser) linear var(--cue-delay, 0ms) infinite,
+    cue-bloom var(--t-cue-laser) linear var(--cue-delay, 0ms) infinite;
+}
+
+/* La lueur ne dure QUE la traversée (0 → 22 %), et son sommet tombe au milieu,
+   là où la bande claire est sur le mot. Au-delà, plus rien : une lueur qui
+   resterait ferait du mot un néon, alors qu'il doit redevenir du texte.
+
+   Elle a DEUX couches, et chacune fait un travail que l'autre ne peut pas.
+   Serrée et blanche, elle détache les lettres de ce qu'il y a derrière — un
+   halo cyan autour d'un mot cyan ne fait que l'épaissir, mesuré : on ne voyait
+   rien passer. Large et cyan, elle donne la lueur, celle qui déborde le mot et
+   se voit là où la couleur des lettres ne peut plus rien.
+
+   Le blanc seul ne suffisait pas non plus : sur le verre fumé d'une bulle, un
+   halo blanc de 9 px se perd dans le panneau, alors qu'il éclate sur le fond
+   d'encre de l'accueil. Il fallait les deux pour que le même effet se voie
+   dans les deux décors. */
+@keyframes cue-bloom {
+  0%, 22%, 100% { filter: none; }
+  11% {
+    filter:
+      drop-shadow(0 0 3px rgba(255, 255, 255, .9))
+      drop-shadow(0 0 11px rgba(var(--glow-rgb), .85));
+  }
+}
+
+/* Le balayage traverse VITE et attend longtemps : c'est un reflet qui passe,
+   pas une pulsation. Le temps d'attente occupe donc l'essentiel du cycle —
+   l'inverse exact du témoin du télescope, qui tapote et doit garder un rythme.
+   Ici, un rythme régulier ferait clignoter la phrase. */
+@keyframes cue-laser {
+  0%       { background-position: 130% 0; }
+  22%, 100% { background-position: -30% 0; }
+}
+
+/* Le balayage part, la couleur reste. C'est la distinction qui compte : une
+   animation qui se répète toutes les trois secondes est le cas d'école de ce
+   que « mouvement réduit » vise, alors que la couleur porte une information
+   qu'on ne peut pas retirer sans appauvrir la phrase. */
+@media (prefers-reduced-motion: reduce) {
+  .cue {
+    animation: none;
+    background-image: none;
+    -webkit-text-fill-color: var(--glow);
+    filter: none;
+  }
+}
+
+/* LE FAISCEAU (#29). Le pendant de la consigne, et son exact contraire.
+
+   Une consigne PORTE l'accent : la couleur est de l'information, elle dit
+   « ceci vous demande quelque chose ». Un faisceau ne fait que TRAVERSER un
+   texte qui, lui, garde sa couleur — il souligne sans requalifier. C'est ce qui
+   permet de le poser sur une phrase d'auteur ou sur une ligne technique sans
+   leur faire dire qu'elles réclament un geste.
+
+   Le dégradé est donc l'inverse de celui d'une consigne : la couleur du texte
+   aux extrémités, l'accent au cœur. Elle est lue en `currentColor` plutôt
+   qu'écrite : le faisceau sert des textes de couleurs différentes — la crème
+   pleine de l'accroche, la crème à 50 % d'une méta — et une valeur en dur
+   repeindrait le texte au lieu de le traverser.
+
+   Il ne PASSE QU'UNE FOIS. Rejouer se fait en retirant puis remettant la
+   classe, ce que React fait tout seul quand la carte survolée change ; une
+   boucle en ferait une consigne, ce qu'il n'est pas. */
+.beam {
+  background-image: linear-gradient(
+    90deg,
+    currentColor 0%,
+    currentColor 43%,
+    var(--glow-deep) 50%,
+    currentColor 57%,
+    currentColor 100%
+  );
+  background-size: 220% 100%;
+  background-position: 130% 0;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation:
+    beam-pass var(--t-beam) linear var(--beam-delay, 0ms) 1 both,
+    beam-bloom var(--t-beam) linear var(--beam-delay, 0ms) 1 both;
+}
+
+/* La traversée occupe TOUTE la durée : les keyframes d'une consigne traversent
+   en 22 % puis attendent, et cette attente n'a de sens qu'en boucle. `both`
+   retient la position finale, hors du texte, où la phrase a repris sa couleur. */
+@keyframes beam-pass {
+  from { background-position: 130% 0; }
+  to   { background-position: -30% 0; }
+}
+
+/* La lueur suit le faisceau : elle monte, culmine au milieu de la traversée et
+   s'éteint avec lui. Cyan, ici, parce que c'est le faisceau qui est cyan — à
+   l'inverse de la consigne, dont la lueur est blanche pour trancher sur un mot
+   déjà cyan. */
+@keyframes beam-bloom {
+  0%, 100% { filter: none; }
+  50%      { filter: drop-shadow(0 0 8px rgba(var(--glow-deep-rgb), .85)); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* Rien à garder : la couleur du texte est déjà la bonne, le faisceau n'était
+     que du mouvement. On rend la phrase au texte simple. */
+  .beam {
+    animation: none;
+    background-image: none;
+    -webkit-text-fill-color: inherit;
+    filter: none;
+  }
+}
+
+/* Ligne de rappel vers l'objet (optionnelle) */
+.bubble__tick { position: absolute; top: 50%; width: 44px; height: 1px; }
+.bubble__tick--right { left: 100%; background: linear-gradient(270deg, rgba(var(--cream-rgb), .55), rgba(var(--cream-rgb), 0)); }
+.bubble__tick--left  { right: 100%; background: linear-gradient(90deg,  rgba(var(--cream-rgb), .55), rgba(var(--cream-rgb), 0)); }
+/* Variante VERTICALE (2026-08-24) : pour une bulle posée sous son sujet, un
+   rappel horizontal pointerait à côté. Celui-ci part du milieu du bord haut et
+   monte — il désigne ce qui est au-dessus. Le dégradé est opaque contre la
+   bulle et s'éteint en s'éloignant, comme les deux autres. */
+.bubble__tick--top {
+  top: auto; bottom: 100%; left: 50%; transform: translateX(-50%);
+  width: 1px; height: 44px;
+  background: linear-gradient(0deg, rgba(var(--cream-rgb), .55), rgba(var(--cream-rgb), 0));
+}
+
+@keyframes bubble-in {
+  from { opacity: 0; transform: translateY(10px); clip-path: inset(0 0 100% 0); }
+  to   { opacity: 1; transform: translateY(0);    clip-path: inset(-35%); }
+}
+
+/* ===== Bascule de langue (horizontale) =====
+   Les deux langues côte à côte, séparées d'un filet : la paire EST la liste, et
+   le cadre autour dit « ceci est un choix », là où un bouton isolé laissait
+   croire à une étiquette. Elle sert la PRÉ-SÉLECTION et le site classique — la
+   langue se choisit avant l'expérience, et `useLocale` étant global et
+   mémorisé, la décision vaut ensuite pour les deux portfolios.
+
+   La réglette verticale de la barre de la scène (`.menu__lang`, plus bas) est
+   la même décision dans une autre mise en page. */
+.lang {
+  display: flex; align-items: center; gap: 7px;
+  padding: 5px 9px;
+  border: 1px solid rgba(var(--glow-rgb), .4); border-radius: var(--r-bubble);
+  transition: border-color var(--t-halo) var(--ease-out);
+}
+.lang:hover, .lang:focus-within { border-color: rgba(var(--glow-rgb), .9); }
+/* Un `<button>` n'hérite NI de la police NI de la graisse : sans ces remises à
+   zéro la bascule repasse en Helvetica au milieu d'une barre en chasse fixe.
+   C'est cet oubli exact qui avait fait paraître la barre de la scène bon marché. */
+.lang button {
+  appearance: none; padding: 0; border: 0; background: none;
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 11px; font-weight: 500; letter-spacing: .1em;
+  transition: color var(--t-halo) var(--ease-out);
+}
+/* LE DRAPEAU D'UNE LANGUE (#164), et la règle vaut pour les DEUX bascules —
+   celle-ci, partagée par la pré-sélection et le site classique, et la réglette
+   verticale de la scène plus bas. La décision est une, seules les tailles
+   diffèrent.
+
+   **Un seul fichier par langue** : le gris de l'inactive est un `filter`, pas
+   un second fichier. Deux fichiers par langue seraient deux choses à garder
+   synchrones pour un effet que le navigateur calcule.
+
+   **Les drapeaux sont la seule famille d'icônes en COULEUR du projet, et ils
+   ne peuvent pas être autrement** : ce sont des pastilles tricolores, qu'un
+   masque réduirait à un disque plein. Les marques des technologies et des
+   liens, elles, sont monochromes et passent par un masque (`src/config/icons.ts`).
+
+   Le signal a changé de nature : les deux lettres se distinguaient par leur
+   teinte, accent contre crème ; les drapeaux se distinguent par la saturation.
+   C'est le même rôle — dire dans quelle langue on se trouve — joué autrement. */
+.lang button img, .menu__lang button img { display: block; border-radius: 50%; }
+.lang button img { width: 17px; height: 17px; }
+.lang__off img, .menu__lang-off img { filter: grayscale(1); opacity: .7; }
+.lang__off:hover img, .lang__off:focus-visible img,
+.menu__lang-off:hover img, .menu__lang-off:focus-visible img { opacity: 1; }
+/* Cliquable quand même : le désactiver ferait disparaître l'indicateur, or
+   c'est lui qui dit dans quelle langue on se trouve. */
+.lang__on  { cursor: default; }
+.lang__off { cursor: pointer; }
+.lang__off:hover, .lang__off:focus-visible { outline: none; }
+.lang__rule { width: 1px; height: 10px; background: rgba(var(--cream-rgb), .25); }
+
+/* ===== Logo =====
+   Un seul logo dans le produit : le triangle pointe en bas (2026-08-10, en
+   remplacement du losange des premières maquettes — issue #65). SVG plutôt que
+   div : le losange était un carré pivoté à 45°, une astuce qui ne fait pas un
+   triangle, et un `clip-path` rognerait la bordure ET sa lueur. La géométrie
+   vit dans le markup (`<path d="M2 2.5 H14 L8 13.5 Z">`, viewBox 0 0 16 16),
+   son habillage ici. Côté app, c'est `src/ui/Logo.tsx` qui la rend. */
+.logo { overflow: visible; } /* la lueur du drop-shadow déborde du viewBox */
+.logo path {
+  fill: none; stroke: var(--glow); stroke-width: 1.5;
+  vector-effect: non-scaling-stroke; /* même trait à 12 px qu'à 16 px */
+  stroke-linejoin: round;            /* pointes adoucies — l'équivalent du border-radius du losange */
+}
+
+/* Respiration (2,6 s) : opacité ET portée de la lueur. Sur 16 px l'opacité
+   seule ne se lit pas — mesuré pendant la session design. */
+@keyframes logo-breathe {
+  0%, 100% { opacity: .45; filter: drop-shadow(0 0 3px  rgba(var(--glow-rgb), .35)); }
+  50%      { opacity: 1;   filter: drop-shadow(0 0 10px rgba(var(--glow-rgb), .8));  }
+}
+
+/* Preloader : le logo respire pendant le chargement. */
+.preload__logo { width: 16px; height: 16px; animation: logo-breathe 2.6s ease-in-out infinite; }
+
+/* ===== Barre de menu ===== */
+.menu {
+  position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+  z-index: var(--z-bar); pointer-events: auto;
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  width: 52px; padding: 14px 0 12px;
+  background: linear-gradient(180deg, rgba(var(--ink-glass), .6), rgba(var(--ink-glass), .5));
+  backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(var(--cream-rgb), .12);
+  border-radius: var(--r-bar);
+  opacity: .4; transition: opacity var(--t-bar) var(--ease-out);
+}
+/* ELLE ARRIVE, ELLE N'EST PAS LÀ (décision produit, 2026-09-07). Elle était
+   posée dès la première image, donc pendant toute l'intro : l'animation qui
+   joue sur l'écran est la première chose du site, et une barre de navigation à
+   côté disait déjà qu'il y avait autre chose à faire. C'est du mobilier — il
+   arrive quand la pièce a fini de parler, une fois la première bulle posée
+   (voir `Menu.tsx`, qui pose et retire cette classe).
+
+   C'est l'ATTENTE qui est le modificateur, et pas l'entrée : `design/screens/`
+   partage ce fichier et n'a pas d'app pour lui retirer une classe. Une barre
+   masquée par défaut y aurait disparu des quinze maquettes d'un coup.
+
+   Inerte au pointeur tant qu'elle attend : sinon elle ouvrirait un survol là
+   où l'on ne voit rien. */
+.menu--waiting { opacity: 0; pointer-events: none; }
+.menu:not(.menu--waiting):hover, .menu:not(.menu--waiting):focus-within { opacity: .75; }
+/* Statique : le menu est du mobilier, il ne respire pas. */
+.menu__logo { width: 12px; height: 12px; margin-bottom: 8px; filter: drop-shadow(0 0 10px rgba(var(--glow-rgb), .5)); }
+.menu__rule { width: 22px; height: 1px; background: rgba(var(--cream-rgb), .14); }
+/* Les deux filets n'ont pas le même voisinage : le premier sépare le logo des
+   sections, le second les sections des liens externes. */
+.menu__rule--head { margin-bottom: 6px; }
+.menu__rule--mid  { margin: 6px 0; }
+/* Les maquettes en font des <a>, l'app des <button> (ce sont des actions, pas
+   des liens) — d'où le reset : un bouton arrive avec un fond gris système, une
+   bordure biseautée, et surtout N'HÉRITE PAS de font-family. Sans ces quatre
+   lignes, la barre rend trois boutons Arial gris sur du verre fumé. */
+.menu__link {
+  appearance: none; background: none; border: 0; font-family: inherit;
+  display: flex; flex-direction: column; align-items: center; gap: 7px;
+  width: 36px; padding: 10px 0; border-radius: var(--r-item);
+  font-size: var(--fs-kicker); font-weight: 500; letter-spacing: .18em;
+  text-transform: uppercase; color: rgba(var(--cream-rgb), .72);
+  text-decoration: none; cursor: pointer; transition: background var(--t-item), color var(--t-item);
+}
+.menu__link span { writing-mode: vertical-rl; transform: rotate(180deg); } /* tête penchée à gauche */
+.menu__link:hover, .menu__link:focus-visible { background: rgba(var(--cream-rgb), .09); color: var(--cream); }
+.menu__link--active { color: var(--cream); background: rgba(var(--cream-rgb), .09); }
+.menu__link--active::before {
+  content: ''; width: 4.5px; height: 4.5px; border-radius: 50%;
+  background: var(--glow); box-shadow: 0 0 6px rgba(var(--glow-rgb), .8);
+}
+.menu__social {
+  appearance: none; background: none; border: 0; font-family: inherit;
+  display: flex; align-items: center; justify-content: center;
+  width: 36px; height: 30px; border-radius: 15px;
+  font-size: var(--fs-kicker); font-weight: 600; letter-spacing: .04em;
+  color: rgba(var(--cream-rgb), .72); text-decoration: none;
+  /* La marque prend la couleur de la barre parce que c'est un MASQUE peint en
+     `currentColor` (#170) : elle hérite donc du repos à 72 % et du survol sans
+     qu'on la colore, là où une image aurait imposé la sienne — du noir, pour
+     des fichiers en `currentColor`. Seule la taille se pose ici. */
+  --mark-size: 16px;
+}
+.menu__social:hover, .menu__social:focus-visible { background: rgba(var(--cream-rgb), .09); color: var(--cream); }
+.menu__lang { display: flex; flex-direction: column; align-items: center; gap: 3px; margin-top: 10px; font-size: 10px; font-weight: 600; letter-spacing: .08em; }
+/* Les deux côtés sont des BOUTONS depuis #33, et un bouton arrive avec son
+   chrome système — fond gris, bordure biseautée, et surtout sa police à lui :
+   un `<button>` n'hérite PAS de `font-family`. C'est exactement la faute qui
+   avait fait juger la barre « cheap » à sa livraison ; ces quatre remises à
+   zéro sont ce qui l'évite. */
+.menu__lang button {
+  appearance: none; background: none; border: 0; padding: 0;
+  font: inherit; letter-spacing: inherit; cursor: pointer;
+  /* SURTOUT PAS `color: inherit` ici : ce sélecteur est plus spécifique que
+     `.menu__lang-on` (0,1,1 contre 0,1,0), il écraserait donc l'accent et les
+     deux côtés sortiraient de la même couleur — plus aucun moyen de voir la
+     langue active. Les deux règles ci-dessous posent chacune la leur, ce qui
+     neutralise le `buttontext` du navigateur sans rien masquer. */
+}
+/* La réglette de la scène porte le même drapeau, un cran plus petit : sa
+   colonne fait 36 px de large contre une bascule horizontale qui respire.
+   La recette, elle, est commune — voir `.lang button img` plus haut. */
+.menu__lang button img { width: 15px; height: 15px; }
+.menu__lang-on  { cursor: default; }
+.menu__lang-off { cursor: pointer; }
+/* `:not([aria-disabled])` : tant que le bilingue n'existe pas (#33), EN est
+   rendu inerte — il ne doit pas s'allumer au survol comme s'il attendait un clic. */
+.menu__lang-off:hover, .menu__lang-off:focus-visible { color: var(--cream); outline: none; }
+/* Le côté actif reste cliquable : le désactiver ferait disparaître
+   l'indicateur, or c'est lui qui dit dans quelle langue on est. */
+.menu__lang-on { cursor: default; }
+.menu__lang-rule { width: 14px; height: 1px; background: rgba(var(--cream-rgb), .2); }
+
+/* ===== Pré-loader (écran 0b) =====
+   L'anatomie vit ici plutôt que dans le `<style>` de la maquette : l'app la
+   recrée telle quelle (issue #25), et deux copies d'un même composant finissent
+   toujours par diverger. */
+.preload {
+  position: absolute; inset: 0; z-index: var(--z-preload);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 44px;
+  background: radial-gradient(1100px 750px at 50% 115%, #22160D, var(--ink) 70%);
+  transition: opacity var(--t-preload-out) var(--ease-out);
+}
+/* Sortie : la scène est prête, le fondu couvre sa première frame. */
+.preload--out { opacity: 0; }
+.preload__bar { position: relative; width: 340px; height: 2px; border-radius: 1px; background: rgba(var(--cream-rgb), .14); }
+.preload__fill {
+  position: absolute; left: 0; top: 0; bottom: 0; border-radius: 1px;
+  background: linear-gradient(90deg, rgba(var(--glow-rgb), .35), var(--glow));
+  box-shadow: 0 0 12px rgba(var(--glow-rgb), .7);
+  transition: width 300ms var(--ease-out);
+}
+/* Le point de tête vit DANS le fil : il suit sa largeur sans dupliquer le
+   pourcentage dans une seconde propriété à tenir synchronisée. */
+.preload__head {
+  position: absolute; left: 100%; top: 50%; transform: translate(-50%, -50%);
+  width: 5px; height: 5px; border-radius: 50%;
+  background: var(--glow); box-shadow: 0 0 10px rgba(var(--glow-rgb), .9);
+}
+.preload__row { display: flex; justify-content: space-between; align-items: baseline; width: 340px; margin-top: 14px; }
+.preload__copy { font-family: var(--font-voice); font-style: italic; font-size: 15px; color: rgba(var(--cream-rgb), .85); }
+.preload__pct { font-family: ui-monospace, monospace; font-size: 11px; color: rgba(var(--cream-rgb), .5); }
+
+/* Sans `Content-Length`, aucun pourcentage n'est vrai : la barre fait la
+   navette et le chiffre disparaît, plutôt que d'afficher un nombre inventé. */
+.preload__bar--unknown .preload__fill { width: 25%; animation: preload-shuttle 1.4s var(--ease-out) infinite alternate; }
+.preload__bar--unknown .preload__head { display: none; }
+/* 300 % = (100 - 25) / 25 : la navette s'arrête pile au bord droit de la piste.
+   Pas d'`overflow: hidden` sur la piste — il rognerait aussi la lueur du fil
+   dans le cas normal. */
+@keyframes preload-shuttle { from { transform: translateX(0); } to { transform: translateX(300%); } }
+
+/* ===== Fiche projet (écrans 03b / 03c) =====
+   La fiche est une BULLE À L'ÉCHELLE DE L'ÉCRAN : même anatomie en trois temps
+   (kicker à point accent · titre · une phrase en italique), même matériau, même
+   accent. Ce qui change est l'échelle, parce que la scène a disparu du cadre —
+   le dossier la remplit, et c'est LUI que le verre laisse transparaître. Un
+   panneau opaque effacerait ce qu'on vient de mettre 850 ms à amener.
+
+   La classe `panel` qui l'accompagne dans l'app n'est pas décorative :
+   `CameraRig` ignore toute molette visant `.panel`. Sans elle, le tour
+   continuerait de tourner sous la fiche. */
+.sheet {
+  position: absolute; inset: 0; z-index: var(--z-panel);
+  background: rgba(var(--ink-glass), .74);
+  backdrop-filter: blur(26px) saturate(.9);
+  display: flex; align-items: center; justify-content: center;
+  pointer-events: auto;
+  /* Le relais démarre à 70 % du vol (≈ 595 ms sur 850) : la fiche est opaque
+     ~70 ms après l'arrivée du dossier, jamais avant qu'il remplisse le cadre. */
+  animation: sheet-in var(--t-sheet-in) var(--ease-out) 595ms both;
+}
+/* Le carton du dossier reste perceptible : un dégradé crème très bas évite que
+   le verre lise comme un aplat mort. */
+.sheet::before {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background: radial-gradient(120% 90% at 50% 42%, rgba(var(--cream-rgb), .07), transparent 62%);
+}
+.sheet--out { animation: sheet-out var(--t-sheet-out) linear both; }
+
+/* Deux colonnes, LA DÉMONSTRATION D'ABORD (#126). La composition s'est
+   inversée : la couverture portrait de 300 px cédait la largeur au texte, alors
+   qu'un projet se juge sur ce qu'il fait — une vidéo qu'on lit, des captures
+   qu'on regarde. Les médias prennent donc la colonne fluide, le texte une
+   colonne fixe de 420 px, et rien de ce que la fiche disait n'a disparu : c'est
+   le même contenu, dans une colonne plus étroite et plus haute.
+
+   `max-height` + `overflow` sur la colonne de texte, jamais sur la fiche : la
+   scène et sa pellicule doivent rester en vue pendant qu'on lit la stack. */
+.sheet__inner {
+  position: relative; width: min(1240px, 88%);
+  max-height: calc(100% - 128px);
+  display: grid; grid-template-columns: minmax(0, 1fr) 420px; gap: var(--s-7); align-items: stretch;
+}
+
+/* ----- La colonne des médias : une scène, une légende, une pellicule ----- */
+
+.sheet__media { display: flex; flex-direction: column; gap: 12px; min-width: 0; min-height: 0; }
+
+/* La scène ne montre QU'UN média à la fois — c'est ce qui la distingue d'une
+   grille de vignettes : on regarde une chose, la pellicule dit ce qu'il y a
+   d'autre. Le 16/9 est celui d'une capture d'écran d'application.
+
+   Le `min()` sur la largeur borne la scène PAR LA HAUTEUR de la fenêtre sans
+   casser son ratio : sur un écran large et court, une scène calculée sur la
+   seule largeur de colonne aurait poussé la pellicule hors du cadre. Un
+   `max-height` ne l'aurait pas fait — il aplatit le ratio au lieu de réduire
+   les deux dimensions. */
+.sheet__stage {
+  position: relative; overflow: hidden; margin-inline: auto;
+  width: min(100%, calc((100vh - 240px) * 16 / 9));
+  aspect-ratio: 16 / 9;
+  border-radius: var(--r-bubble); border: 1px solid rgba(var(--cream-rgb), .12);
+  background: rgba(0, 0, 0, .28);
+  display: flex; align-items: center; justify-content: center;
+}
+/* `contain`, jamais `cover` : une capture d'interface qu'on rogne est une
+   capture qui ment sur ce qu'elle montre. Les vignettes, elles, peuvent rogner
+   — elles indexent, elles ne démontrent pas. */
+.sheet__player, .sheet__shot {
+  display: block; width: 100%; height: 100%; object-fit: contain;
+}
+
+/* Le repli hachuré — l'illustration générique quand la fiche n'a ni vidéo, ni
+   capture, ni couverture. Même facture que la photo du CV : la donnée décide,
+   et un `<img>` pointé sur un fichier absent afficherait une icône cassée, ce
+   qui est pire qu'un vide assumé. Il remplit désormais la scène, en paysage. */
+.sheet__cover {
+  width: 100%; height: 100%;
+  border: 1px dashed rgba(var(--cream-rgb), .3); border-radius: var(--r-bubble);
+  background: repeating-linear-gradient(45deg, rgba(var(--cream-rgb), .05) 0 8px, transparent 8px 16px);
+  display: flex; align-items: center; justify-content: center;
+  font-family: ui-monospace, monospace; font-size: 11px; color: rgba(var(--cream-rgb), .5);
+  object-fit: cover;
+}
+
+/* La légende dit ce que le média montre. Elle porte le même texte que l'`alt` :
+   une seule phrase écrite une seule fois, lue par l'œil comme par le lecteur
+   d'écran. Type de méta — elle accompagne l'image, elle ne la commente pas. */
+.sheet__caption {
+  margin: 0; text-align: center;
+  font-family: var(--font-ui); font-size: var(--fs-meta); letter-spacing: .04em;
+  color: rgba(var(--cream-rgb), .55);
+}
+
+/* La pellicule. Elle ne paraît qu'à partir de DEUX médias : à une vignette,
+   elle répète la scène en plus petit et donne à cliquer sur ce qu'on regarde
+   déjà. Elle passe à la ligne plutôt que de défiler — une rangée qui déborde
+   cache des captures sans le dire. */
+.sheet__strip {
+  display: flex; flex-wrap: wrap; justify-content: center; gap: 10px;
+  margin: 0; padding: 0; list-style: none;
+}
+.sheet__thumb {
+  appearance: none; display: block; position: relative; padding: 0; cursor: pointer;
+  width: 96px; aspect-ratio: 16 / 9; overflow: hidden;
+  border-radius: 8px; border: 1px solid rgba(var(--cream-rgb), .14);
+  background: rgba(var(--cream-rgb), .05);
+  transition: border-color var(--t-item), box-shadow var(--t-halo);
+}
+.sheet__thumb img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.sheet__thumb:hover, .sheet__thumb:focus-visible {
+  border-color: rgba(var(--glow-deep-rgb), .6); outline: none;
+  box-shadow: 0 0 0 1.5px rgba(var(--glow-deep-rgb), .35), 0 0 30px 4px rgba(var(--glow-deep-rgb), .32);
+}
+/* La vignette courante porte l'accent PLEIN, le survol le halo : l'une dit où
+   on est, l'autre où l'on irait. Deux états qui se ressembleraient ne diraient
+   plus lequel des deux on regarde. */
+.sheet__thumb[aria-current='true'] {
+  border-color: rgba(var(--glow-rgb), .85);
+  box-shadow: 0 0 0 1.5px rgba(var(--glow-rgb), .45);
+}
+/* Sans affiche, la vignette d'une vidéo n'a aucune image : elle montre son
+   rang plutôt qu'un carré noir, qui se lirait comme un échec de chargement. */
+.sheet__thumb-index {
+  display: flex; align-items: center; justify-content: center; height: 100%;
+  font-family: ui-monospace, monospace; font-size: 11px; color: rgba(var(--cream-rgb), .5);
+}
+.sheet__thumb-play {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  font-size: 13px; color: var(--cream);
+  background: radial-gradient(closest-side, rgba(0, 0, 0, .55), transparent);
+}
+
+/* ----- La colonne de texte ----- */
+
+/* Elle défile pour elle seule quand elle déborde. La fiche porte `panel`, donc
+   `CameraRig` ignore déjà toute molette qui la vise : ce conteneur n'a rien à
+   câbler, contrairement au CV qui, lui, arbitre cran par cran.
+
+   LA RÉSERVE DE HALO. `overflow-y: auto` force aussi `overflow-x` : la colonne
+   rognait la lueur de survol de ses liens (40 px de flou + 5 d'étalement) au
+   ras de son bord gauche et de son bas. Elle s'élargit donc de `--halo-room`
+   de ces deux côtés et le rend en `padding` — le texte ne bouge pas d'un
+   pixel, la lueur a la place de s'éteindre avant le bord. À gauche, la
+   réserve tient exactement dans la gouttière de la grille (`--s-7`) : elle
+   ne recouvre jamais la colonne des médias, donc n'y vole aucun clic. */
+.sheet__body {
+  min-height: 0; overflow-y: auto; padding-right: 6px;
+  padding-inline-start: var(--halo-room); margin-inline-start: calc(-1 * var(--halo-room));
+  padding-bottom: var(--halo-room); margin-bottom: calc(-1 * var(--halo-room));
+}
+
+.sheet__kicker { display: flex; align-items: center; gap: 9px; margin-bottom: 14px; }
+.sheet__dot {
+  width: 7px; height: 7px; border-radius: 50%; flex: none;
+  background: var(--glow); box-shadow: 0 0 10px rgba(var(--glow-rgb), .85);
+}
+.sheet__label {
+  font-family: var(--font-ui); font-size: var(--fs-kicker); font-weight: 500;
+  letter-spacing: .2em; text-transform: uppercase; color: rgba(var(--cream-rgb), .66);
+}
+
+.sheet__title {
+  font-family: var(--font-ui); font-size: var(--fs-display); font-weight: 500;
+  letter-spacing: -.015em; line-height: 1.05; color: var(--cream); margin: 0 0 14px;
+}
+/* La voix de la pièce, exactement comme dans une bulle — une seule phrase. */
+.sheet__tagline {
+  font-family: var(--font-voice); font-style: italic; font-size: 22px; line-height: 1.45;
+  color: #F2E9DA; margin: 0 0 26px; text-wrap: pretty; max-width: 46ch;
+}
+
+.sheet__meta {
+  display: flex; gap: var(--s-6); padding: 14px 0 18px; margin-bottom: 20px;
+  border-top: 1px solid rgba(var(--cream-rgb), .12);
+  border-bottom: 1px solid rgba(var(--cream-rgb), .12);
+}
+.sheet__meta-item { display: flex; flex-direction: column; gap: var(--s-1); }
+.sheet__meta-key {
+  font-family: var(--font-ui); font-size: 10px; font-weight: 500; letter-spacing: .2em;
+  text-transform: uppercase; color: rgba(var(--cream-rgb), .5);
+}
+.sheet__meta-value { font-size: 13.5px; color: var(--cream); }
+.sheet__meta-value--mono { font-family: ui-monospace, monospace; font-size: 12.5px; }
+
+.sheet__stack { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 22px; padding: 0; list-style: none; }
+.sheet__chip {
+  font-family: ui-monospace, monospace; font-size: 11.5px; color: rgba(var(--cream-rgb), .8);
+  background: rgba(var(--cream-rgb), .07); border: 1px solid rgba(var(--cream-rgb), .12);
+  border-radius: 6px; padding: 4px 9px;
+}
+
+.sheet__points { list-style: none; margin: 0 0 26px; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.sheet__points li {
+  position: relative; padding-left: 18px; font-size: 13.5px; line-height: 1.5;
+  color: rgba(var(--cream-rgb), .78);
+}
+/* Le point accent du kicker, repris en puce : un seul signe dans tout le système. */
+.sheet__points li::before {
+  content: ''; position: absolute; left: 0; top: 8px; width: 5px; height: 5px;
+  border-radius: 50%; background: rgba(var(--glow-rgb), .75);
+}
+
+.sheet__links { display: flex; gap: 10px; }
+.sheet__link {
+  font-family: var(--font-ui); font-size: 12px; font-weight: 500; letter-spacing: .04em;
+  color: var(--cream); text-decoration: none;
+  background: rgba(var(--cream-rgb), .07); border: 1px solid rgba(var(--cream-rgb), .14);
+  border-radius: 8px; padding: 9px 16px;
+  /* Le lien GitHub pose une marque devant son libellé (2026-10-21), même
+     lecture que les cartes du site classique. */
+  display: inline-flex; align-items: center; gap: 7px; --mark-size: 14px;
+  transition: background var(--t-item), border-color var(--t-item), box-shadow var(--t-halo);
+}
+.sheet__link:hover, .sheet__link:focus-visible {
+  background: rgba(var(--cream-rgb), .11); border-color: rgba(var(--glow-deep-rgb), .6);
+  box-shadow: 0 0 0 1.5px rgba(var(--glow-deep-rgb), .35), 0 0 40px 5px rgba(var(--glow-deep-rgb), .42);
+  outline: none;
+}
+
+/* La fiche couvre la barre de menu (panneaux 300 > barre 200) : elle est modale
+   par construction, donc sa sortie doit être la chose la plus évidente après le
+   titre. Deux sorties, la souris et le clavier, jamais une seule. */
+.sheet__close { position: absolute; top: 28px; right: 28px; display: flex; align-items: center; gap: 10px; }
+.sheet__key {
+  font-family: ui-monospace, monospace; font-size: 10.5px; color: rgba(var(--cream-rgb), .5);
+  border: 1px solid rgba(var(--cream-rgb), .18); border-radius: 5px; padding: 3px 7px;
+}
+/* La pastille d'une consigne (#136). Le CADRE reste sur elle et le glyphe passe
+   dans un enfant : `background-clip: text` s'applique au fond de l'élément, et
+   posé sur la pastille il effacerait sa bordure et son remplissage — le mot
+   flotterait sans son cadre. Le cadre prend l'accent pour que la touche et sa
+   phrase se lisent comme UNE seule indication, et non comme une étiquette
+   suivie d'un commentaire. */
+.sheet__key--cue {
+  border-color: rgba(var(--glow-rgb), .45);
+  background: rgba(var(--glow-rgb), .06);
+}
+/* La phrase à côté de la touche (#136). Même graisse et même teinte que la
+   méta de la visée : c'est le même indice, dit au même endroit du regard. */
+.sheet__exit {
+  font-size: var(--fs-meta); letter-spacing: .04em; color: rgba(var(--cream-rgb), .55);
+}
+.sheet__close-btn {
+  appearance: none; background: rgba(var(--cream-rgb), .07); border: 1px solid rgba(var(--cream-rgb), .14);
+  border-radius: 50%; width: 36px; height: 36px; color: var(--cream);
+  font-family: inherit; font-size: 15px; line-height: 1; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: background var(--t-item), border-color var(--t-item);
+}
+.sheet__close-btn:hover, .sheet__close-btn:focus-visible {
+  background: rgba(var(--cream-rgb), .11); border-color: rgba(var(--glow-deep-rgb), .6); outline: none;
+}
+
+@keyframes sheet-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes sheet-out { from { opacity: 1; } to { opacity: 0; } }
+
+/* ===== CV « affiché par l'écran » (#93) =====
+   Le moniteur vertical occupe x 24,5 % → 75,3 % du cadre (mesuré sur
+   `design/renders/refs/cv.png`) ; le bloc s'y encastre à 27,5 % sur 44,8 %, avec
+   la marge qui fait croire que c'est l'écran qui l'affiche.
+
+   Ces fractions sont HORIZONTALES, donc valables à tout ratio : le tour ajuste
+   son champ horizontalement (`src/lib/stops.ts`), un cadre plus court rogne en
+   haut et en bas sans jamais déplacer l'écran latéralement.
+
+   VÉRIFIÉ HORS 16:9 (2026-08-20), parce que le raisonnement ci-dessus ne dit
+   rien du contenu de la boîte, seulement de sa position — et c'est le contenu
+   qui casse en premier. Mesuré à 1000×720, 1440×900 et 1280×1024 : la ligne
+   `titre / entreprise / période` ne passe jamais à la ligne (17 px de haut
+   partout) et la période reste à 17 px du bord de sa cartouche. À 1000 px de
+   large le bloc tombe à 448 px et tient encore. En dessous, c'est le titre qui
+   cédera le premier : la période porte `flex: none`.
+
+   Le CV vit à `--z-bubble` (100), PAS à `--z-panel` : il n'est pas modal, et la
+   barre de menu (200) doit rester au-dessus — « Résumé » est la porte par
+   laquelle on est entré, elle reste la porte de sortie. Il ne porte pas non
+   plus la classe `panel` : il n'a rien à faire défiler, la molette continue
+   donc de commander le tour. */
+:root {
+  --cv-column: max(44.8vw, min(573px, 100vw - 48px));
+}
+.cv {
+  /* LA COLONNE SUIT LE CADRAGE, et les deux disent la même chose deux fois.
+     `lib/stops.ts` resserre le champ de l'arrêt CV jusqu'à ce que l'écran
+     vertical donne une colonne lisible ; cette largeur-ci est la même règle,
+     écrite pour le DOM : les 44,8 % du design, mais jamais moins que les
+     573 px pour lesquels le CV est écrit — ou toute la fenêtre moins 24 px de
+     chaque côté quand elle est plus étroite que ça.
+
+     Les trois nombres sont ceux de `CV_COLUMN_FRACTION`, `CV_COLUMN_PX` et
+     `CV_COLUMN_MARGIN_PX`, et `tests/stops.test.ts` échoue s'ils divergent :
+     un cadrage 3D et une boîte DOM qui ne s'accordent plus, ce serait un texte
+     posé à côté de l'écran qui est censé l'afficher.
+
+     Mesuré avant : 175 px de large sur un téléphone en portrait (390 × 844),
+     avec 444 px de contenu en trop. Après : 342 px, et le moniteur derrière a
+     grandi d'autant.
+
+     Elle est CENTRÉE plutôt qu'écrite à 27,5 % : les deux nombres du design
+     donnaient un centre à 49,95 %, soit un centrage à un dixième de pour cent
+     près — et deux nombres pour une chose qui n'en demande qu'un.
+
+     Déclarée sur `:root` et non ici depuis #194 : le rail de défilement est un
+     FRÈRE de `.cv` — dans le conteneur qui défile, il défilerait avec le
+     contenu — et une propriété posée ici ne l'atteindrait pas.
+
+     LA RÉSERVE DE HALO : la boîte déborde la colonne de `--cv-halo-room` de
+     chaque côté et le rend en `padding-inline`. Le contenu garde exactement
+     la largeur de la colonne, mais la lueur de survol du lien de
+     téléchargement, posé contre le bord droit, n'est plus rognée par
+     l'`overflow` — elle coupait net au ras de la colonne. */
+  --cv-halo-room: calc(48 * var(--cv-u, 1px));
+  position: absolute;
+  left: calc(50% - var(--cv-column) / 2 - var(--cv-halo-room));
+  width: calc(var(--cv-column) + 2 * var(--cv-halo-room));
+  padding-inline: var(--cv-halo-room);
+  top: 0; bottom: 0;
+  z-index: var(--z-bubble);
+  /* Le CV DÉFILE dans l'écran depuis le 2026-08-20, parce qu'il ne tient plus :
+     885 px de contenu (966 accordéon ouvert) dans un cadre de 720. Ce n'est pas
+     un choix esthétique, c'est ce que six sections imposent — et un CV qui
+     défile est ce qu'un CV fait.
+
+     Il lui faut donc `pointer-events: auto` : un élément transparent au
+     pointage ne reçoit pas la molette, elle irait au canevas. Les 45 % de cadre
+     qu'il occupe n'avalent rien d'utile — à cet arrêt, la scène n'a rien de
+     cliquable derrière lui.
+
+     Il ne porte PAS la classe `panel` pour autant : `panel` ferait ignorer au
+     tour TOUTE molette passant ici, et on ne pourrait plus quitter l'arrêt en
+     défilant. C'est `CvScreen` qui arbitre, cran par cran — voir le
+     commentaire du passe-plat là-bas. */
+  pointer-events: auto;
+  overflow-y: auto; overscroll-behavior: contain;
+  /* La barre NATIVE est masquée depuis #194 : Gecko ne la style qu'en largeur
+     et en couleur, et elle collait au bord des cartouches. C'est le rail
+     `.cv-rail` qui indique la position, posé dans l'air latéral. */
+  scrollbar-width: none;
+  /* Ancré en HAUT depuis #194 : c'est l'entretoise du `::before` plus bas qui
+     porte le placement vertical, dimensionnée sur l'air latéral — voir son
+     commentaire.
+     Le `safe center` qui a vécu ici protégeait un centrage apparent que #194
+     retire ; `flex-start` est ce sur quoi il retombait déjà dès que le contenu
+     débordait. Le `padding-block` est l'encastrement dans l'écran, comme les
+     27,5 % le sont latéralement. */
+  display: flex; flex-direction: column; justify-content: flex-start;
+  gap: calc(9 * var(--cv-u, 1px));
+  padding-block: calc(24 * var(--cv-u, 1px));
+  animation: cv-in var(--t-cv-in) var(--ease-out) both;
+}
+/* L'ENTRETOISE, et c'est elle qui tient la promesse « le haut ne bouge jamais ».
+   Le CV n'est PAS centré : il est ancré en haut, sous une entretoise qui lui
+   donne l'air centré au repos. Centré, tout ce qui le fait grandir le fait
+   remonter — c'est de l'arithmétique, pas un réglage : la moitié de ce qu'un
+   accordéon ajoute est reprise en haut. Aucune réserve ne corrige ça
+   exactement, puisque les quatre accordéons n'ont pas la même hauteur.
+
+   `flex: 0 0 auto` — ni croissance, NI COMPRESSION, et c'est le point. Une
+   entretoise compressible (`0 1 auto`) tient tant que rien ne déborde, puis
+   cède : mesuré à 1512 × 945, où le CV déborde déjà au repos, elle rendait
+   9 px au premier accordéon ouvert. Une seconde entretoise en bas, à consommer
+   en premier, n'y change rien — à cette taille elle est déjà à zéro.
+   Incompressible, le haut est figé à toute hauteur de fenêtre, et le prix est
+   une entretoise qui reste en place quand ça défile : on défile un peu plus
+   longtemps, mais rien ne saute sous le curseur.
+
+   COURTE depuis #194 (décision du 2026-10-21) : le CV s'aligne en haut de
+   l'écran, et l'air au-dessus du nom vaut l'air LATÉRAL entre la colonne et le
+   bezel — (50,99 % de slab − 44,8 % de colonne) / 2, soit 39,6u, dont 24u
+   sont déjà le `padding-block` de `.cv`. Elle valait `min(13vh, 220px)`, un
+   faux centrage qui gaspillait le haut de l'écran à toute taille. */
+.cv::before {
+  content: ''; flex: 0 0 auto; height: calc(16 * var(--cv-u, 1px));
+}
+
+/* Déclaré APRÈS `.cv` : à spécificité égale, le dernier gagne — c'est ce qui
+   fait que la sortie l'emporte sur l'entrée. Ne pas remonter cette règle. */
+.cv--out { animation: cv-out var(--t-cv-out) linear both; }
+/* Le nom, en haut de tout. Chasse FIXE, et ce n'est pas un choix de style :
+   le déchiffrement tire des glyphes au sort caractère par caractère, et en
+   chasse proportionnelle chaque tirage change la largeur du mot — le nom
+   gigoterait pendant toute l'animation. La lueur froide est la seule de tout
+   le CV : c'est la ligne qui doit se lire comme un affichage, pas comme du
+   papier. */
+/* La ligne du nom porte AUSSI le lien de téléchargement (#161). Elle est en
+   flex avec la pastille poussée à droite : le nom est en 30 px et la pastille
+   en 12 px, donc elle tient dans l'interligne déjà réservé et n'ajoute pas un
+   pixel de hauteur. Une rangée à elle aurait poussé tout le CV vers le bas, et
+   le haut du CV ne bouge jamais — voir l'entretoise incompressible. */
+.cv__head { display: flex; align-items: baseline; gap: calc(16 * var(--cv-u, 1px)); }
+.cv__head .cv__name { flex: 1 1 auto; min-width: 0; }
+/* Même recette que `.sheet__link` de la fiche projet, et c'est voulu : dans ce
+   système, une chose qu'on clique et qui emmène ailleurs a cette forme-là. Les
+   mesures sont resserrées parce que la ligne est partagée avec un titre. */
+.cv__download {
+  flex: none; font-family: var(--font-ui); font-size: calc(11 * var(--cv-u, 1px)); font-weight: 500;
+  letter-spacing: .04em; color: var(--cream); text-decoration: none;
+  background: rgba(var(--cream-rgb), .07);
+  border: calc(1 * var(--cv-u, 1px)) solid rgba(var(--cream-rgb), .14);
+  border-radius: calc(7 * var(--cv-u, 1px)); padding: calc(6 * var(--cv-u, 1px)) calc(12 * var(--cv-u, 1px));
+  transition: background var(--t-item), border-color var(--t-item), box-shadow var(--t-halo);
+}
+.cv__download:hover, .cv__download:focus-visible {
+  background: rgba(var(--cream-rgb), .11); border-color: rgba(var(--glow-deep-rgb), .6);
+  box-shadow: 0 0 0 calc(1.5 * var(--cv-u, 1px)) rgba(var(--glow-deep-rgb), .35),
+    0 0 calc(40 * var(--cv-u, 1px)) calc(5 * var(--cv-u, 1px)) rgba(var(--glow-deep-rgb), .42);
+  outline: none;
+}
+
+.cv__name {
+  margin: 0 0 calc(4 * var(--cv-u, 1px)) calc(2 * var(--cv-u, 1px)); font-family: ui-monospace, monospace;
+  font-size: calc(30 * var(--cv-u, 1px)); font-weight: 500; letter-spacing: .05em; color: var(--cream);
+  /* Une lueur portée SANS décalage ni flou du glyphe lui-même : elle rayonne
+     autour, elle n'épaissit pas le trait. C'est la seule ligne assez grande
+     pour l'encaisser — sur du 9 px elle mangerait le contre-poinçon. */
+  text-shadow: 0 0 calc(16 * var(--cv-u, 1px)) rgba(var(--glow-rgb), .26);
+}
+/* Le caret de bloc, pendant le déchiffrement seulement. C'est lui qui fait
+   lire « console » plutôt que « titre animé » ; le laisser après coup en
+   ferait une décoration clignotante permanente. Il ne vit que tant que
+   l'animation vit, donc `prefers-reduced-motion` l'emporte avec elle. */
+.cv__caret {
+  display: inline-block; width: .55em; height: .95em; margin-left: .12em;
+  vertical-align: -.1em; background: var(--glow);
+  box-shadow: 0 0 calc(10 * var(--cv-u, 1px)) rgba(var(--glow-rgb), .5);
+  animation: cv-caret 620ms steps(1, end) infinite;
+}
+@keyframes cv-caret { 0%, 49% { opacity: 1; } 50%, 100% { opacity: .1; } }
+
+.cv__row { display: flex; gap: calc(11 * var(--cv-u, 1px)); }
+/* 148 × 180 depuis le 2026-08-20 : à 104 × 126 le cadre ne pesait plus rien
+   face aux cinq blocs qui l'entourent. Les deux cartes de la rangée y perdent
+   en largeur, ce qui est assumé — c'est la photo qui donne la hauteur, et
+   l'agrandir ne coûte donc que 54 px au budget vertical. */
+.cv__photo {
+  flex: none; width: calc(148 * var(--cv-u, 1px)); height: calc(180 * var(--cv-u, 1px));
+  border: calc(1 * var(--cv-u, 1px)) dashed rgba(var(--cream-rgb), .35);
+  border-radius: calc(8 * var(--cv-u, 1px));
+  background: repeating-linear-gradient(45deg, rgba(var(--cream-rgb), .05) 0 calc(8 * var(--cv-u, 1px)),
+    transparent calc(8 * var(--cv-u, 1px)) calc(16 * var(--cv-u, 1px)));
+  display: flex; align-items: center; justify-content: center;
+  font-family: ui-monospace, monospace; font-size: calc(10 * var(--cv-u, 1px)); color: rgba(var(--cream-rgb), .55);
+}
+.cv__photo img { width: 100%; height: 100%; object-fit: cover; border-radius: calc(7 * var(--cv-u, 1px)); }
+.cv__card {
+  background: rgba(var(--cream-rgb), .07);
+  border: calc(1 * var(--cv-u, 1px)) solid rgba(var(--cream-rgb), .12);
+  border-radius: calc(8 * var(--cv-u, 1px));
+  padding: calc(11 * var(--cv-u, 1px)) calc(14 * var(--cv-u, 1px));
+  display: flex; flex-direction: column; gap: calc(7 * var(--cv-u, 1px));
+}
+/* `flex: 1` ne vaut QUE dans la rangée du haut. `.cv` est une colonne flex :
+   posé sur la carte elle-même, il ferait grandir en HAUTEUR les cartes du bas
+   jusqu'à remplir l'écran.
+
+   Le savoir-être prend 1,4 part contre 1 aux faits, et ce n'est pas de
+   l'esthétique : six mots ont besoin de place, des paires « intitulé /
+   valeur » n'en ont pas. À parts égales, mesuré à 1000 px de large du temps
+   de la grille de vignettes, « Curiosité » et « Autonomie » se coupaient en
+   plein mot ; les étiquettes de #194 passent à la ligne au lieu de se couper,
+   mais une carte plus étroite les empilerait une par rangée.
+
+   1,4 et pas plus, et gouttière de 6 px : élargir davantage la carte rétrécit
+   celle des faits, dont les lignes passent alors à deux et rallongent toute la
+   rangée. Mesuré — 1,5 avec 9 px de gouttière fait grimper le CV de 613 à
+   663 px à 1000 px de large, et il déborde de l'écran dès qu'un accordéon
+   s'ouvre. Le point d'équilibre est étroit : ne le déplacer qu'avec une mesure
+   sous les yeux. */
+.cv__row .cv__card { flex: 1; }
+.cv__card--traits { flex: 1.4; }
+.cv__card-title {
+  font-size: calc(10 * var(--cv-u, 1px)); font-weight: 500; letter-spacing: .2em; text-transform: uppercase;
+  color: rgba(var(--cream-rgb), .5); margin: 0 0 calc(2 * var(--cv-u, 1px));
+}
+.cv__fact { display: flex; align-items: baseline; gap: calc(8 * var(--cv-u, 1px)); font-size: calc(12.5 * var(--cv-u, 1px)); }
+.cv__fact b { font-weight: 400; color: var(--cream); }
+.cv__fact span {
+  margin-left: auto; font-size: calc(11.5 * var(--cv-u, 1px)); font-family: ui-monospace, monospace;
+  color: rgba(var(--cream-rgb), .55);
+}
+/* LE SAVOIR-ÊTRE EN ÉTIQUETTES TEXTE (#194, décision utilisateur du
+   2026-10-21). Les vignettes à initiales disaient moins que les mots — « S »
+   n'identifie pas « Stratège » comme « Pg » identifie Postgres — et la grille
+   3 × 2 coupait ou faisait déborder les mots longs. Le site classique range
+   déjà les mêmes six mots en puces (`.classic-chip`) ; voici la même lecture,
+   aux unités du CV : mono, bord crème, pas de fond — une étiquette se lit,
+   elle ne promet rien. Les marges `auto` centrent le bloc dans la hauteur que
+   la photo donne à la carte, et `flex-wrap` répartit les mots tout seul :
+   aucun n'a de voisin de colonne à recouvrir, quelle que soit la langue. */
+.cv__traits {
+  list-style: none; margin: auto 0; padding: 0;
+  display: flex; flex-wrap: wrap; gap: calc(6 * var(--cv-u, 1px));
+}
+.cv__trait {
+  padding: calc(3.5 * var(--cv-u, 1px)) calc(9 * var(--cv-u, 1px));
+  border: calc(1 * var(--cv-u, 1px)) solid rgba(var(--cream-rgb), .16);
+  /* Une demi-hauteur suffit à fermer la gélule ; 999 u ne fait que la garantir
+     à toute taille, comme le 999px de `.classic-chip`. */
+  border-radius: calc(999 * var(--cv-u, 1px));
+  font-family: ui-monospace, monospace;
+  font-size: calc(10 * var(--cv-u, 1px)); line-height: 1.3;
+  color: rgba(var(--cream-rgb), .78);
+  white-space: nowrap;
+}
+/* Réglette de vignettes — le savoir-faire (2026-08-20). Le savoir-être l'a
+   partagée jusqu'à #194, d'où le modificateur `--skills` resté seul dans
+   l'app ; `--traits` survit plus bas pour la maquette, voir sa note.
+
+   La vignette sans SVG affiche l'INITIALE du nom, en crème monochrome : c'est
+   le glyphe neutre en attendant les vraies icônes, et pas un état d'erreur —
+   il n'y a aucun `onError` côté composant. Quand un SVG arrive il est rendu en
+   `<img>`, donc EN COULEUR : une marque monochrome ne ressemble pas à la
+   marque. L'asymétrie repli-monochrome / icône-couleur est voulue. */
+/* SOUS LA LARGEUR DU DESIGN, la rangée du haut se met en colonne. En dessous
+   de ~620 px de fenêtre, la colonne du CV ne peut plus atteindre les 573 px
+   pour lesquels elle est écrite (voir `--cv-column`) : les trois cartes se
+   partagent alors moins de 200 px chacune, et les étiquettes des six traits se
+   chevauchent — mesuré sur un téléphone en portrait, « Curiosité », « Rigueur »
+   et « Autonomie » se superposaient.
+
+   Le seuil est celui du site classique (720 px), et il est pris sur la FENÊTRE
+   plutôt que sur la carte : la colonne suit la fenêtre par construction, et une
+   requête de conteneur demanderait un `container-type` sur un élément qui
+   défile — un réglage de mise en page de plus, pour la même réponse. */
+@media (max-width: 720px) {
+  .cv__row { flex-direction: column; }
+  .cv__row .cv__card, .cv__card--traits { flex: 0 0 auto; }
+}
+
+.cv__tiles { display: grid; gap: calc(8 * var(--cv-u, 1px)) calc(6 * var(--cv-u, 1px)); }
+/* MAQUETTE SEULEMENT depuis #194 : `design/screens/02-cv.html` range encore
+   son savoir-être en vignettes 3 × 2, et il ne charge que cette feuille.
+   Dérive assumée, comme son titre « Langues & permis » — supprimer la règle
+   casserait la maquette sans rien alléger dans l'app. */
+.cv__tiles--traits { grid-template-columns: repeat(3, 1fr); }
+.cv__tiles--skills { grid-template-columns: repeat(auto-fit, minmax(calc(46 * var(--cv-u, 1px)), 1fr)); }
+.cv__tile { display: flex; flex-direction: column; align-items: center; gap: calc(5 * var(--cv-u, 1px)); min-width: 0; }
+.cv__tile-mark {
+  width: calc(26 * var(--cv-u, 1px)); height: calc(26 * var(--cv-u, 1px)); flex: none;
+  border-radius: calc(7 * var(--cv-u, 1px));
+  border: calc(1 * var(--cv-u, 1px)) solid rgba(var(--cream-rgb), .16); background: rgba(var(--cream-rgb), .06);
+  display: flex; align-items: center; justify-content: center;
+  font-size: calc(12 * var(--cv-u, 1px)); font-weight: 500; color: rgba(var(--cream-rgb), .8);
+  /* La marque suit l'unité ICI, et pas dans `.glyph-mark` : la recette du
+     masque sert aussi la barre de menu, qui garde ses 16 px. */
+  --mark-size: calc(16 * var(--cv-u, 1px));
+  --mark-slab: calc(13 * var(--cv-u, 1px));
+}
+/* LA MARQUE D'UNE VIGNETTE (#169). Un masque, pas une image : les fichiers
+   portent `fill="currentColor"`, qui dans une balise `<img>` n'a aucun contexte
+   dont hériter et vaut noir — invisible sur du verre fumé. Le masque ne lit que
+   la transparence du fichier et prend sa couleur d'ici, si bien qu'une seule
+   marque sert la vignette crème du CV et la barre de menu à 40 % d'opacité.
+
+   La recette vit ici parce que `tokens.css` est chargé par les DEUX
+   expériences ; la taille, elle, appartient à chaque réglette.
+
+   `--mark` est posé en ligne par le composant : c'est la seule chose qui
+   change d'une vignette à l'autre, et une classe par technologie aurait mis
+   dix-neuf règles dans la feuille pour une seule différence. */
+.glyph-mark {
+  display: block; background: currentColor;
+  -webkit-mask: var(--mark) center / contain no-repeat;
+  mask: var(--mark) center / contain no-repeat;
+  width: var(--mark-size, 16px); height: var(--mark-size, 16px);
+}
+/* UN PAVÉ SE PEINT PLUS PETIT, et le chiffre est mesuré (#167) : l'encre — la
+   part du carré réellement peinte — va de 14,9 % à 86,4 %. Au-delà de 50 %, la
+   marque ne lit plus comme un pictogramme mais comme un bloc clair, et elle
+   écrase les silhouettes posées à côté. Un cran plus petit ne l'égalise pas
+   — c'est impossible sans rendre le glyphe illisible — mais il ramène son
+   poids dans la même famille. */
+.glyph-mark--slab { width: var(--mark-slab, 13px); height: var(--mark-slab, 13px); }
+
+.cv__tile-label {
+  font-size: calc(9 * var(--cv-u, 1px)); line-height: 1.25; text-align: center; max-width: 100%;
+  /* Surtout PAS d'`overflow-wrap: anywhere` : mesuré à 1000 px, il coupait
+     « Curiosité » en « Curiosit / é ». Un nom trop long doit déborder — on le
+     voit, on le raccourcit — plutôt que se briser en silence. */
+  hyphens: none; color: rgba(var(--cream-rgb), .55);
+}
+
+/* Titre d'une pile de cartouches — « Expériences », « Formations ». Même
+   micro-étiquette que celle d'une carte, mais HORS carte : les cartouches sont
+   déjà des boîtes, les emboîter dans une sixième n'ajouterait qu'un cadre.
+   La marge du haut compense le `gap` de la colonne pour attacher le titre à ce
+   qu'il annonce plutôt qu'à ce qui le précède. */
+.cv__section-title {
+  font-size: calc(10 * var(--cv-u, 1px)); font-weight: 500; letter-spacing: .2em; text-transform: uppercase;
+  /* Accent froid, alors que les titres de CARTE restent crème sourd : c'est ce
+     qui distingue les trois sections des cartes qu'elles contiennent, sans
+     ajouter ni corps ni graisse. La couleur porte la hiérarchie. */
+  color: rgba(var(--glow-rgb), .72);
+  /* La marge du haut s'ajoute au `gap` de la colonne : elle creuse la césure
+     AVANT la section, celle du bas rattache le titre à ce qu'il annonce. C'est
+     ce couple qui fait lire trois sections plutôt qu'une pile de cartes. */
+  margin: calc(12 * var(--cv-u, 1px)) 0 calc(-1 * var(--cv-u, 1px)) calc(2 * var(--cv-u, 1px));
+}
+
+/* « Le cap » — la vision, dans la police de la VOIX, celle des bulles. C'est
+   la seule ligne du CV qui parle à la première personne ; lui donner la même
+   italique qu'à la narration du tour est ce qui la distingue d'une rubrique. */
+.cv__outlook-text {
+  font-family: var(--font-voice); font-style: italic;
+  font-size: calc(13 * var(--cv-u, 1px)); line-height: 1.5; color: rgba(var(--cream-rgb), .78); margin: 0;
+}
+
+/* Le repli quand aucun poste n'est renseigné : une phrase, jamais un trou.
+   Même discipline que le tiroir vide (#78). */
+.cv__empty {
+  font-family: var(--font-voice); font-style: italic; font-size: calc(13 * var(--cv-u, 1px));
+  line-height: 1.5; color: rgba(var(--cream-rgb), .6); margin: 0; padding: 0 calc(2 * var(--cv-u, 1px));
+}
+.job {
+  pointer-events: auto;
+  /* NI croissance NI COMPRESSION. `.cv` est une colonne flex, et le minimum
+     automatique d'un élément flex vaut sa taille de contenu — sauf s'il porte
+     un `overflow` autre que `visible`, qui le ramène à ZÉRO. C'est le cas ici
+     (voir plus bas : `overflow: hidden` coupe le balayage aux angles arrondis),
+     si bien que la colonne tassait ses cartouches au lieu de défiler.
+     Mesuré avant : les huit cartouches perdaient jusqu'à 28 px de leur propre
+     contenu à 1512 × 945, et 44 px avec le vrai parcours (#173). Un contenu
+     tassé est COUPÉ, pas reflué : c'est pire qu'un débordement, qui se voit et
+     se défile. `.cv` porte déjà `overflow-y: auto` pour ça. */
+  flex: none;
+  background: rgba(var(--cream-rgb), .07);
+  border: calc(1 * var(--cv-u, 1px)) solid rgba(var(--cream-rgb), .12);
+  border-radius: calc(8 * var(--cv-u, 1px)); padding: calc(11 * var(--cv-u, 1px)) calc(16 * var(--cv-u, 1px));
+  transition: background var(--t-item), border-color var(--t-item);
+}
+.job:hover, .job:focus-visible { background: rgba(var(--cream-rgb), .1); border-color: rgba(var(--cream-rgb), .2); outline: none; }
+/* Balayage au survol : un liseré froid traverse la cartouche UNE fois. Il
+   n'annonce pas une ouverture — les formations l'ont aussi, elles qui ne
+   s'ouvrent pas — il accuse réception du pointeur, comme un écran qui
+   rafraîchit la ligne qu'on désigne.
+   Déclenché par un geste, donc CONSERVÉ sous `prefers-reduced-motion` : le
+   critère du design system est l'autonomie, pas le déplacement.
+   `overflow: hidden` est ce qui le coupe aux bords arrondis ; il ne gêne pas
+   l'accordéon, qui pousse la cartouche au lieu d'en déborder. */
+.job { position: relative; overflow: hidden; }
+.job::before {
+  content: ''; position: absolute; inset: 0; pointer-events: none; opacity: 0;
+  background: linear-gradient(100deg,
+    transparent 42%, rgba(var(--glow-rgb), .14) 50%, transparent 58%);
+}
+.job:hover::before, .job:focus-visible::before {
+  animation: job-sweep var(--t-sweep) var(--ease-out);
+}
+@keyframes job-sweep {
+  from { transform: translateX(-100%); opacity: 1; }
+  to   { transform: translateX(100%); opacity: 1; }
+}
+/* Une formation ne se déplie pas : elle ne doit donc pas réagir au survol. Un
+   fond qui s'éclaircit sur quelque chose qui n'ouvre rien promet une
+   interaction qui n'existe pas. */
+.job--static:hover { background: rgba(var(--cream-rgb), .07); border-color: rgba(var(--cream-rgb), .12); }
+.job__head { display: flex; align-items: baseline; gap: calc(10 * var(--cv-u, 1px)); }
+.job__title { font-size: calc(13 * var(--cv-u, 1px)); font-weight: 500; color: var(--cream); }
+.job__company { font-size: calc(11 * var(--cv-u, 1px)); color: rgba(var(--cream-rgb), .55); }
+.job__period {
+  margin-left: auto; flex: none; font-size: calc(11 * var(--cv-u, 1px)); font-family: ui-monospace, monospace;
+  color: rgba(var(--cream-rgb), .5);
+}
+/* Les clients d'un poste (#173). Une LIGNE, sous l'intitulé, hors de
+   l'accordéon : ce n'est pas une mission, c'est le contexte du poste, et le CV
+   papier la compose au même endroit. Elle reste donc visible sans survol —
+   masquée dans l'accordéon, elle aurait promis un détail au lieu d'un cadre.
+   Le libellé porte l'accent froid, comme les titres de section : c'est lui qui
+   dit ce que la liste EST, et sans lui une suite de noms propres ressemble à
+   une énumération sans cause. */
+.job__clients {
+  margin: calc(6 * var(--cv-u, 1px)) 0 0; font-size: calc(10.5 * var(--cv-u, 1px)); line-height: 1.45;
+  color: rgba(var(--cream-rgb), .5);
+}
+.job__clients-key {
+  color: var(--glow); letter-spacing: .06em; text-transform: uppercase;
+  font-size: calc(9 * var(--cv-u, 1px)); margin-right: calc(6 * var(--cv-u, 1px));
+}
+
+/* L'accordéon interpole `grid-template-rows` de 0fr à 1fr plutôt qu'une
+   `max-height` devinée : une valeur en dur (160px dans la maquette d'origine)
+   est un plafond invisible, et la quatrième mission disparaîtrait en silence.
+   Ici la hauteur cible EST celle du contenu, quel qu'il soit. L'`overflow`
+   vit sur la liste — c'est lui qui rogne, y compris ses marges internes,
+   converties en `padding` pour cette raison. Le survol répond à un geste :
+   `prefers-reduced-motion` le conserve délibérément. */
+.job__missions {
+  display: grid; grid-template-rows: 0fr;
+  transition: grid-template-rows var(--t-accordion) var(--ease-out);
+}
+.job:hover .job__missions, .job:focus-within .job__missions { grid-template-rows: 1fr; }
+.job__missions ul {
+  overflow: hidden; margin: 0;
+  padding: calc(9 * var(--cv-u, 1px)) 0 calc(2 * var(--cv-u, 1px)) calc(15 * var(--cv-u, 1px));
+  display: flex; flex-direction: column; gap: calc(4 * var(--cv-u, 1px));
+}
+.job__missions li { font-size: calc(12 * var(--cv-u, 1px)); line-height: 1.45; color: rgba(var(--cream-rgb), .75); }
+
+/* ===== Le rail de défilement du CV (#194) =====
+   Remplace la barre native (masquée sur `.cv` — Gecko ne la style qu'en
+   largeur et couleur, ni rayon ni décalage) : un élément dessiné aux jetons,
+   posé dans l'air latéral entre la colonne et le bezel du moniteur.
+
+   PUR INDICATEUR : `pointer-events: none`. Le CV ne possède aucun routage
+   d'entrée (« pas une phase ») et un rail saisissable en exigerait un ; la
+   molette garde le passe-plat de `CvScreen`.
+
+   Il est FRÈRE de `.cv`, pas enfant : dans le conteneur qui défile, il
+   défilerait avec le contenu. Sa géométrie (haut/hauteur du curseur, en %)
+   est écrite en ligne par `CvScreen` depuis `lib/scrollRail.ts` — fonction
+   pure, jamais un état React. Le haut s'aligne sur le contenu (40u au total,
+   comme l'air latéral), le bas sur le `padding-block`.
+
+   À 26u de la colonne, PAS au ras : l'air latéral fait ~40u, et collé au
+   contenu le rail se lisait comme un liseré des cartouches. Poussé vers le
+   bezel (~11u restants), il se lit comme le bord de l'écran — là où un
+   moniteur met sa barre. */
+.cv-rail {
+  position: absolute;
+  left: calc(50% + var(--cv-column) / 2 + 26 * var(--cv-u, 1px));
+  top: calc(40 * var(--cv-u, 1px)); bottom: calc(24 * var(--cv-u, 1px));
+  width: calc(3 * var(--cv-u, 1px));
+  border-radius: calc(2 * var(--cv-u, 1px));
+  background: rgba(var(--cream-rgb), .08);
+  z-index: var(--z-bubble);
+  pointer-events: none;
+  animation: cv-in var(--t-cv-in) var(--ease-out) both;
+}
+/* Même règle d'ordre que `.cv--out` : déclaré après, pour gagner à spécificité
+   égale. Le rail entre et sort avec le CV. */
+.cv-rail--out { animation: cv-out var(--t-cv-out) linear both; }
+.cv-rail__thumb {
+  position: absolute; left: 0; right: 0;
+  border-radius: inherit;
+  background: rgba(var(--glow-rgb), .55);
+  box-shadow: 0 0 calc(8 * var(--cv-u, 1px)) rgba(var(--glow-rgb), .3);
+}
+
+@keyframes cv-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes cv-out { from { opacity: 1; } to { opacity: 0; } }
+
+/* ===== Pastille de désignation (#106) =====
+   Elle dit qu'un objet de la scène est cliquable, là où rien ne le disait avant
+   qu'on l'ait déjà survolé — or on ne survole que ce qu'on soupçonne.
+
+   Son anatomie est celle du `bubble__dot` : même point, même cyan. Rien de
+   nouveau dans le vocabulaire, seulement l'anneau qui s'en échappe.
+
+   Elle est en DOM et jamais en 3D. Ce n'est pas une commodité : la boucle de
+   comparaison capture le tampon WebGL, dont les références Blender ne
+   contiennent aucun indice d'interface — tout ce qu'on dessinerait dans la
+   scène au repos ferait dériver la mesure de l'arrêt. */
+.ping {
+  position: relative; display: block; width: 44px; height: 44px;
+  pointer-events: none;
+}
+
+/* LA MAIN (2026-08-24). Elle a remplacé une pastille : le point disait « ici »,
+   la main dit « ici, et clique » — la seule chose que le télescope attend, et
+   que rien d'autre dans la pièce n'enseigne.
+
+   Le halo passe par `drop-shadow` et non par `box-shadow` : une ombre de boîte
+   éclairerait le CARRÉ du svg, dont l'essentiel est transparent, et on verrait
+   un rectangle lumineux avec une main dedans. `drop-shadow` suit la FORME. */
+.ping__hand {
+  position: relative; z-index: 1;
+  display: block; width: 100%; height: 100%;
+  color: var(--glow);
+  filter:
+    drop-shadow(0 0 3px rgba(var(--glow-rgb), 1))
+    drop-shadow(0 0 9px rgba(var(--glow-rgb), .75))
+    drop-shadow(0 0 22px rgba(var(--glow-rgb), .45))
+    drop-shadow(0 0 44px rgba(var(--glow-rgb), .22));
+  animation: ping-tap var(--t-ping) var(--ease-out) infinite;
+  transform-origin: 50% 30%;
+}
+
+/* Le geste est un APPUI, plus une respiration. Une main qui enfle et se dégonfle
+   sans rien toucher ne dit rien de plus qu'un point lumineux ; une main qui
+   s'enfonce, rebondit, et fait partir une onde du bout du doigt dit « clique ».
+
+   Le cycle a donc un temps mort, et cette fois c'est voulu : un souffle ne doit
+   pas s'arrêter, un tapotement DOIT marquer la pause entre deux coups — c'est
+   elle qui en fait un geste et non un tremblement. */
+@keyframes ping-tap {
+  0%       { transform: scale(1)    translateY(0);   }
+  14%      { transform: scale(.9)   translateY(5px); }
+  30%      { transform: scale(1.12) translateY(-2px); }
+  44%, 100% { transform: scale(1)   translateY(0);   }
+}
+
+/* L'onde de contact. Elle part du bout du doigt — d'où le décalage vers le bas
+   — au moment précis où la main touche, et s'efface avant d'avoir fini de
+   grandir : un cercle qui disparaît net à son diamètre maximal se lit comme un
+   clignotement, pas comme une onde.
+
+   Elle doit DÉPASSER la main, et c'est la condition pour qu'on la lise comme
+   une onde et non comme un cerne. À 2,6 elle plafonnait à 47 px pour une main
+   de 44 : elle grandissait, mais restait dedans, donc elle ne partait de nulle
+   part. À 4,4 elle atteint 79 px, soit près du double de la main. */
+.ping__tap {
+  position: absolute; left: 50%; top: 62%;
+  width: 18px; height: 18px; margin: -9px 0 0 -9px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(var(--glow-rgb), .95);
+  box-shadow: 0 0 14px rgba(var(--glow-rgb), .5);
+  animation: ping-wave var(--t-ping) var(--ease-out) infinite;
+}
+@keyframes ping-wave {
+  0%, 12%   { transform: scale(.4); opacity: 0; }
+  20%       { opacity: .95; }
+  62%, 100% { transform: scale(4.4); opacity: 0; }
+}
+
+/* ===== Visée du télescope (#106) =====
+   Un cache circulaire qui dit qu'on regarde DANS un télescope, au lieu de
+   simplement voler vers la lune plein cadre.
+
+   C'est un DÉGRADÉ RADIAL, pas une seconde passe de rendu. La spec laissait le
+   choix ; le DOM gagne parce que la scène est un bake non éclairé qu'on ne
+   retouche pas, et qu'une passe supplémentaire serait un coût GPU permanent
+   pour ce qui n'est qu'un dégradé.
+
+   Il vit à `--z-bubble` (100) et NON à `--z-panel` : à 300 il couvrirait la
+   barre de menu, et `Échap` deviendrait la seule sortie. Même arbitrage que le
+   CV — ce qui n'est pas modal ne se comporte pas comme un modal.
+
+   `min(100vw, 100vh)` pour le diamètre : un cercle, sur tout format d'écran.
+   En pourcentage, l'ouverture deviendrait une ellipse hors du carré. */
+.scope {
+  position: absolute; inset: 0; z-index: var(--z-bubble); pointer-events: none;
+  transform-origin: 50% 50%;
+  /* Deux rayons, et c'est la LARGEUR du cadre qui les fixe tous les deux —
+     jamais `min(100vw, 100vh)`.
+     La raison est la même que pour les bulles : le tour ajuste son champ
+     HORIZONTALEMENT (`src/lib/stops.ts`), donc la taille apparente de la lune
+     est proportionnelle à la largeur du cadre et à rien d'autre. Un rayon
+     calculé sur `min()` suivait la lune tant qu'on restait proche du 16:9 et
+     s'en décrochait ailleurs — mesuré, la cible tombait à 0,95 du limbe et
+     coupait la face de l'astre.
+
+     `--scope-moon` est le rayon APPARENT de la lune dans la VISÉE, mesuré en
+     capture : 230 px sur un cadre de 1280, soit 0,18. Il vaut pour l'excursion
+     et pour elle seule — celle-ci élargit le champ d'un facteur 1,5
+     (`TELESCOPE_FOV_PAD`) pour dégager du ciel autour de la lune, alors que
+     l'arrêt `Moon` du tour, lui, garde le cadrage plein cadre voulu par
+     Blender. Changer ce facteur oblige à re-mesurer cette valeur. */
+  --scope-moon: calc(100vw * 0.18);
+  /* L'ouverture claire, POSÉE AU-DELÀ du limbe : la lune doit se voir entière,
+     avec un peu de ciel autour, et rien ne doit empiéter dessus. Plus étroite,
+     le cache mordait sur l'astre et on ne voyait plus qu'on regardait à
+     travers quelque chose. */
+  --scope-r: calc(var(--scope-moon) * 1.2);
+  background: radial-gradient(
+    circle at 50% 50%,
+    transparent 0,
+    transparent var(--scope-r),
+    /* Le vignettage : la lumière tombe AVANT le bord du cache, sinon
+       l'ouverture a l'air découpée aux ciseaux plutôt que vue à travers une
+       optique. */
+    rgba(0, 0, 0, .55) calc(var(--scope-r) * 1.16),
+    rgba(0, 0, 0, .94) calc(var(--scope-r) * 1.3),
+    var(--ink) calc(var(--scope-r) * 1.45)
+  );
+  animation: scope-in var(--t-scope-in) var(--ease-out) both;
+}
+/* Le liseré de l'oculaire, posé sur le LIMBE de la lune — pas sur l'ouverture.
+   C'est la seule position où il se lit comme le bord d'une optique : plus
+   dedans, un trait fin en travers d'un astre ressemble à une rayure ; plus
+   dehors, il flotte dans le noir sans rien border. */
+.scope::before {
+  content: ''; position: absolute; inset: 0;
+  background: radial-gradient(
+    circle at 50% 50%,
+    transparent calc(var(--scope-moon) * 1.14),
+    rgba(var(--glow-rgb), .16) calc(var(--scope-moon) * 1.17),
+    transparent calc(var(--scope-moon) * 1.2)
+  );
+}
+/* Le réticule : quatre traits courts au bord de l'ouverture, jamais une croix
+   au centre — le centre, c'est la lune, et on ne la barre pas. */
+.scope__reticle {
+  position: absolute; left: 50%; top: 50%; width: 0; height: 0;
+  color: rgba(var(--glow-rgb), .5);
+}
+.scope__tick {
+  position: absolute; background: currentColor;
+  width: 1px; height: 14px; margin: -7px 0 0 -0.5px;
+}
+.scope__tick--n { transform: translateY(calc(var(--scope-moon) * -1.17 + 7px)); }
+.scope__tick--s { transform: translateY(calc(var(--scope-moon) * 1.17 - 7px)); }
+.scope__tick--w { width: 14px; height: 1px; margin: -0.5px 0 0 -7px;
+  transform: translateX(calc(var(--scope-moon) * -1.17 + 7px)); }
+.scope__tick--e { width: 14px; height: 1px; margin: -0.5px 0 0 -7px;
+  transform: translateX(calc(var(--scope-moon) * 1.17 - 7px)); }
+
+/* Le rappel de sortie, en haut à gauche. Il est DANS le cache et non à côté :
+   il doit donc apparaître, s'effacer et se mettre à l'échelle avec lui, sans
+   qu'on ait à synchroniser deux animations.
+   Sa place est le coin, jamais le centre — le centre est ce qu'on est venu
+   regarder. */
+.scope__exit {
+  position: absolute; top: 30px; left: 34px; margin: 0;
+  display: flex; align-items: center; gap: 9px;
+  font-size: var(--fs-meta); letter-spacing: .04em;
+  color: rgba(var(--cream-rgb), .55);
+}
+
+/* L'encadré de la lune (#113) : `.bubble` fait tout le travail — verre fumé,
+   rayon, typo, entrée. Cette règle ne fait que le POSER, en bas à droite de la
+   vignette, là où il ne recouvre ni le sujet ni le rappel de sortie (coin
+   opposé). `position: absolute` dans `.scope`, donc il se resserre avec
+   l'ouverture au lieu de rester seul sur l'écran noir. */
+.scope__bubble {
+  /* En bas à GAUCHE (arbitrage produit, 2026-08-24) : le côté droit appartient
+     à la barre de menu, sous laquelle la bulle passait — elle est à
+     `--z-bubble`, la barre à `--z-bar`. À gauche, la question ne se pose plus,
+     et le rappel de sortie occupe l'autre coin. */
+  left: 42px; bottom: 42px; max-width: 330px;
+}
+
+/* Déclaré APRÈS `.scope` : à spécificité égale, le dernier gagne, et la sortie
+   l'emporte sur l'entrée. Même règle que `.cv--out` et `.sheet--out`. */
+.scope--out { animation: scope-out var(--t-scope-out) linear both; }
+
+/* L'ouverture se resserre en mettant à l'échelle le CACHE ENTIER, et non le
+   rayon : une propriété personnalisée ne s'interpole pas en `@keyframes` sans
+   `@property`, elle sauterait d'une valeur à l'autre.
+   Agrandi, le cache déborde du cadre — donc le noir couvre toujours l'écran
+   pendant que le trou se referme, ce qu'un rayon animé n'aurait pas garanti. */
+@keyframes scope-in {
+  from { opacity: 0; transform: scale(1.25); }
+  to   { opacity: 1; transform: scale(1); }
+}
+@keyframes scope-out { from { opacity: 1; } to { opacity: 0; } }
+
+/* ===== Mouvement réduit =====
+   Le critère est l'autonomie, pas le déplacement : ce qui part tout seul ou
+   tourne en boucle est neutralisé, ce que l'utilisateur déclenche lui-même est
+   conservé. Un halo qui s'allume au survol répond à un geste et ne surprend
+   personne ; la respiration du logo tourne sans fin sans qu'on l'ait demandée.
+
+   Le déplacement caméra de 1,2 s n'est pas du CSS : sous cette préférence,
+   CameraRig doit couper au stop suivant au lieu de l'interpoler (STEP_DURATION
+   à 0). Sans cela, le seul mouvement qui compte vraiment reste entier. */
+@media (prefers-reduced-motion: reduce) {
+  /* bulle : plus de reveal par clip ni de translation, un simple fondu */
+  .bubble { animation: bubble-in-reduced var(--t-bubble-out) linear both; }
+  /* `!important` assumé sur les neutralisations : une règle d'accessibilité doit
+     gagner contre toute déclaration locale. Sans lui, le `<style>` d'une page
+     chargé après ce fichier l'emporte à spécificité égale — mesuré sur le
+     preloader, dont la respiration continuait de tourner. */
+  /* respiration du logo (boucle infinie) ; la barre continue de progresser,
+     c'est de l'information, pas de la décoration */
+  /* la lueur est figée explicitement : la respiration anime aussi le `filter`,
+     et le simple fait de couper l'animation la ramènerait à `none`. */
+  .preload__logo {
+    animation: none !important; opacity: 1 !important;
+    filter: drop-shadow(0 0 6px rgba(var(--glow-rgb), .55)) !important;
+  }
+  /* la navette de la barre indéterminée est une boucle autonome, elle aussi */
+  .preload__bar--unknown .preload__fill { animation: none !important; width: 100%; opacity: .35; }
+  /* reveal typo mot à mot — pas encore dans les maquettes, à honorer côté app */
+  .bubble__text > * { animation: none !important; }
+  /* fiche : le relais ne se déclenche plus au milieu du vol, puisque le vol est
+     coupé côté app — elle paraît d'un bloc, sans délai. */
+  .sheet { animation: sheet-in var(--t-sheet-out) linear both !important; }
+  /* La VIDÉO de la fiche (#126) reste lisible, et c'est le critère ci-dessus
+     appliqué tel quel : elle ne part que sur un clic, ne se répète pas et ne
+     charge pas un octet avant qu'on le lui demande — il n'y a donc rien
+     d'autonome à couper. La retirer priverait de la démonstration les seules
+     personnes qui avaient demandé moins de mouvement, exactement comme couper
+     la main du télescope les aurait privées de l'affordance. */
+  /* pastille : l'anneau tourne en boucle tout seul, il part. Le POINT reste —
+     l'indication n'est pas du mouvement, et la retirer priverait d'affordance
+     précisément les personnes qui ont demandé moins d'animation. */
+  /* La main reste — c'est une affordance, et la couper priverait d'indication
+     les personnes sensibles au mouvement. Ce qui s'arrête, c'est le geste :
+     l'appui, et l'onde qu'il envoie. */
+  .ping__hand { animation: none !important; opacity: 1 !important; }
+  .ping__tap { animation: none !important; opacity: 0 !important; }
+  /* visée : l'ouverture répond à un clic, elle est donc conservée — mais
+     réduite à un fondu. Le resserrement du cercle, lui, part tout seul une
+     fois le clic donné, et c'est du mouvement plein cadre. */
+  .scope { animation: scope-out var(--t-scope-out) linear reverse both !important; }
+  /* CV : il paraît AVEC la bulle de son arrêt, donc il doit se raccourcir avec
+     elle. Sans cette ligne il tiendrait 480 ms pendant que la bulle en prend
+     200, et l'invariant que --t-cv-in annonce serait faux là où il compte le
+     plus. L'accordéon, lui, est conservé : il répond à un geste. */
+  .cv { animation: cv-in var(--t-cv-out) linear both !important; }
+}
+@keyframes bubble-in-reduced {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}

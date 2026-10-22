@@ -1,6 +1,7 @@
-import { Suspense, lazy, useState } from 'react'
+import { Suspense, lazy, useEffect, useLayoutEffect, useState } from 'react'
 import {
   clearStoredChoice,
+  isCoarsePointer,
   isWebGLAvailable,
   readStoredChoice,
   resolveExperience,
@@ -8,6 +9,7 @@ import {
   type ExperienceChoice,
   type ExperienceResolution,
 } from '@/lib/experienceChoice'
+import { useLocale } from '@/state/locale'
 import { ClassicApp } from '@/ui/ClassicApp'
 import { Preloader } from '@/ui/Preloader'
 import { Preselection } from '@/ui/Preselection'
@@ -34,11 +36,55 @@ function resolveFromBrowser(): ExperienceResolution {
     search: new URLSearchParams(window.location.search),
     stored: readStoredChoice(),
     probeWebGL: isWebGLAvailable,
+    probeCoarsePointer: isCoarsePointer,
   })
 }
 
 export default function App() {
   const [resolution, setResolution] = useState<ExperienceResolution>(resolveFromBrowser)
+  const locale = useLocale((state) => state.locale)
+
+  // `lang` du document (#33) — accessibilité et SEO. Écrit ICI et nulle part
+  // ailleurs : `index.html` livre `lang="fr"` en dur, et le store peut résoudre
+  // `en` dès le chargement. Deux endroits qui écrivent le même attribut
+  // finiraient par diverger, et ce serait le premier rendu qui aurait tort —
+  // celui qu'aucun test ne regarde.
+  useEffect(() => {
+    document.documentElement.lang = locale
+  }, [locale])
+
+  const classic = resolution.kind === 'route' && resolution.choice === 'classic'
+
+  // Le déverrouillage du défilement (#29). `styles.css` fige `html, body, #root`
+  // en `height: 100%; overflow: hidden` : c'est ce qu'il faut à une scène 3D
+  // plein cadre, et c'est exactement ce qui empêche une page une-page
+  // d'exister — sans ça elle ne défile pas du tout, donc l'observateur de
+  // révélation ne se déclenche jamais, le halo ne dérive pas, le mini-nom
+  // n'apparaît pas, et rien ne le dit : la page a simplement l'air tronquée.
+  //
+  // Écrit ICI, avec `lang`, et pour la même raison : un seul écrivain pour les
+  // attributs de la racine. Retiré au départ, pour que rouvrir la
+  // pré-sélection puis choisir la 3D ne laisse pas une page qui défile sous un
+  // canvas fixe.
+  //
+  // **`useLayoutEffect` et non `useEffect`, et c'est mesuré.** Un effet
+  // ordinaire s'exécute APRÈS la peinture : la page classique était peinte au
+  // moins une image entière dans un document encore bloqué — relevé image par
+  // image, `overflow: hidden` et `scrollHeight: 900` sur la trame 2, corrigé
+  // sur la trame 3. Une image, personne ne la voit ; mais tout ce qui MESURE la
+  // page au montage la lit dans cet état, et un observateur qui se trompe une
+  // fois ne se reprend pas — il a déjà cessé de regarder.
+  //
+  // C'est la différence avec `lang` juste au-dessus, qui reste un `useEffect` :
+  // un attribut de langue faux pendant une image ne coûte rien à personne, un
+  // document bloqué coûte une mise en page.
+  useLayoutEffect(() => {
+    if (!classic) return
+    document.documentElement.dataset.experience = 'classic'
+    return () => {
+      delete document.documentElement.dataset.experience
+    }
+  }, [classic])
 
   const choose = (choice: ExperienceChoice) => {
     storeChoice(choice)
@@ -53,7 +99,7 @@ export default function App() {
   }
 
   if (resolution.kind === 'ask') {
-    return <Preselection onChoose={choose} />
+    return <Preselection onChoose={choose} threeDisabled={resolution.coarsePointer} />
   }
 
   if (resolution.choice === 'classic') {

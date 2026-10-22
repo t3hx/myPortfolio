@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>La fiche projet — Portfolio 3D (référence design)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600&family=Newsreader:ital,opsz,wght@0,6..72,400;1,6..72,400;1,6..72,500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../src/styles/tokens.css">
+<style>
+/* Rien ici : l'anatomie de la fiche vit dans `tokens.css`, comme celle de la
+   bulle et de la barre. L'app monte exactement le même balisage, avec en plus
+   la classe `panel` qui fait ignorer sa molette par CameraRig. Le seul écart de
+   cette page est le délai d'entrée : ici il n'y a pas de vol à attendre. */
+.sheet { animation-delay: 0ms; }
+</style>
+</head>
+<body>
+<!-- Réagencée le 2026-09-08 (#126) : la fiche montre CE QUE LE PROJET FAIT.
+     Une vidéo qu'on lit, plusieurs captures qu'on regarde, et tout le texte
+     d'avant — kicker, titre, phrase, année, rôle, stack, faits saillants,
+     liens — dans la colonne de droite.
+
+     Fond : la capture réelle de fin de vol (design/renders/spikes/), pas un
+     rendu de référence — c'est littéralement ce que le panneau recouvre.
+     Les médias de cette page sont les rendus de référence du dépôt : la
+     maquette a besoin d'images vraies, et celles-là sont déjà versionnées. -->
+<main class="stage" style="background-image:url(../renders/spikes/cabinet-folder-flight.png)">
+  <section class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title">
+    <div class="sheet__close">
+      <span class="sheet__key sheet__key--cue"><span class="cue">Échap</span></span>
+      <span class="sheet__exit cue">pour revenir</span>
+      <button class="sheet__close-btn" type="button" aria-label="Fermer la fiche">&times;</button>
+    </div>
+
+    <div class="sheet__inner">
+      <!-- La scène : UN média à la fois, la pellicule dit ce qu'il y a d'autre.
+           `preload="none"` — aucun octet de vidéo ne part avant un clic, et
+           rien ne démarre sans geste. L'adresse est celle du VPS ; l'app ne
+           l'empaquette jamais. -->
+      <div class="sheet__media">
+        <div class="sheet__stage">
+          <video class="sheet__player" preload="none"
+                 poster="../renders/refs/desk.png"
+                 src="https://media.exemple.tld/portfolio.mp4"
+                 controls playsinline></video>
+        </div>
+
+        <p class="sheet__caption">La visite du bureau, du premier écran à la commode.</p>
+
+        <ul class="sheet__strip" aria-label="Médias du projet">
+          <li>
+            <button class="sheet__thumb" type="button" aria-current="true" aria-label="Vidéo — La visite du bureau, du premier écran à la commode.">
+              <img src="../renders/refs/desk.png" alt="">
+              <span class="sheet__thumb-play" aria-hidden="true">&#9654;</span>
+            </button>
+          </li>
+          <li>
+            <button class="sheet__thumb" type="button" aria-label="Le tiroir des projets, ouvert.">
+              <img src="../renders/refs/cabinet.png" alt="">
+            </button>
+          </li>
+          <li>
+            <button class="sheet__thumb" type="button" aria-label="La bibliothèque et sa bulle.">
+              <img src="../renders/refs/bookshelf.png" alt="">
+            </button>
+          </li>
+          <li>
+            <button class="sheet__thumb" type="button" aria-label="Le télescope, avant la visée.">
+              <img src="../renders/refs/telescope.png" alt="">
+            </button>
+          </li>
+        </ul>
+      </div>
+
+      <!-- Tout ce que la fiche disait déjà, à la même échelle, dans une colonne
+           plus étroite : rien n'a disparu du réagencement. -->
+      <div class="sheet__body">
+        <header class="sheet__kicker">
+          <span class="sheet__dot"></span>
+          <span class="sheet__label">Projet</span>
+        </header>
+
+        <h1 class="sheet__title" id="sheet-title">Ce portfolio</h1>
+        <p class="sheet__tagline">Une pièce modélisée sous Blender, parcourue au défilement.</p>
+
+        <div class="sheet__meta">
+          <div class="sheet__meta-item">
+            <span class="sheet__meta-key">Année</span>
+            <span class="sheet__meta-value sheet__meta-value--mono">2026</span>
+          </div>
+          <div class="sheet__meta-item">
+            <span class="sheet__meta-key">Rôle</span>
+            <span class="sheet__meta-value">Conception, modélisation et développement</span>
+          </div>
+        </div>
+
+        <ul class="sheet__stack">
+          <li class="sheet__chip">React</li>
+          <li class="sheet__chip">react-three-fiber</li>
+          <li class="sheet__chip">Blender</li>
+          <li class="sheet__chip">GSAP</li>
+        </ul>
+
+        <ul class="sheet__points">
+          <li>Rendu entièrement pré-cuit : aucune lumière au runtime, tout est dans les textures.</li>
+          <li>La caméra suit dix cadrages composés dans Blender, jamais réécrits en code.</li>
+        </ul>
+
+        <div class="sheet__links">
+          <a class="sheet__link" href="#">Code</a>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+</body>
+</html>
